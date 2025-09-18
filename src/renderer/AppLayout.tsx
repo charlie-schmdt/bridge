@@ -3,6 +3,7 @@ import { HeroUIProvider, Button } from '@heroui/react';
 
 export const AppLayout = () => {
 
+  // <Outlet /> renders child routes when they are selected
   return (
     <HeroUIProvider>
       <nav className="p-2 flex gap-2">
