@@ -7,7 +7,7 @@ insert_final_newline = true
 [Makefile]
 indent_style = tab
 
-[*.{js,ts,jsx,tsx}]
+[*.{js,ts,jsx,tsx,go}]
 charset = utf-8
 indent_style = space
 indent_size = 2
