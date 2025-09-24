@@ -15,16 +15,21 @@
   "devDependencies": {
     "@rsbuild/core": "^1.5.1",
     "@rsbuild/plugin-react": "^1.4.0",
+    "@tailwindcss/postcss": "^4.1.13",
     "@types/node": "^24.3.0",
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",
+    "autoprefixer": "^10.4.21",
     "electron": "^37.4.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.13",
     "typescript": "^5.9.2"
   },
   "dependencies": {
     "@heroui/react": "^2.8.2",
     "@react-types/shared": "^3.32.0",
     "framer-motion": "^12.23.12",
+    "init": "^0.1.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router": "^7.9.1",

@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [pluginReact()],
   source: {
     entry: {
-      index: './src/renderer/main.tsx',
+      index: './src/renderer/Main.tsx',
     },
   },
   output: {

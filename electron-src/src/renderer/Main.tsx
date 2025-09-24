@@ -1,9 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import "../index.css";
 import { createHashRouter, RouterProvider } from 'react-router-dom';
-import { AppLayout } from './AppLayout';
+import { AppLayout } from '@/renderer/AppLayout';
 import { HomeLayout, homeLoader } from './HomeLayout';
 import { SettingsLayout } from './SettingsLayout';
+import { VideoLayout } from './VideoLayout';
 
 // All routes for the app go here
 // Every new route must be a child of AppLayout in order to have access to the HeroUIProvider
@@ -21,6 +23,10 @@ const router = createHashRouter([
         path: 'settings',
         element: <SettingsLayout />,
       },
+      {
+        path: 'video',
+        element: <VideoLayout />
+      }
     ],
   },
 ]);
