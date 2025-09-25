@@ -6,7 +6,7 @@ export const AppLayout = () => {
   // <Outlet /> renders child routes when they are selected
   return (
     <HeroUIProvider>
-      <div className="flex flex-col h-screen bg-red-50 p-4 gap-4">
+      <div className="flex flex-col h-screen bg-[#f9fafb] p-4 gap-4">
         <Navbar>
           <NavbarBrand className="text-xl font-bold color-red-600">
             <h1>Bridge</h1>
