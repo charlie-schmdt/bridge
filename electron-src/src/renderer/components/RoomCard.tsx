@@ -4,7 +4,14 @@ const statusColors = {
   offline: "text-red-600",
 };
 
-export default function RoomCard({ title, description, status, nextMeeting }) {
+export interface RoomCardProps {
+  title: string;
+  description: string;
+  status: "active" | "scheduled" | "offline";
+  nextMeeting: string;
+}
+
+export function RoomCard({ title, description, status, nextMeeting }: RoomCardProps) {
   return (
     <div className="w-full min-w-0 min-h-[15rem] bg-white rounded-xl shadow p-4 flex flex-col justify-between">
       <div className="flex justify-between items-center">

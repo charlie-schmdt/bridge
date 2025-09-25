@@ -1,11 +1,12 @@
 import { Card } from "@heroui/react";
 import Header from "./components/Header";
 import MembersList from "./components/MemberList";
-import RoomCard from "./components/RoomCard";
+import { RoomCard } from "./components/RoomCard";
+import { RoomCardProps } from "./components/RoomCard";
 import NotificationBanner from "./components/NotificationBanner";
 
 export const WorkspaceLayout = () => {
-  const roomCardProps = {
+  const roomCardProps: RoomCardProps = {
     title: "Test Room",
     description: "This is a test room",
     status: "active", // can be 'active', 'scheduled', or 'offline'
