@@ -32,6 +32,7 @@ const Header: React.FC = () => {
           🔔
         </button>
         <button
+          onClick={() => navigate("/login")}
           className="bg-gray-200 rounded-full w-8 h-8 flex items-center justify-center hover:ring-2 hover:ring-blue-500"
           aria-label="Profile"
         >

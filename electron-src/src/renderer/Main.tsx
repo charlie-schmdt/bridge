@@ -7,6 +7,7 @@ import { HomeLayout, homeLoader } from './HomeLayout';
 import { SettingsLayout } from './SettingsLayout';
 import { VideoLayout } from './VideoLayout';
 import { WorkspaceLayout } from './WorkspaceLayout';
+import LogInLayout from './LogInLayout';
 
 // All routes for the app go here
 // Every new route must be a child of AppLayout in order to have access to the HeroUIProvider
@@ -32,6 +33,10 @@ const router = createHashRouter([
         path: 'workspace',
         element: <WorkspaceLayout />
       },
+      {
+        path: 'login',
+        element: <LogInLayout />
+      }
 
     ],
   },
