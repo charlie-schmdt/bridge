@@ -154,16 +154,43 @@ export function SettingsLayout() {
                   </Select>
                 </div>
 
-               <div className="flex justify-end w-full">
+               <div className="flex justify-between items-center w-full pt-4"> 
+        
+                {/* 1. DELETE ACCOUNT BUTTON (Left Side) */}
                 <Button
-                  color="primary"
-                  size="sm"
-                  className="h-9 px-4 text-sm font-medium shadow-sm w-fit inline-flex self-start rounded-lg bg-blue-600 text-white py-2"
+                  size="md"
+                  className="h-9 px-4 text-sm font-medium bg-white shadow-lg border border-neutral-200 rounded-lg bg-white w-fit inline-flex self-start rounded-lg py-2 text-red-600 hover:text-red-700 hover:bg-red-50"
                   fullWidth={false}
+                  onClick={() => {
+                      // 💡 Use window.confirm() to show the browser's native dialog
+                      const isConfirmed = window.confirm(
+                          "Are you sure you want to delete your account? This action is permanent."
+                      );
+                      
+                      if (isConfirmed) {
+                          // Put your actual delete logic here
+                          console.log("Account Deletion Confirmed and Initiated!"); 
+                          // navigate("/goodbye-page");
+                      } else {
+                          console.log("Deletion cancelled.");
+                      }
+                  }}
+              >
+                  Delete Account
+              </Button>
+
+                {/* 2. SAVE CHANGES BUTTON (Right Side) */}
+                {/* Note: Removed the wrapping div from your previous example */}
+                <Button
+                    color="primary"
+                    size="md"
+                    className="h-9 px-4 text-sm font-medium shadow-sm w-fit inline-flex self-start rounded-lg bg-blue-600 text-white py-2"
+                    fullWidth={false}
+                    onClick={() => console.log("Save Changes")}
                 >
-                  Save Changes
+                    Save Appearance Settings
                 </Button>
-              </div>
+            </div>
               </CardBody>
             </Card>
           </Tab>
