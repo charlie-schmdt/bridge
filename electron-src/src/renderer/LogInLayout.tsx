@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import Header from "./components/Header";
+import Banner from "./components/Banner";
 
 const LogInLayout: React.FC = () => {
     const [isLogin, setIsLogin] = useState(true);
@@ -26,6 +27,7 @@ const LogInLayout: React.FC = () => {
     return (
         <div>
             <Header />
+            <Banner />
             <div style={styles.container}>
                 <div style={styles.formContainer}>
                     <h2>{isLogin ? "Log In" : "Create Account"}</h2>
@@ -86,11 +88,10 @@ const LogInLayout: React.FC = () => {
 
 const styles: { [key: string]: React.CSSProperties } = {
     container: {
-        minHeight: "100vh",
+        minHeight: "50vh",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "#f5f6fa",
     },
     formContainer: {
         background: "#fff",

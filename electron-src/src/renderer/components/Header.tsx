@@ -1,5 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import ProfileMenuButton from "./ProfileMenuButton";
   
 const Header: React.FC = () => {
   const navigate = useNavigate();
@@ -11,14 +12,18 @@ const Header: React.FC = () => {
         <span className="text-blue-600 font-bold text-xl">BRIDGE</span>
         <nav className="flex gap-4">
           <button onClick={() => navigate("/")}
-            className="text-gray-700 font-medium hover:text-blue-600">
+            className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer">
             Workspaces
           </button>
-          <button className="text-gray-700 font-medium hover:text-blue-600">
+          <button className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer">
             Calls
           </button>
-          <button className="text-gray-700 font-medium hover:text-blue-600">
+          <button className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer">
             Calendar
+          </button>
+          <button onClick={() => navigate("/video")}
+            className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer">
+            Video
           </button>
         </nav>
       </div>
@@ -26,18 +31,12 @@ const Header: React.FC = () => {
       {/* Right side: Notifications + Profile */}
       <div className="flex items-center gap-4">
         <button
-          className="text-gray-500 hover:text-blue-600"
+          className="text-gray-500 hover:text-blue-600 cursor-pointer"
           aria-label="Notifications"
         >
           🔔
         </button>
-        <button
-          onClick={() => navigate("/login")}
-          className="bg-gray-200 rounded-full w-8 h-8 flex items-center justify-center hover:ring-2 hover:ring-blue-500"
-          aria-label="Profile"
-        >
-          <span className="text-gray-600">👤</span>
-        </button>
+        <ProfileMenuButton />
       </div>
     </header>
   );

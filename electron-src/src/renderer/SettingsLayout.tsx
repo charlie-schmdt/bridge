@@ -91,8 +91,8 @@ export function SettingsLayout() {
                       value={profile.name}
                       onChange={(e) => setProfile({ ...profile, name: e.target.value })}
                       classNames={{
-                        inputWrapper: "bg-neutral-50 border border-neutral-200 hover:border-neutral-300 focus-within:border-primary rounded-lg shadow-sm transition-colors",
-                        input: "text-neutral-900 placeholder:text-neutral-500",
+                        inputWrapper: "bg-neutral-50 border border-neutral-200 focus-within:border-primary rounded-lg shadow-sm transition-colors",
+                        input: "text-neutral-900 placeholder:text-neutral-500 focus:outline-none",
                       }}
                     />
                   </div>
@@ -107,8 +107,8 @@ export function SettingsLayout() {
                       value={profile.email}
                       onChange={(e) => setProfile({ ...profile, email: e.target.value })}
                       classNames={{
-                        inputWrapper: "bg-neutral-50 border border-neutral-200 hover:border-neutral-300 focus-within:border-primary rounded-lg shadow-sm transition-colors",
-                        input: "text-neutral-900 placeholder:text-neutral-500",
+                        inputWrapper: "bg-neutral-50 border border-neutral-200 focus-within:border-primary rounded-lg shadow-sm transition-colors",
+                        input: "text-neutral-900 placeholder:text-neutral-500 focus:outline-none",
                       }}
                     />
                   </div>
@@ -125,8 +125,8 @@ export function SettingsLayout() {
                     value={profile.bio}
                     onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
                     classNames={{
-                      inputWrapper: "bg-neutral-50 border border-neutral-200 hover:border-neutral-300 focus-within:border-primary rounded-lg shadow-sm transition-colors",
-                      input: "text-neutral-900 placeholder:text-neutral-500",
+                      inputWrapper: "bg-neutral-50 border border-neutral-200 focus-within:border-primary rounded-lg shadow-sm transition-colors",
+                      input: "text-neutral-900 placeholder:text-neutral-500 focus:outline-none",
                     }}
                   />
                 </div>
@@ -135,24 +135,26 @@ export function SettingsLayout() {
                   <label className="text-sm font-medium text-neutral-700">Timezone</label>
                   <Select
                     aria-label="Timezone"
+                    className="max-w-[200px]"
                     selectedKeys={[profile.timezone]}
                     onSelectionChange={(keys) =>
                       setProfile({ ...profile, timezone: Array.from(keys)[0] as string })
                     }
                     variant="bordered"
                     classNames={{
-                      trigger: "bg-neutral-50 border border-neutral-200 hover:border-neutral-300 focus:border-primary rounded-lg shadow-sm transition-colors",
+                      trigger: "bg-neutral-50 border border-neutral-200 focus:border-primary rounded-lg shadow-sm transition-colors flex justify-between items-center cursor-pointer",
                       value: "text-neutral-900",
-                      popoverContent: "bg-white shadow-lg border border-neutral-200 rounded-lg",
+                      popoverContent: "bg-white shadow-lg border border-neutral-200 rounded-lg bg-white w-fit",
                     }}
                   >
-                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md" key="UTC-8">Pacific Time (UTC-8)</SelectItem>
-                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md" key="UTC-7">Mountain Time (UTC-7)</SelectItem>
-                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md" key="UTC-6">Central Time (UTC-6)</SelectItem>
-                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md" key="UTC-5">Eastern Time (UTC-5)</SelectItem>
+                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="UTC-8">Pacific Time (UTC-8)</SelectItem>
+                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="UTC-7">Mountain Time (UTC-7)</SelectItem>
+                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="UTC-6">Central Time (UTC-6)</SelectItem>
+                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="UTC-5">Eastern Time (UTC-5)</SelectItem>
                   </Select>
                 </div>
 
+               <div className="flex justify-end w-full">
                 <Button
                   color="primary"
                   size="sm"
@@ -161,6 +163,7 @@ export function SettingsLayout() {
                 >
                   Save Changes
                 </Button>
+              </div>
               </CardBody>
             </Card>
           </Tab>
@@ -207,14 +210,16 @@ export function SettingsLayout() {
                   isSelected={notifications.weeklyDigest}
                   onChange={(v) => setNotifications({ ...notifications, weeklyDigest: v })}
                 />
-                <Button
-                  color="primary"
-                  size="md"
-                  className="h-9 px-4 text-sm font-medium shadow-sm w-fit inline-flex self-start rounded-lg bg-blue-600 text-white py-2"
-                  fullWidth={false}
-                >
-                  Save Preferences
+                <div className="flex justify-end w-full">
+                  <Button
+                    color="primary"
+                    size="md"
+                    className="h-9 px-4 text-sm font-medium shadow-sm w-fit inline-flex self-start rounded-lg bg-blue-600 text-white py-2"
+                    fullWidth={false}
+                  >
+                    Save Preferences
                 </Button>
+                </div>
               </CardBody>
             </Card>
           </Tab>
@@ -248,14 +253,14 @@ export function SettingsLayout() {
                     variant="bordered"
                     className="max-w-md"
                     classNames={{
-                      trigger: "bg-neutral-50 border border-neutral-200 hover:border-neutral-300 focus:border-primary rounded-lg shadow-sm transition-colors",
+                      trigger: "bg-neutral-50 border border-neutral-200 focus:border-primary rounded-lg shadow-sm transition-colors flex justify-between items-center cursor-pointer",
                       value: "text-neutral-900",
-                      popoverContent: "shadow-lg border border-neutral-200 rounded-lg",
+                      popoverContent: "shadow-lg border border-neutral-200 rounded-lg bg-white",
                     }}
                   >
-                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md" key="public">Public - Anyone can see your profile</SelectItem>
-                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md" key="team">Team Only - Only team members can see your profile</SelectItem>
-                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md" key="private">Private - Profile is hidden</SelectItem>
+                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="public">Public - Anyone can see your profile</SelectItem>
+                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="team">Team Only - Only team members can see your profile</SelectItem>
+                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="private">Private - Profile is hidden</SelectItem>
                   </Select>
                 </div>
 
@@ -272,6 +277,7 @@ export function SettingsLayout() {
                   onChange={(v) => setPrivacy({ ...privacy, allowDirectMessages: v })}
                 />
 
+              <div className="flex justify-end w-full">
                 <Button
                   color="primary"
                   size="md"
@@ -280,6 +286,7 @@ export function SettingsLayout() {
                 >
                   Update Privacy Settings
                 </Button>
+              </div>
               </CardBody>
             </Card>
           </Tab>
@@ -308,18 +315,19 @@ export function SettingsLayout() {
                     aria-label="Theme"
                     defaultSelectedKeys={["light"]}
                     variant="bordered"
-                    className="max-w-md"
+                    className="max-w-[200px]"
                     classNames={{
-                      trigger: "bg-neutral-50 border border-neutral-200 hover:border-neutral-300 focus:border-primary rounded-lg shadow-sm transition-colors",
+                      trigger: "bg-neutral-50 border border-neutral-200 focus:border-primary rounded-lg shadow-sm transition-colors flex justify-between items-center cursor-pointer",
                       value: "text-neutral-900",
-                      popoverContent: "shadow-lg border border-neutral-200 rounded-lg",
+                      popoverContent: "shadow-lg border border-neutral-200 rounded-lg bg-white w-fit",
                     }}
                   >
-                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md" key="light">Light Mode</SelectItem>
-                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md" key="dark">Dark Mode</SelectItem>
-                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md" key="system">System Default</SelectItem>
+                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="light">Light Mode</SelectItem>
+                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="dark">Dark Mode</SelectItem>
+                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="system">System Default</SelectItem>
                   </Select>
                 </div>
+              <div className="flex justify-end w-full">
                 <Button
                   color="primary"
                   size="md"
@@ -328,6 +336,7 @@ export function SettingsLayout() {
                 >
                   Save Appearance Settings
                 </Button>
+              </div>
               </CardBody>
             </Card>
           </Tab>

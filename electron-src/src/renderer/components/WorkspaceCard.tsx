@@ -23,7 +23,7 @@ export default function WorkspaceCard({ title, description, nextMeeting, members
       {/* Button */}
       <button
         onClick={handleEnter}
-        className="mt-auto w-full bg-blue-600 text-white py-2 rounded-lg"
+        className="mt-auto w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition cursor-pointer"
       >
         Enter Workspace
       </button>

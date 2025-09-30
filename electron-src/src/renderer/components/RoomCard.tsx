@@ -23,7 +23,7 @@ export function RoomCard({ title, description, status, nextMeeting }: RoomCardPr
       <p className="text-sm text-gray-500">{description}</p>
 
       {status === "active" && (
-        <button className="mt-4 w-full bg-blue-600 text-white py-2 rounded-lg">
+        <button className="mt-4 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition cursor-pointer">
           Join Room
         </button>
       )}
