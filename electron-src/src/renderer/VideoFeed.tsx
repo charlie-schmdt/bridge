@@ -25,5 +25,5 @@ export const VideoFeed = () => {
         }
     }, []);
 
-    return <video ref={videoRef} autoPlay muted style={{ width: '100%', height: 'auto' }} />
+    return <video ref={videoRef} autoPlay muted style={{ width: '100%', height: '100%' }} />
 }
