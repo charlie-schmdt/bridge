@@ -1,31 +1,13 @@
 const { Sequelize } = require('sequelize');
+require('dotenv').config();
 
-
-const sequelize = new Sequelize({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME,
-  username: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
+const sequelize = new Sequelize(process.env.DATABASE_URL, {
   dialect: 'postgres',
   dialectOptions: {
-    ssl: {
-      require: true,
-      rejectUnauthorized: false
-    }
-  },
-  // Alternative SSL configuration for Neon
-  ssl: true,
-  logging: process.env.NODE_ENV === 'development' ? console.log : false,
-  pool: {
-    max: 5, // Reduced for Neon free tier
-    min: 0,
-    acquire: 30000,
-    idle: 10000
+    ssl: false
   }
 });
 
-// Test connection function
 const testConnection = async () => {
   try {
     await sequelize.authenticate();
