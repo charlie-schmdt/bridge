@@ -1,27 +1,79 @@
 import React, { useState } from "react";
 import Header from "./components/Header";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from './contexts/AuthContext';
 import Banner from "./components/Banner";
 
 const LogInLayout: React.FC = () => {
     const [isLogin, setIsLogin] = useState(true);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [name, setName] = useState(""); 
     const [confirmPassword, setConfirmPassword] = useState("");
     const [error, setError] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+    const navigate = useNavigate();
+    const { login } = useAuth();
 
-    const handleSubmit = (e: React.FormEvent) => {
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
-        if (!email || !password) {
+        setIsLoading(true);
+
+        if (!email || !password || (!isLogin && !name)) {
             setError("Please fill in all required fields.");
+            setIsLoading(false);
             return;
         }
+
         if (!isLogin && password !== confirmPassword) {
             setError("Passwords do not match.");
             return;
         }
-        // TODO: Add authentication logic here
-        alert(isLogin ? "Logged in!" : "Account created!");
+        
+        try {
+            const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
+            const payload = isLogin 
+                ? { email, password }
+                : { email, password, name };
+
+            console.log('🔄 Attempting authentication:', { endpoint, email });
+
+            const response = await fetch(`http://localhost:3000${endpoint}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            });
+
+            const data = await response.json();
+            console.log('📡 Backend response:', data);
+
+            if (data.success) {
+                // Store token securely (we'll improve this later)
+                await login(data.data.token, data.data.user);
+                
+                console.log('✅ Authentication successful:', data.data.user.email);
+                // alert(`${isLogin ? 'Login' : 'Registration'} successful!`);
+
+                // Redirect to home page
+                navigate('/');
+            } else {
+            if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+                const errorMessage = `${data.message}:\n• ${data.errors.join('\n• ')}`;
+                setError(errorMessage);
+            } else {
+                setError(data.message || 'Authentication failed');
+            }
+            }
+        } catch (error) {
+            console.error('❌ Authentication error:', error);
+            setError('Network error. Please make sure the backend is running.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -32,6 +84,16 @@ const LogInLayout: React.FC = () => {
                 <div style={styles.formContainer}>
                     <h2>{isLogin ? "Log In" : "Create Account"}</h2>
                     <form onSubmit={handleSubmit} style={styles.form}>
+                        {!isLogin && (
+                            <input
+                                type="text"
+                                placeholder="Full Name"
+                                value={name}
+                                onChange={e => setName(e.target.value)}
+                                style={styles.input}
+                                required
+                            />
+                        )}
                         <input
                             type="email"
                             placeholder="Email"
@@ -59,8 +121,16 @@ const LogInLayout: React.FC = () => {
                             />
                         )}
                         {error && <div style={styles.error}>{error}</div>}
-                        <button type="submit" style={styles.button}>
-                            {isLogin ? "Log In" : "Create Account"}
+                        <button 
+                            type="submit" 
+                            style={{
+                                ...styles.button,
+                                opacity: isLoading ? 0.6 : 1,
+                                cursor: isLoading ? 'not-allowed' : 'pointer'
+                            }}
+                            disabled={isLoading}
+                        >
+                            {isLoading ? 'Processing...' : (isLogin ? "Log In" : "Create Account")}
                         </button>
                     </form>
                     <div style={styles.toggle}>
@@ -137,9 +207,15 @@ const styles: { [key: string]: React.CSSProperties } = {
     },
     error: {
         color: "#d32f2f",
-        fontSize: "0.95rem",
+        fontSize: "0.9rem",
         marginBottom: "0.5rem",
-        textAlign: "center",
+        textAlign: "left", 
+        backgroundColor: "#ffebee",
+        padding: "0.75rem",
+        borderRadius: "4px",
+        border: "1px solid #ffcdd2",
+        whiteSpace: "pre-line",
+        fontFamily: "monospace", 
     },
 };
 
