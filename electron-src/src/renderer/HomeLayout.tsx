@@ -16,10 +16,7 @@ export const homeLoader = async () => {
 
 export const HomeLayout = () => {
   console.log('🟢 BASIC TEST: HomeLayout component rendering');
-  
-  // Comment out the auth hook for now
-  // const { user, isAuthenticated, isLoading } = useAuth();
-  // console.log('🔍 Auth Status:', { user, isAuthenticated, isLoading });
+
 
   return (
     <Card>
