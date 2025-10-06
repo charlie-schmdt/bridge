@@ -25,6 +25,10 @@ const Header: React.FC = () => {
             className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer">
             Video
           </button>
+          <button onClick={() => navigate("/TestRoom")}
+            className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer">
+            Test Room
+          </button>
         </nav>
       </div>
 
