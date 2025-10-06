@@ -10,14 +10,21 @@ import { WorkspaceLayout } from './WorkspaceLayout';
 import LogInLayout from './LogInLayout';
 import { RoomLayout } from './RoomLayout';
 
-// All routes for the app go here
-// Every new route must be a child of AppLayout in order to have access to the HeroUIProvider
 const router = createHashRouter([
   {
+    path: "/login",
+    element: <LogInLayout />
+  },
+  {
     path: "/",
-    element: <AppLayout />,
+    element: (
+      <ProtectedRoute>
+        <AppLayout />
+      </ProtectedRoute>
+    ),
     children: [
       {
+        // Default protected route goes to home
         index: true,
         loader: homeLoader,
         element: <HomeLayout />,
@@ -38,18 +45,15 @@ const router = createHashRouter([
       {
         path: 'workspace',
         element: <WorkspaceLayout />
-      },
-      {
-        path: 'login',
-        element: <LogInLayout />
       }
-
     ],
   },
 ]);
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
   </React.StrictMode>
 );

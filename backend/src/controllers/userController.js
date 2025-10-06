@@ -6,6 +6,37 @@ const generateToken = (userId) => {
   return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
 };
 
+const validatePasswordStrength = (password) => {
+  const errors = [];
+  
+  if (password.length < 8) {
+    errors.push('Password must be at least 8 characters long');
+  }
+  
+  if (!/[a-zA-Z]/.test(password)) {
+    errors.push('Password must contain at least 1 letter');
+  }
+  
+  if (!/[0-9]/.test(password)) {
+    errors.push('Password must contain at least 1 number');
+  }
+  
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+    errors.push('Password must contain at least 1 special character (!@#$%^&*(),.?":{}|<>)');
+  }
+  
+  if (!/[a-z]/.test(password)) {
+    errors.push('Password must contain at least 1 lowercase letter');
+  }
+  
+  if (!/[A-Z]/.test(password)) {
+    errors.push('Password must contain at least 1 uppercase letter');
+  }
+  
+  return errors;
+};
+
+
 const createUser = async (req, res) => {
   try {
     console.log('🔍 createUser called');
@@ -31,17 +62,17 @@ const createUser = async (req, res) => {
       });
     }
 
-    // Validate password strength
-    if (password.length < 6) {
+    const passwordErrors = validatePasswordStrength(password);
+    if (passwordErrors.length > 0) {
       return res.status(400).json({
         success: false,
-        message: 'Password must be at least 6 characters long'
+        message: 'Password does not meet strength requirements',
+        errors: passwordErrors
       });
     }
 
     console.log('🔍 About to call User.findOne...');
     
-    // Check if user already exists
     const existingUser = await User.findOne({ where: { email: email.toLowerCase() } });
     
     console.log('🔍 User.findOne completed');
@@ -173,7 +204,31 @@ const loginUser = async (req, res) => {
   }
 };
 
+const logoutUser = async (req, res) => {
+  try {
+    // In a simple JWT setup, we don't need to do much server-side
+    // The client will remove the token from storage
+    
+    console.log('👋 User logout request received');
+    
+    // Optional: You could add token blacklisting here in the future
+    // For now, we'll just confirm the logout
+    
+    res.json({
+      success: true,
+      message: 'Logged out successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ Logout error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error during logout'
+    });
+  }
+};
 module.exports = {
   createUser,
-  loginUser
+  loginUser,
+  logoutUser
 };
