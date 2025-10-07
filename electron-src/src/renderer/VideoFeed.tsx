@@ -9,7 +9,7 @@ export default function VideoFeed() {
     useEffect(() => {
         async function initCamera() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false});
+                const stream = await navigator.mediaDevices.getUserMedia({ video: VF.isVideoEnabled, audio: VF.isAudioEnabled});
                 if (VF.videoRef.current) {
                     VF.videoRef.current.srcObject = stream;
                     VF.videoRef.current.play();
@@ -27,20 +27,7 @@ export default function VideoFeed() {
                 tracks.forEach(track => track.stop());
             }
         }
-    }, []);
-
-    useEffect(() => {
-
-        /*
-
-            changes made to video
-        */
-
-        //add new states to ./contexts/VideoFeedContext 
-        // use isVideoEnabled for that field
-    
-
-    }, [VF.isVideoEnabled]) //video dependency
+    }, [VF.isAudioEnabled, VF.isVideoEnabled]);
 
     return <video ref={VF.videoRef} autoPlay muted style={{ width: '100%', height: 'auto' }} />
 }
