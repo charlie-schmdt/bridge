@@ -20,7 +20,7 @@ func main() {
 	router := sfu.NewRouter()
 
 	// Start the WebRTC signaling server
-	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", 8096))
+	lis, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", 50031))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
