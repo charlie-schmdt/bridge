@@ -133,6 +133,9 @@ dist
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
 
+# Regular vscode dir
+.vscode
+
 # yarn v3
 .pnp.*
 .yarn/*
