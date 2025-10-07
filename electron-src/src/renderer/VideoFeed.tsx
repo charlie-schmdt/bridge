@@ -1,8 +1,8 @@
 import { useContext, useEffect, useRef } from 'react';
-import { VideoFeedContext } from './contexts/VideoFeedContext';
+import { useVideoFeedContext, VideoFeedContext } from './contexts/VideoFeedContext';
 
 export default function VideoFeed() {
-    const VF = useContext(VideoFeedContext);
+    const VF = useVideoFeedContext();
 
     //const videoRef = useRef<HTMLVideoElement>(null)
 
