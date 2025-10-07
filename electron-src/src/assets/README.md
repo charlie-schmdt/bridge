@@ -7,3 +7,6 @@ Microphone icon by Anggara on Flaticon
 Video free icon by Shashank Singh on Flaticon
 
 <a href="https://www.flaticon.com/free-icons/movie" title="movie icons">Movie icons created by Shashank Singh - Flaticon</a>
+
+
+<a href="https://www.flaticon.com/free-icons/left-arrow" title="left arrow icons">Left arrow icons created by Freepik - Flaticon</a>

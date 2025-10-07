@@ -8,7 +8,7 @@ import { SettingsLayout } from './SettingsLayout';
 import { VideoLayout } from './VideoLayout';
 import { WorkspaceLayout } from './WorkspaceLayout';
 import LogInLayout from './LogInLayout';
-import { RoomLayout } from './RoomLayout';
+import  RoomLayout  from './RoomLayout';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 

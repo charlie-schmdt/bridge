@@ -1,23 +1,16 @@
-import React from "react";
+import React, { useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import ProfileMenuButton from "./ProfileMenuButton";
 import mic from "@assets/microphone_active.png";
 import videopng from "@assets/video.png"
+import { VideoFeedProvider } from "../providers/VideoFeedProvider";
+import { VideoFeedContext } from "../contexts/VideoFeedContext";
   
+interface CallSettingsFooterProps {}
 
-const handleMic = () => {
-  /*
-    handler for mic
-
-    turn mic on... or toggle 
-
-  */
-
-
-};
-
-const CallSettingsFooter: React.FC = () => {
+export function CallSettingsFooter({}: CallSettingsFooterProps) {
   const navigate = useNavigate();
+  const VF = useContext(VideoFeedContext);
 
   return (
     <footer className="w-full bg-white shadow-sm px-6 py-4 flex justify-between items-center">
@@ -28,24 +21,36 @@ const CallSettingsFooter: React.FC = () => {
          */}
          
         <nav className="flex gap-4">
-          <button 
-            className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer"
-            onClick={handleMic}
+          <VideoFeedProvider>
+            <button 
+              className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer"
+              onClick={VF.toggleAudio}
+              >
+              <img src={mic} alt="App Icon" className="h-auto w-auto max-w-[32px] max-h-[32px]" />          
+            </button>
+            <button className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer"
+              onClick={VF.toggleVideo}
             >
-            <img src={mic} alt="App Icon" className="h-auto w-auto max-w-[32px] max-h-[32px]" />          
-          </button>
-          <button className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer">
-            <img src={videopng} alt="App Icon" className="h-auto w-auto max-w-[32px] max-h-[32px]" />          
-
-          </button>
+              <img src={videopng} alt="App Icon" className="h-auto w-auto max-w-[32px] max-h-[32px]" />          
+            </button>
+          </VideoFeedProvider>
         </nav>
       </div>
 
-      {/* Right side: Notifications + Profile */}
+      {/* user settings */}
+      <div className="flex items-center gap-5">
+        <button
+          className="text-gray-500 hover:text-blue-600 cursor-pointer"
+        >
+          filler
+        </button>
+      </div>
+
+
+      {/* Chat settings */}
       <div className="flex items-center gap-4">
         <button
           className="text-gray-500 hover:text-blue-600 cursor-pointer"
-          aria-label="Notifications"
         >
           filler
         </button>

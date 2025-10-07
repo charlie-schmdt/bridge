@@ -1,5 +1,5 @@
 import Header from './components/Header';
-import { VideoFeed } from './VideoFeed';
+//import { VideoFeed } from './VideoFeed';
 import { Card, CardBody } from "@heroui/react";
 
 export const VideoLayout = () => {
@@ -7,7 +7,7 @@ export const VideoLayout = () => {
         <Card>
             <CardBody>
                 <Header />
-                <VideoFeed />
+                {/*<VideoFeed />*/}
             </CardBody>
         </Card>
     );
