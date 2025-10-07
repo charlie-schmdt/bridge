@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const initSfuStream = require('./services/sfuClient.js');
 
 // Import controllers
 const { createUser, loginUser } = require('../controllers/userController');
