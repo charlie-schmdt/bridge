@@ -9,13 +9,10 @@ export const VideoFeedProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const toggleVideo= () => {
     setIsVideoEnabled(prev => !prev);
-    console.log("video is: ", isVideoEnabled);
-
   };
 
   const toggleAudio= () => {
-        setIsAudioEnabled(prev => !prev);
-        console.log("audio is: ", isAudioEnabled);
+    setIsAudioEnabled(prev => !prev);
 
   };
 

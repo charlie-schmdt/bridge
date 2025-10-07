@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import back_button from "@assets/back-button.png"
 import {useVideoFeedContext, VideoFeedContext} from "./contexts/VideoFeedContext";
 import { VideoFeedType } from "./contexts/VideoFeedContext";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { VideoFeedProvider } from "./providers/VideoFeedProvider";
 
   
@@ -16,6 +16,7 @@ export default function RoomLayout({}: RoomLayoutProps){
 
 
   const navigate = useNavigate();
+  
   
 
 
@@ -38,11 +39,13 @@ export default function RoomLayout({}: RoomLayoutProps){
           </header>
           <h1>Test Room</h1>
           <VideoFeedProvider>
+            <div className="w-full max-w-3/4 h-full max-h-3/4">
+            
               <VideoFeed />
-        
-            <CallSettingsFooter />
+            
+          </div>
+          <CallSettingsFooter />
           </VideoFeedProvider>
-          
           
       </CardBody>
     </Card>

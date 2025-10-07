@@ -133,6 +133,9 @@ dist
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
 
+# Regular vscode dir
+.vscode
+
 # yarn v3
 .pnp.*
 .yarn/*
@@ -145,3 +148,6 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+electron-src/public/.DS_Store
+electron-src/.DS_Store
+.DS_Store

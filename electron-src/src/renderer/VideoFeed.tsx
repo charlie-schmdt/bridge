@@ -1,13 +1,13 @@
 import { useContext, useEffect, useRef, useState } from 'react';
 import useWebSocket from 'react-use-websocket';
-import { VideoFeedContext } from './contexts/VideoFeedContext';
+import { useVideoFeedContext, VideoFeedContext } from './contexts/VideoFeedContext';
 interface SignalMessage {
   description?: RTCSessionDescriptionInit;
   candidate?: RTCIceCandidateInit;
 }
 
 export default function VideoFeed() {
-    const VF = useContext(VideoFeedContext);
+    const VF = useVideoFeedContext();
     const pc = useRef<RTCPeerConnection | null>(null);
     const stream = useRef<MediaStream | null>(null);
     const socketUrl = 'wss://localhost:3000';
