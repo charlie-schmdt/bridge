@@ -69,6 +69,24 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO br
 \q
 ```
 
+### Set up Redis Database
+
+```bash
+# Install redis
+cd into .../backend
+brew install redis
+```
+
+```bash
+# run redis in the foreground 
+redis-server
+```
+
+```bash
+# run redis in the background 
+brew services start redis
+```
+
 ### 5. Run Database Migrations
 
 This will create all the necessary tables:

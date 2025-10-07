@@ -1,9 +1,12 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from '../contexts/AuthContext';
 import ProfileMenuButton from "./ProfileMenuButton";
   
 const Header: React.FC = () => {
   const navigate = useNavigate();
+
+
 
   return (
     <header className="w-full bg-white shadow-sm px-6 py-4 flex justify-between items-center">
@@ -24,6 +27,10 @@ const Header: React.FC = () => {
           <button onClick={() => navigate("/video")}
             className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer">
             Video
+          </button>
+          <button onClick={() => navigate("/TestRoom")}
+            className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer">
+            Test Room
           </button>
         </nav>
       </div>
