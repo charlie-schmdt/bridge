@@ -10,7 +10,12 @@ export default function VideoFeed() {
     const VF = useVideoFeedContext();
     const pc = useRef<RTCPeerConnection | null>(null);
     const stream = useRef<MediaStream | null>(null);
-    const socketUrl = 'wss://localhost:3000';
+    const ignoreOfferRef = useRef(false);
+    const isSettingRemoteAnswerPendingRef = useRef(false);
+    const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
+    const socketUrl = 'ws://localhost:3000';
+    console.log("VideoFeed rendered");
+
 
     const {
       sendJsonMessage,
@@ -30,40 +35,52 @@ export default function VideoFeed() {
       },
       shouldReconnect: (closeEvent) => true,
     });
+    
 
     //const videoRef = useRef<HTMLVideoElement>(null)
 
     useEffect(() => {
         (async () => {
+          console.log("Setting up media and peer connection...");
+          
           //Capture local media
-          console.log("initMediaConnection called");
-          stream.current = await navigator.mediaDevices.getUserMedia({ video: VF.isVideoEnabled, audio: VF.isAudioEnabled});
-
-          // Display in local video element
           try {
-            if (VF.videoRef.current) {
-              VF.videoRef.current.srcObject = stream.current;
-              VF.videoRef.current.play();
-            }
-          } catch (err) {
-            console.error("Error accessing camera:", err);
+            stream.current = await navigator.mediaDevices.getUserMedia({ video: true, audio: true});
+            VF.videoRef.current.srcObject = stream.current;
+            
+            // Disable tracks if the user wanted them off initially
+            stream.current.getVideoTracks().forEach(track => track.enabled = VF.isVideoEnabled);
+            stream.current.getAudioTracks().forEach(track => track.enabled = VF.isAudioEnabled);
+            console.log("Got Media Stream:", stream.current);
+          } catch (error) {
+            console.error("Error accessing media devices.", error);
           }
+
           const config = {
             iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
           };
-    
+          console.log("Creating Peer Connection with config:", config);
+          
           pc.current = new RTCPeerConnection(config);
           stream.current.getTracks().forEach(track => {
             pc.current?.addTrack(track, stream.current);
           });
+          console.log("Peer Connection created:", pc.current);
 
           //Create an offer and set local description
           let makingOffer = false;
           pc.current.onnegotiationneeded = async () => {
             try {
               makingOffer = true;
-              await pc.current?.setLocalDescription();
-              sendJsonMessage({ description: pc.current?.localDescription });
+              if (!pc.current) throw new Error("RTCPeerConnection not ready");
+              const offer = await pc.current?.createOffer();
+              await pc.current?.setLocalDescription(offer);
+              console.log("Local description set:", pc.current?.localDescription);
+              sendJsonMessage({
+                type: "offer",
+                description: offer.sdp,
+              });
+              console.log("Sent offer:", pc.current.localDescription?.sdp);
             } catch (err) {
               console.error(err);
             } finally {
@@ -73,53 +90,95 @@ export default function VideoFeed() {
 
           //ask STUN server to generate ice cantidates
 
-          pc.current.onicecandidate = ({ candidate }) => sendJsonMessage({ candidate });
+          pc.current.onicecandidate = (event) => {
+            if (event.candidate) {
+              console.log("New ICE candidate:", event.candidate);
+              sendJsonMessage({ 
+                type:"ice-candidate",
+                candidate: event.candidate.toJSON() 
+              });
+            }
+            else{
+              sendJsonMessage({ 
+                type:"ice-complete",
+              });
+              console.log("All ICE candidates have been sent");
+            }
+          };
+
         })();
 
          // Cleanup on unmount
         return () => {
+          console.log("Cleaning up...");
           stream.current?.getTracks().forEach(track => track.stop());
           pc.current?.close();
         };
     }, []);
 
     useEffect(() => {
-          //handling incoming messages from signaling channel
+        (async () => {
+          console.log("Display Local Video...");
 
-          let ignoreOffer = false;
-          let isSettingRemoteAnswerPending = false;
-          let polite = true;
+          // Disable tracks if the user wanted them off initially
+          stream.current?.getVideoTracks().forEach(track => track.enabled = VF.isVideoEnabled);
+          stream.current?.getAudioTracks().forEach(track => track.enabled = VF.isAudioEnabled);
+          //}
+
+        })();
+
+         // Cleanup on unmount
+        return () => {
+          console.log("Cleaning up video...");
+        };
+    }, [VF.isAudioEnabled, VF.isVideoEnabled]);
+
+
+    
+
+    useEffect(() => {
+          //handling incoming messages from signaling channel
 
           //wait for answer and set remote description
 
           if (!lastJsonMessage) return;
 
           const { description, candidate } = lastJsonMessage;
+          const polite = true; // Assume this client is polite for simplicity
 
           (async () => {
             try {
               if (description) {
                 const readyForOffer =
-                  (pc.current.signalingState === "stable" || isSettingRemoteAnswerPending);
+                  (pc.current.signalingState === "stable" || isSettingRemoteAnswerPendingRef.current)
                 const offerCollision =
                   description.type === "offer" && !readyForOffer;
 
-                ignoreOffer = !polite && offerCollision;
-                if (ignoreOffer) return;
+                ignoreOfferRef.current = !polite && offerCollision;
+                if (ignoreOfferRef.current) return;
 
-                isSettingRemoteAnswerPending = description.type === "answer";
+                if (offerCollision && polite) {
+                // Resolve glare
+                  await pc.current.setLocalDescription({ type: "rollback" });
+                }
+
+                isSettingRemoteAnswerPendingRef.current = description.type === "answer";
                 await pc.current.setRemoteDescription(description);
-                isSettingRemoteAnswerPending = false;
+                isSettingRemoteAnswerPendingRef.current = false;
 
                 if (description.type === "offer") {
-                  await pc.current.setLocalDescription();
-                  sendJsonMessage({ description: pc.current.localDescription });
+                  const answer = await pc.current.createAnswer();
+                  await pc.current?.setLocalDescription(answer);
+                  sendJsonMessage({
+                    type: "answer", 
+                    description: answer.sdp 
+                  });
                 }
               } else if (candidate) {
                 try {
                   await pc.current.addIceCandidate(candidate);
                 } catch (err) {
-                  if (!ignoreOffer) throw err;
+                  if (!ignoreOfferRef.current) throw err;
                 }
               }
             } catch (err) {

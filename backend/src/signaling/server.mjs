@@ -9,12 +9,13 @@ wss.on('connection', function connection(ws) {
 
   ws.on('message', function message(data) {
     try {
-      let message = JSON.parse(raw.toString())
+      let message = JSON.parse(data.toString())
       console.log('received: %s', message);
       // Send to gRPC server here
+      
       //grpcClient.sendMessage(message)
       //broadcast the response to all other clients
-      ws.send(JSON.stringify({ type: 'echo', payload: message.payload }));
+      //ws.send(JSON.stringify({ type: 'echo', payload: message.payload }));
     } catch (error) {
       console.error('Error parsing message:', error);
     }
