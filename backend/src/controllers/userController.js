@@ -2,6 +2,80 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+const oauthLogin = async (req, res) => {
+  try {
+    const { email, name, picture, provider, providerId } = req.body;
+
+    console.log('🔍 OAuth login attempt:', { email, provider });
+
+    if (!email || !provider || !providerId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email, provider, and providerId are required'
+      });
+    }
+
+    let user = await User.findOne({ where: { email: email.toLowerCase() } });
+
+    if (user) {
+      const updates = {
+        lastLogin: new Date(),
+        picture: picture || user.picture
+      };
+
+      if (user.provider === 'local') {
+        updates.provider = 'both';
+      } else if (user.provider !== provider && user.provider !== 'both') {
+        updates.provider = 'both';
+      }
+
+      await user.update(updates);
+      console.log('Existing user logged in via OAuth:', user.email);
+    } else {
+      user = await User.create({
+        email: email.toLowerCase(),
+        password: null,
+        name: name || email.split('@')[0],
+        picture,
+        provider,
+        providerId,
+        isVerified: true, 
+        lastLogin: new Date()
+      });
+      console.log('New OAuth user created:', user.email);
+    }
+
+    const token = generateToken(user.id);
+
+    const userData = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      picture: user.picture,
+      provider: user.provider,
+      isVerified: user.isVerified,
+      createdAt: user.createdAt
+    };
+
+    res.status(200).json({
+      success: true,
+      message: 'OAuth login successful',
+      data: {
+        user: userData,
+        token
+      }
+    });
+
+  } catch (error) {
+    console.error('OAuth login error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error during OAuth login',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
+  }
+};
+
 const generateToken = (userId) => {
   return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
 };
@@ -227,8 +301,58 @@ const logoutUser = async (req, res) => {
     });
   }
 };
+
+const deleteAccount = async (req, res) => {
+  try {
+    const { password, reauthToken } = req.body;
+    const user = req.user; // From authentication middleware
+
+    console.log('🔍 Account deletion request for user:', user.email);
+    console.log('🔍 User provider:', user.provider);
+
+    if (user.provider === 'local' || user.provider === 'both') {
+      if (!password) {
+        return res.status(400).json({
+          success: false,
+          message: 'Password required for account deletion'
+        });
+      }
+
+      // Verify password matches
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid password. Account deletion cancelled.'
+        });
+      }
+    } else if (user.provider === 'google') {
+      console.log('OAuth user account deletion - no additional auth required');
+    }
+
+    await user.destroy();
+
+    console.log('✅ Account successfully deleted for user:', user.email);
+
+    res.status(200).json({
+      success: true,
+      message: 'Account deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ Delete account error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting account',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
+  }
+};
+
 module.exports = {
   createUser,
   loginUser,
-  logoutUser
+  logoutUser,
+  oauthLogin,
+  deleteAccount
 };

@@ -49,6 +49,8 @@ const ProfileMenuButton = () => {
   const handleProfile = () => {
     closeMenu();
     console.log("Profile clicked");
+    navigate('/settings');
+
   };
    return (
     <div className="relative"> 
