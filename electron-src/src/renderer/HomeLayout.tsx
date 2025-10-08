@@ -5,6 +5,9 @@ import WorkspaceCard from "./components/WorkspaceCard";
 import NotificationBanner from "./components/NotificationBanner";
 import CreateWorkspaceCard from "./components/CreateWorskpaceCard";
 import Banner from "./components/Banner";
+import { VideoFeedProvider } from "./providers/VideoFeedProvider";
+import { useContext } from "react";
+import { VideoFeedContext } from "./contexts/VideoFeedContext";
 
 // REMOVE the AuthContext import for now - let's test basic console first
 // import { useAuth } from './contexts/AuthContext';
@@ -15,6 +18,7 @@ export const homeLoader = async () => {
 }
 
 export const HomeLayout = () => {
+  
   console.log('🟢 BASIC TEST: HomeLayout component rendering');
 
 

@@ -1,23 +1,19 @@
-import React from "react";
+import React, { useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import ProfileMenuButton from "./ProfileMenuButton";
 import mic from "@assets/microphone_active.png";
+import micOff from "@assets/microphone_inactive.png";
 import videopng from "@assets/video.png"
+import video_inactivepng from "@assets/video_inactive.png"
+import { VideoFeedProvider } from "../providers/VideoFeedProvider";
+import { useVideoFeedContext, VideoFeedContext } from "../contexts/VideoFeedContext";
   
 
-const handleMic = () => {
-  /*
-    handler for mic
-
-    turn mic on... or toggle 
-
-  */
 
 
-};
-
-const CallSettingsFooter: React.FC = () => {
+export function CallSettingsFooter({ onOpenChat }) {
   const navigate = useNavigate();
+  const VF = useVideoFeedContext();
 
   return (
     <footer className="w-full bg-white shadow-sm px-6 py-4 flex justify-between items-center">
@@ -27,27 +23,41 @@ const CallSettingsFooter: React.FC = () => {
          * AUDIO & VIDEO CONTROLS 
          */}
          
-        <nav className="flex gap-4">
-          <button 
-            className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer"
-            onClick={handleMic}
-            >
-            <img src={mic} alt="App Icon" className="h-auto w-auto max-w-[32px] max-h-[32px]" />          
-          </button>
-          <button className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer">
-            <img src={videopng} alt="App Icon" className="h-auto w-auto max-w-[32px] max-h-[32px]" />          
+        <div className="flex gap-4">
+          <VideoFeedProvider>
+            <button className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer"
+              onClick={VF.toggleAudio}>
+                
+              <img src={ VF.isAudioEnabled? mic : micOff} alt="App Icon" className="h-auto w-auto max-w-[32px] max-h-[32px]" />  
 
-          </button>
-        </nav>
+            </button>
+            
+            <button className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer"
+              onClick={VF.toggleVideo}
+            >
+              <img src={VF.isVideoEnabled? videopng : video_inactivepng} alt="App Icon" className="h-auto w-auto max-w-[32px] max-h-[32px]" />          
+            </button>
+          </VideoFeedProvider>
+        </div>
       </div>
 
-      {/* Right side: Notifications + Profile */}
+      {/* user settings */}
+      <div className="flex items-center gap-5">
+        <button
+          className="text-gray-500 hover:text-blue-600 cursor-pointer"
+        >
+          User Features Menu
+        </button>
+      </div>
+
+
+      {/* Chat settings */}
       <div className="flex items-center gap-4">
         <button
           className="text-gray-500 hover:text-blue-600 cursor-pointer"
-          aria-label="Notifications"
+          onClick={onOpenChat}
         >
-          filler
+          Chat
         </button>
       </div>
     </footer>

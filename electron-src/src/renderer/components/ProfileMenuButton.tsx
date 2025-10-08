@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 const ProfileMenuButton = () => {
-      const navigate = useNavigate();
+  const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
 
   // 1. State to control the menu visibility
@@ -24,6 +24,13 @@ const ProfileMenuButton = () => {
     console.log("Settings clicked"); 
     navigate('/settings'); // Navigate to settings page
   };
+    // NEW FUNCTION: Handle navigation to FAQ page
+  const handleFAQ = () => {
+    closeMenu();
+    console.log("FAQ clicked");
+    navigate("/faq"); // Navigate to FAQ page
+  };
+
   const handleLogout = async () => {
     closeMenu();
     console.log("Logout clicked");
@@ -96,7 +103,15 @@ const ProfileMenuButton = () => {
               >
                 Settings
               </button>
-              
+
+              <button
+                onClick={handleFAQ}
+                className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors cursor-pointer"
+                role="menuitem"
+              >
+                FAQ
+              </button>
+
               {/* Separator */}
               <div className="border-t border-gray-100 my-1"></div>
               
@@ -129,6 +144,14 @@ const ProfileMenuButton = () => {
                 role="menuitem"
               >
                 Settings
+              </button>
+                            {/* NEW FAQ Option */}
+              <button
+                onClick={handleFAQ}
+                className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors cursor-pointer"
+                role="menuitem"
+              >
+                FAQ
               </button>
             </>
           )}
