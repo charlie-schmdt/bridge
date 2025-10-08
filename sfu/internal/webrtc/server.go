@@ -1,50 +1,50 @@
 package webrtc
 
 import (
+	"encoding/json"
 	"fmt"
-	"io"
+	"net/http"
 	"sfu/internal/sfu"
-	pb "sfu/proto/sfu"
+	"sfu/internal/signaling"
 
+	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v3"
 )
 
-type SignalingServer interface {
-	pb.SignalingServer
-}
-
-type defaultSignalingServer struct {
-	pb.UnimplementedSignalingServer
-	Router sfu.Router
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
 type session struct {
-	stream pb.Signaling_HandleSessionServer
-	pc     *webrtc.PeerConnection
-	id     string
+	conn *websocket.Conn
+	pc   *webrtc.PeerConnection
+	id   string
 }
 
-func NewSignalingServer(router sfu.Router) SignalingServer {
-	return &defaultSignalingServer{
-		Router: router,
+func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
+	// Upgrade the HTTP connection to a websocket connection
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		panic(fmt.Sprintln("failed to upgrade connection:", err))
 	}
-}
+	defer conn.Close()
 
-func (s *defaultSignalingServer) HandleSession(stream pb.Signaling_HandleSessionServer) error {
 	// Handle the signaling session
-	sess := createSession(stream)
+	sess := createSession(conn)
 	for {
-		in, err := stream.Recv()
-		if err == io.EOF {
-			return nil
-		}
-		if err != nil {
-			return err
+		var msg signaling.SignalMessage
+		if err = conn.ReadJSON(&msg); err != nil {
+			fmt.Println("read:", err)
+			break
 		}
 
-		switch payload := in.Payload.(type) {
-		case *pb.SignalMessage_Offer:
-			pc, err := handleOffer(stream, payload.Offer)
+		switch msg.Type {
+		case signaling.SignalMessageTypeOffer:
+			var offer signaling.SdpOffer
+			if err := json.Unmarshal(msg.Payload, &offer); err != nil {
+				panic(fmt.Sprintf("failed to unmarshal offer: %v", err))
+			}
+			pc, err := handleOffer(conn, &offer)
 			if err != nil {
 				panic(fmt.Sprintf("failed to handle offer: %v", err))
 			}
@@ -53,15 +53,19 @@ func (s *defaultSignalingServer) HandleSession(stream pb.Signaling_HandleSession
 			sess.id = "some-uuid-from-remote" // TODO: get this from remote peer
 
 			// Add the PeerConnection to the router
-			err = s.Router.AddPeerConnection(sess.id, sess.pc)
+			err = router.AddPeerConnection(sess.id, sess.pc)
 			if err != nil {
 				panic(fmt.Sprintf("failed to add PeerConnection to router: %v", err))
 			}
 
-			sess.registerConnectionHandlers(s.Router)
+			sess.registerConnectionHandlers(router)
 
-		case *pb.SignalMessage_Candidate:
-			err := sess.handleRemoteCandidate(payload.Candidate)
+		case signaling.SignalMessageTypeCandidate:
+			var candidate signaling.IceCandidate
+			if err := json.Unmarshal(msg.Payload, &candidate); err != nil {
+				panic(fmt.Sprintf("failed to unmarshal candidate: %v", err))
+			}
+			err := sess.handleRemoteCandidate(&candidate)
 			if err != nil {
 				panic(fmt.Sprintf("failed to handle candidate: %v", err))
 			}
@@ -72,15 +76,15 @@ func (s *defaultSignalingServer) HandleSession(stream pb.Signaling_HandleSession
 	}
 }
 
-func createSession(stream pb.Signaling_HandleSessionServer) *session {
+func createSession(conn *websocket.Conn) *session {
 	return &session{
-		stream: stream,
-		id:     "",
-		pc:     nil,
+		conn: conn,
+		id:   "",
+		pc:   nil,
 	}
 }
 
-func handleOffer(stream pb.Signaling_HandleSessionServer, offer *pb.SdpOffer) (*webrtc.PeerConnection, error) {
+func handleOffer(conn *websocket.Conn, offer *signaling.SdpOffer) (*webrtc.PeerConnection, error) {
 	// Create a new PeerConnection
 	config := webrtc.Configuration{}
 	pc, err := webrtc.NewPeerConnection(config)
@@ -91,7 +95,7 @@ func handleOffer(stream pb.Signaling_HandleSessionServer, offer *pb.SdpOffer) (*
 	// Set the remote description using the provided SDP offer
 	sessionDescription := webrtc.SessionDescription{
 		Type: webrtc.SDPTypeOffer,
-		SDP:  offer.Sdp,
+		SDP:  offer.SDP,
 	}
 	err = pc.SetRemoteDescription(sessionDescription)
 	if err != nil {
@@ -111,12 +115,10 @@ func handleOffer(stream pb.Signaling_HandleSessionServer, offer *pb.SdpOffer) (*
 	}
 
 	// Send the answer back to the client
-	err = stream.Send(&pb.SignalMessage{
-		Payload: &pb.SignalMessage_Answer{
-			Answer: &pb.SdpAnswer{
-				Sdp: answer.SDP,
-			},
-		},
+	payload, _ := json.Marshal(signaling.SdpAnswer{SDP: answer.SDP})
+	err = conn.WriteJSON(signaling.SignalMessage{
+		Type:    signaling.SignalMessageTypeAnswer,
+		Payload: payload,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to send answer: %w", err)
@@ -169,24 +171,32 @@ func (s *session) registerConnectionHandlers(router sfu.Router) {
 
 func (s *session) handleLocalCandidate(candidate *webrtc.ICECandidate) {
 	// This function can be used to handle local ICE candidates, e.g., send them to the remote peer via signaling
-	pbCandidate := &pb.IceCandidate{
-		Candidate: candidate.ToJSON().Candidate,
+	jsonCandidate := candidate.ToJSON()
+	newCandidate := signaling.IceCandidate{Candidate: jsonCandidate.Candidate}
+	if jsonCandidate.SDPMid != nil {
+		newCandidate.SdpMid = *jsonCandidate.SDPMid
+	}
+	if jsonCandidate.SDPMLineIndex != nil {
+		newCandidate.SdpMLineIndex = int(*jsonCandidate.SDPMLineIndex)
 	}
 
-	err := s.stream.Send(&pb.SignalMessage{
-		Payload: &pb.SignalMessage_Candidate{
-			Candidate: pbCandidate,
-		},
-	})
+	payload, _ := json.Marshal(newCandidate)
+	pbCandidate := &signaling.SignalMessage{
+		Type:    signaling.SignalMessageTypeCandidate,
+		Payload: payload,
+	}
+
+	err := s.conn.WriteJSON(pbCandidate)
 	if err != nil {
 		// TODO: error handling
+		panic(fmt.Sprintf("failed to send candidate: %v", err))
 	}
 }
 
-func (s *session) handleRemoteCandidate(offer *pb.IceCandidate) error {
+func (s *session) handleRemoteCandidate(candidate *signaling.IceCandidate) error {
 	// Add the ICE candidate to the PeerConnection
 	iceCandidate := webrtc.ICECandidateInit{
-		Candidate: offer.Candidate,
+		Candidate: candidate.Candidate,
 	}
 	err := s.pc.AddICECandidate(iceCandidate)
 	if err != nil {

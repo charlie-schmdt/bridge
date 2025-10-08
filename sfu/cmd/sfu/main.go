@@ -3,13 +3,8 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"net"
+	"net/http"
 	"sfu/internal/sfu"
-
-	pb "sfu/proto/sfu"
-
-	"google.golang.org/grpc"
 
 	"sfu/internal/webrtc"
 )
@@ -19,14 +14,10 @@ func main() {
 	// Create Router instance to handle connections
 	router := sfu.NewRouter()
 
-	// Start the WebRTC signaling server
-	lis, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", 50031))
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
-
-	var opts []grpc.ServerOption
-	grpcServer := grpc.NewServer(opts...)
-	pb.RegisterSignalingServer(grpcServer, webrtc.NewSignalingServer(router))
-	grpcServer.Serve(lis)
+	// Start the websocket server
+	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		webrtc.HandleSession(w, r, router)
+	})
+	fmt.Println("Server listening on port 50031")
+	http.ListenAndServe(":50031", nil)
 }

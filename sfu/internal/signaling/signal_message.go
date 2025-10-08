@@ -1,0 +1,36 @@
+package signaling
+
+import "encoding/json"
+
+type SignalMessage struct {
+	Type     SignalMessageType `json:"type"`
+	ClientID string            `json:"client_id,omitempty"`
+	RoomID   string            `json:"room_id,omitempty"`
+	Payload  json.RawMessage   `json:"payload,omitempty"`
+}
+
+type SignalMessageType string
+
+const (
+	SignalMessageTypeOffer       SignalMessageType = "offer"
+	SignalMessageTypeAnswer      SignalMessageType = "answer"
+	SignalMessageTypeCandidate   SignalMessageType = "candidate"
+	SignalMessageTypeSubscribe   SignalMessageType = "subscribe"
+	SignalMessageTypeUnsubscribe SignalMessageType = "unsubscribe"
+)
+
+type SdpOffer struct {
+	SDP      string `json:"sdp"`
+	ClientID string `json:"clientId,omitempty"`
+}
+
+type SdpAnswer struct {
+	SDP string `json:"sdp"`
+}
+
+type IceCandidate struct {
+	Candidate     string `json:"candidate"`
+	SdpMid        string `json:"sdpMid"`
+	SdpMLineIndex int    `json:"sdpMLineIndex"`
+	ClientID      string `json:"clientId,omitempty"`
+}
