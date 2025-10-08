@@ -38,6 +38,10 @@ func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
 			break
 		}
 
+		if msg.ClientID == "" {
+			panic("Client ID is empty")
+		}
+
 		switch msg.Type {
 		case signaling.SignalMessageTypeOffer:
 			var offer signaling.SdpOffer
@@ -50,7 +54,7 @@ func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
 			}
 			// Add the PeerConnection to the stream context for later use
 			sess.pc = pc
-			sess.id = "some-uuid-from-remote" // TODO: get this from remote peer
+			sess.id = msg.ClientID // TODO: get this from remote peer
 
 			// Add the PeerConnection to the router
 			err = router.AddPeerConnection(sess.id, sess.pc)

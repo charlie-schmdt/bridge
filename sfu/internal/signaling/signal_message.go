@@ -4,8 +4,8 @@ import "encoding/json"
 
 type SignalMessage struct {
 	Type     SignalMessageType `json:"type"`
-	ClientID string            `json:"client_id,omitempty"`
-	RoomID   string            `json:"room_id,omitempty"`
+	ClientID string            `json:"clientId,omitempty"`
+	RoomID   string            `json:"roomId,omitempty"`
 	Payload  json.RawMessage   `json:"payload,omitempty"`
 }
 
@@ -20,8 +20,7 @@ const (
 )
 
 type SdpOffer struct {
-	SDP      string `json:"sdp"`
-	ClientID string `json:"clientId,omitempty"`
+	SDP string `json:"sdp"`
 }
 
 type SdpAnswer struct {
@@ -32,5 +31,4 @@ type IceCandidate struct {
 	Candidate     string `json:"candidate"`
 	SdpMid        string `json:"sdpMid"`
 	SdpMLineIndex int    `json:"sdpMLineIndex"`
-	ClientID      string `json:"clientId,omitempty"`
 }
