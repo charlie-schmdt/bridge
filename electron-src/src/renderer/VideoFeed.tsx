@@ -68,20 +68,6 @@ export default function VideoFeed() {
                 }
             }
 
-            //// Create initial offer
-            //pc.createOffer().then((offer) => {
-            //    pc.setLocalDescription(offer).then(() => {
-            //        if (!pc.localDescription) return;
-            //        //const payload = JSON.stringify({ sdp: pc.localDescription });
-            //        const offerMessage: SignalMessage = {
-            //            type: "offer",
-            //            clientId: clientId.current,
-            //            payload: pc.localDescription,
-            //        }
-            //        wsRef.current?.send(JSON.stringify(offerMessage));
-            //    })
-            //})
-
             // Send join message
             const joinMessage: SignalMessage = {
                 type: "join",
@@ -96,23 +82,6 @@ export default function VideoFeed() {
                     remoteVideoRef.current.srcObject = event.streams[0];
                 }
             }
-
-            // Handle negotiationneeded (for when a track is added)
-            //pc.onnegotiationneeded = () => {
-            //    console.log("Negotiation needed");
-            //    pc.createOffer().then((offer) => {
-            //        pc.setLocalDescription(offer).then(() => {
-            //            if (!pc.localDescription) return;
-            //            //const payload = JSON.stringify({ sdp: pc.localDescription });
-            //            const offerMessage: SignalMessage = {
-            //                type: "offer",
-            //                clientId: clientId.current,
-            //                payload: pc.localDescription,
-            //            }
-            //            wsRef.current?.send(JSON.stringify(offerMessage));
-            //        })
-            //    })
-            //}
         }
 
         const initCamera = async () => {
@@ -188,9 +157,9 @@ export default function VideoFeed() {
     }, [VF.isAudioEnabled, VF.isVideoEnabled]);
 
     return (
-    <div>
-        <video ref={VF.videoRef} autoPlay muted style={{ width: '100%', height: 'auto' }} />
-        <video ref={remoteVideoRef} autoPlay muted style={{ width: '100%', height: 'auto' }} />
+    <div className="flex gap-4 p-4 w-full h-full">
+        <video className="w-1/2 h-full rounded-lg" ref={VF.videoRef} autoPlay muted />
+        <video className="w-1/2 h-full rounded-lg" ref={remoteVideoRef} autoPlay muted />
     </div>
     );
 }

@@ -114,11 +114,14 @@ func (s *session) handleJoin(writer Writer, id string) (*webrtc.PeerConnection, 
 		return nil, fmt.Errorf("failed to create PeerConnection: %w", err)
 	}
 
-	for range 5 {
+	for range 1 {
 		pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo, webrtc.RTPTransceiverInit{
 			Direction: webrtc.RTPTransceiverDirectionSendonly,
 		})
 	}
+	pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo, webrtc.RTPTransceiverInit{
+		Direction: webrtc.RTPTransceiverDirectionRecvonly,
+	})
 
 	offer, err := pc.CreateOffer(nil)
 	if err != nil {

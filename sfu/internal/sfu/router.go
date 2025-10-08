@@ -67,7 +67,7 @@ func (r *defaultRouter) ForwardVideoTrack(id string, remote *webrtc.TrackRemote)
 			if err != nil {
 				return fmt.Errorf("failed to create local track: %w", err)
 			}
-			_, err = pc.AddTrack(localTrack)
+			pc.GetTransceivers()[0].Sender().ReplaceTrack(localTrack)
 			fmt.Println("Track added for id: ", rid)
 			if err != nil {
 				return fmt.Errorf("failed to add track to PeerConnection: %w", err)
