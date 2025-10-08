@@ -12,6 +12,7 @@ type SignalMessage struct {
 type SignalMessageType string
 
 const (
+	SignalMessageTypeJoin        SignalMessageType = "join"
 	SignalMessageTypeOffer       SignalMessageType = "offer"
 	SignalMessageTypeAnswer      SignalMessageType = "answer"
 	SignalMessageTypeCandidate   SignalMessageType = "candidate"

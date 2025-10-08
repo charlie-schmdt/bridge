@@ -3,7 +3,7 @@ import { VideoFeedContext } from './contexts/VideoFeedContext';
 import { v4 as uuid } from 'uuid';
 
 // TODO: move this into a separate types directory
-type SignalMessageType = "offer" | "answer" | "candidate" | "subscribe" | "unsubscribe";
+type SignalMessageType = "join" | "offer" | "answer" | "candidate" | "subscribe" | "unsubscribe";
 interface SignalMessage {
     type: SignalMessageType;
     clientId?: string;
@@ -68,19 +68,51 @@ export default function VideoFeed() {
                 }
             }
 
-            // Create initial offer
-            pc.createOffer().then((offer) => {
-                pc.setLocalDescription(offer).then(() => {
-                    if (!pc.localDescription) return;
-                    //const payload = JSON.stringify({ sdp: pc.localDescription });
-                    const offerMessage: SignalMessage = {
-                        type: "offer",
-                        clientId: clientId.current,
-                        payload: pc.localDescription,
-                    }
-                    wsRef.current?.send(JSON.stringify(offerMessage));
-                })
-            })
+            //// Create initial offer
+            //pc.createOffer().then((offer) => {
+            //    pc.setLocalDescription(offer).then(() => {
+            //        if (!pc.localDescription) return;
+            //        //const payload = JSON.stringify({ sdp: pc.localDescription });
+            //        const offerMessage: SignalMessage = {
+            //            type: "offer",
+            //            clientId: clientId.current,
+            //            payload: pc.localDescription,
+            //        }
+            //        wsRef.current?.send(JSON.stringify(offerMessage));
+            //    })
+            //})
+
+            // Send join message
+            const joinMessage: SignalMessage = {
+                type: "join",
+                clientId: clientId.current,
+            }
+            wsRef.current?.send(JSON.stringify(joinMessage));
+
+            // Accept incoming track
+            pc.ontrack = (event: RTCTrackEvent) => {
+                console.log("Got remote track: ", event);
+                if (remoteVideoRef.current) {
+                    remoteVideoRef.current.srcObject = event.streams[0];
+                }
+            }
+
+            // Handle negotiationneeded (for when a track is added)
+            //pc.onnegotiationneeded = () => {
+            //    console.log("Negotiation needed");
+            //    pc.createOffer().then((offer) => {
+            //        pc.setLocalDescription(offer).then(() => {
+            //            if (!pc.localDescription) return;
+            //            //const payload = JSON.stringify({ sdp: pc.localDescription });
+            //            const offerMessage: SignalMessage = {
+            //                type: "offer",
+            //                clientId: clientId.current,
+            //                payload: pc.localDescription,
+            //            }
+            //            wsRef.current?.send(JSON.stringify(offerMessage));
+            //        })
+            //    })
+            //}
         }
 
         const initCamera = async () => {
@@ -100,7 +132,7 @@ export default function VideoFeed() {
         clientId.current = uuid();
 
         // Connect to the WebSocket signaling server (TODO: refactor into separate component)
-        const ws = new WebSocket("ws://localhost:3000/ws")
+        const ws = new WebSocket("ws://localhost:50031/ws")
         wsRef.current = ws;
 
         ws.onmessage = async (event: MessageEvent) => {
@@ -114,6 +146,22 @@ export default function VideoFeed() {
 
 
             switch (msg.type) {
+                case "offer":
+                    const offer = msg.payload as SdpOffer;
+                    pc.setRemoteDescription(new RTCSessionDescription({type: "offer", sdp: offer.sdp}));
+                    pc.createAnswer().then((answer) => {
+                        pc.setLocalDescription(answer).then(() => {
+                            if (!pc.localDescription) return;
+                            //const payload = JSON.stringify({ sdp: pc.localDescription });
+                            const answerMessage: SignalMessage = {
+                                type: "answer",
+                                clientId: clientId.current,
+                                payload: pc.localDescription,
+                            }
+                            wsRef.current?.send(JSON.stringify(answerMessage));
+                        })
+                    })
+                    break;
                 case "answer":
                     const answer = msg.payload as SdpAnswer;
                     pc.setRemoteDescription(new RTCSessionDescription({type: "answer", sdp: answer.sdp}));
@@ -139,5 +187,10 @@ export default function VideoFeed() {
         }
     }, [VF.isAudioEnabled, VF.isVideoEnabled]);
 
-    return <video ref={VF.videoRef} autoPlay muted style={{ width: '100%', height: 'auto' }} />
+    return (
+    <div>
+        <video ref={VF.videoRef} autoPlay muted style={{ width: '100%', height: 'auto' }} />
+        <video ref={remoteVideoRef} autoPlay muted style={{ width: '100%', height: 'auto' }} />
+    </div>
+    );
 }

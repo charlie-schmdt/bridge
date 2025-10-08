@@ -16,7 +16,7 @@ var upgrader = websocket.Upgrader{
 }
 
 type session struct {
-	conn   *websocket.Conn
+	writer Writer
 	router sfu.Router
 }
 
@@ -26,10 +26,13 @@ func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
 	if err != nil {
 		panic(fmt.Sprintln("failed to upgrade connection:", err))
 	}
-	defer conn.Close()
+
+	// Create writer
+	writer := CreateWriter(conn)
+	defer writer.Close()
 
 	// Handle the signaling session
-	sess := createSession(conn, router)
+	sess := createSession(writer, router)
 	for {
 		var msg signaling.SignalMessage
 		if err = conn.ReadJSON(&msg); err != nil {
@@ -41,13 +44,28 @@ func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
 			panic("Client ID is empty")
 		}
 
+		fmt.Println("Received message type:", msg.Type)
+
 		switch msg.Type {
+		case signaling.SignalMessageTypeJoin:
+			// Create offer for the client
+			pc, err := sess.handleJoin(writer, msg.ClientID)
+			if err != nil {
+				panic(fmt.Sprintf("failed to handle join: %v", err))
+			}
+
+			// Register the PeerConnection with the router
+			err = router.AddPeerConnection(msg.ClientID, pc)
+			if err != nil {
+				panic(fmt.Sprintf("failed to add PeerConnection to router: %v", err))
+			}
+
 		case signaling.SignalMessageTypeOffer:
 			var offer signaling.SdpOffer
 			if err := json.Unmarshal(msg.Payload, &offer); err != nil {
 				panic(fmt.Sprintf("failed to unmarshal offer: %s, %v", msg.Payload, err))
 			}
-			pc, err := sess.handleOffer(conn, msg.ClientID, &offer)
+			pc, err := sess.handleOffer(writer, msg.ClientID, &offer)
 			if err != nil {
 				panic(fmt.Sprintf("failed to handle offer: %v", err))
 			}
@@ -57,7 +75,15 @@ func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
 				panic(fmt.Sprintf("failed to add PeerConnection to router: %v", err))
 			}
 
-			sess.registerConnectionHandlers(msg.ClientID, pc)
+		case signaling.SignalMessageTypeAnswer:
+			var answer signaling.SdpAnswer
+			if err := json.Unmarshal(msg.Payload, &answer); err != nil {
+				panic(fmt.Sprintf("failed to unmarshal answer: %s, %v", msg.Payload, err))
+			}
+			err := sess.handleAnswer(msg.ClientID, &answer)
+			if err != nil {
+				panic(fmt.Sprintf("failed to handle answer: %v", err))
+			}
 
 		case signaling.SignalMessageTypeCandidate:
 			var candidate signaling.IceCandidate
@@ -66,7 +92,7 @@ func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
 			}
 			err := sess.handleRemoteCandidate(msg.ClientID, &candidate)
 			if err != nil {
-				panic(fmt.Sprintf("failed to handle candidate: %v", err))
+				fmt.Println("Error: failed to handle candidate: ", err)
 			}
 
 		default:
@@ -75,14 +101,47 @@ func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
 	}
 }
 
-func createSession(conn *websocket.Conn, router sfu.Router) *session {
+func createSession(writer Writer, router sfu.Router) *session {
 	return &session{
-		conn:   conn,
+		writer: writer,
 		router: router,
 	}
 }
 
-func (s *session) handleOffer(conn *websocket.Conn, id string, offer *signaling.SdpOffer) (*webrtc.PeerConnection, error) {
+func (s *session) handleJoin(writer Writer, id string) (*webrtc.PeerConnection, error) {
+	pc, err := webrtc.NewPeerConnection(webrtc.Configuration{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create PeerConnection: %w", err)
+	}
+
+	for range 5 {
+		pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo, webrtc.RTPTransceiverInit{
+			Direction: webrtc.RTPTransceiverDirectionSendonly,
+		})
+	}
+
+	offer, err := pc.CreateOffer(nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create offer: %w", err)
+	}
+
+	err = pc.SetLocalDescription(offer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set local description: %w", err)
+	}
+
+	s.registerConnectionHandlers(id, pc)
+
+	payload, _ := json.Marshal(signaling.SdpOffer{SDP: offer.SDP})
+	writer.WriteJSON(signaling.SignalMessage{
+		Type:     signaling.SignalMessageTypeOffer,
+		ClientID: id,
+		Payload:  payload,
+	})
+	return pc, nil
+}
+
+func (s *session) handleOffer(writer Writer, id string, offer *signaling.SdpOffer) (*webrtc.PeerConnection, error) {
 	// Create a new PeerConnection
 	config := webrtc.Configuration{}
 	pc, err := webrtc.NewPeerConnection(config)
@@ -100,6 +159,12 @@ func (s *session) handleOffer(conn *websocket.Conn, id string, offer *signaling.
 		return nil, fmt.Errorf("failed to set remote description: %w", err)
 	}
 
+	for range 5 {
+		pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo, webrtc.RTPTransceiverInit{
+			Direction: webrtc.RTPTransceiverDirectionSendonly,
+		})
+	}
+
 	// Create an answer
 	answer, err := pc.CreateAnswer(nil)
 	if err != nil {
@@ -112,18 +177,35 @@ func (s *session) handleOffer(conn *websocket.Conn, id string, offer *signaling.
 		return nil, fmt.Errorf("failed to set local description: %w", err)
 	}
 
+	s.registerConnectionHandlers(id, pc)
+
 	// Send the answer back to the client
 	payload, _ := json.Marshal(signaling.SdpAnswer{SDP: answer.SDP})
-	err = conn.WriteJSON(signaling.SignalMessage{
+	writer.WriteJSON(signaling.SignalMessage{
 		Type:     signaling.SignalMessageTypeAnswer,
 		ClientID: id,
 		Payload:  payload,
 	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to send answer: %w", err)
-	}
 
 	return pc, nil
+}
+
+func (s *session) handleAnswer(id string, answer *signaling.SdpAnswer) error {
+	pc := s.router.GetPeerConnection(id)
+	if pc == nil {
+		return fmt.Errorf("PeerConnection with id %s does not exist", id)
+	}
+
+	// Set the remote description
+	sessionDescription := webrtc.SessionDescription{
+		Type: webrtc.SDPTypeAnswer,
+		SDP:  answer.SDP,
+	}
+	err := pc.SetRemoteDescription(sessionDescription)
+	if err != nil {
+		return fmt.Errorf("failed to set remote description: %w", err)
+	}
+	return nil
 }
 
 func (s *session) registerConnectionHandlers(id string, pc *webrtc.PeerConnection) {
@@ -156,7 +238,10 @@ func (s *session) registerConnectionHandlers(id string, pc *webrtc.PeerConnectio
 
 				if track.Kind() == webrtc.RTPCodecTypeVideo {
 					// Forward video track to all other clients
-					s.router.ForwardVideoTrack(id, track)
+					err := s.router.ForwardVideoTrack(id, track)
+					if err != nil {
+						panic(fmt.Sprintf("failed to forward video track: %v", err))
+					}
 				}
 				// TODO: handle audio track
 
@@ -186,11 +271,7 @@ func (s *session) handleLocalCandidate(id string, candidate *webrtc.ICECandidate
 		Payload:  payload,
 	}
 
-	err := s.conn.WriteJSON(pbCandidate)
-	if err != nil {
-		// TODO: error handling
-		panic(fmt.Sprintf("failed to send candidate: %v", err))
-	}
+	s.writer.WriteJSON(pbCandidate)
 }
 
 func (s *session) handleRemoteCandidate(id string, candidate *signaling.IceCandidate) error {

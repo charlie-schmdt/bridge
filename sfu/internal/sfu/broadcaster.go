@@ -1,6 +1,7 @@
 package sfu
 
 import (
+	"fmt"
 	"log"
 	"sync"
 
@@ -30,6 +31,7 @@ func InitBroadcaster(src *webrtc.TrackRemote) Broadcaster {
 
 func (b *defaultBroadcaster) AddSink(id string, writer *webrtc.TrackLocalStaticRTP) {
 	b.mu.Lock()
+	fmt.Println("Adding sink", id)
 	b.sinks[id] = writer
 	b.mu.Unlock()
 }

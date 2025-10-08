@@ -40,7 +40,7 @@ const LogInLayout: React.FC = () => {
 
             console.log('🔄 Attempting authentication:', { endpoint, email });
 
-            const response = await fetch(`http://localhost:3000${endpoint}`, {
+            const response = await fetch(`http://localhost:50031${endpoint}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

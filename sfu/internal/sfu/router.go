@@ -38,7 +38,7 @@ func (r *defaultRouter) AddPeerConnection(id string, pc *webrtc.PeerConnection) 
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if _, exists := r.connections[id]; exists {
-		return fmt.Errorf("peer connection with id %s already exists", id)
+		fmt.Printf("PeerConnection with id %s already exists, replacing PeerConnection\n", id)
 	}
 	r.connections[id] = pc
 	return nil
@@ -68,6 +68,7 @@ func (r *defaultRouter) ForwardVideoTrack(id string, remote *webrtc.TrackRemote)
 				return fmt.Errorf("failed to create local track: %w", err)
 			}
 			_, err = pc.AddTrack(localTrack)
+			fmt.Println("Track added for id: ", rid)
 			if err != nil {
 				return fmt.Errorf("failed to add track to PeerConnection: %w", err)
 			}

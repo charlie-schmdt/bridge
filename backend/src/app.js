@@ -9,7 +9,7 @@ const http = require('http');
 const ws = require('ws');
 
 const app = express();
-const PORT = process.env.PORT || 50031;
+const PORT = process.env.PORT || 3000;
 
 const path = require('path');
 const fs = require('fs');
