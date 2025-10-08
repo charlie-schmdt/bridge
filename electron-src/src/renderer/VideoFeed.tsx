@@ -2,6 +2,7 @@ import { useContext, useEffect, useRef, useState } from 'react';
 import useWebSocket from 'react-use-websocket';
 import { useVideoFeedContext, VideoFeedContext } from './contexts/VideoFeedContext';
 interface SignalMessage {
+  //write a new interface
   description?: RTCSessionDescriptionInit;
   candidate?: RTCIceCandidateInit;
 }
@@ -78,7 +79,7 @@ export default function VideoFeed() {
               console.log("Local description set:", pc.current?.localDescription);
               sendJsonMessage({
                 type: "offer",
-                description: offer.sdp,
+                payload: offer.sdp,
               });
               console.log("Sent offer:", pc.current.localDescription?.sdp);
             } catch (err) {
@@ -95,13 +96,10 @@ export default function VideoFeed() {
               console.log("New ICE candidate:", event.candidate);
               sendJsonMessage({ 
                 type:"ice-candidate",
-                candidate: event.candidate.toJSON() 
+                payload: event.candidate.toJSON() 
               });
             }
             else{
-              sendJsonMessage({ 
-                type:"ice-complete",
-              });
               console.log("All ICE candidates have been sent");
             }
           };
@@ -143,12 +141,12 @@ export default function VideoFeed() {
 
           if (!lastJsonMessage) return;
 
-          const { description, candidate } = lastJsonMessage;
+          const message = lastJsonMessage;
           const polite = true; // Assume this client is polite for simplicity
 
           (async () => {
             try {
-              if (description) {
+              if (message.type) {
                 const readyForOffer =
                   (pc.current.signalingState === "stable" || isSettingRemoteAnswerPendingRef.current)
                 const offerCollision =
@@ -171,7 +169,7 @@ export default function VideoFeed() {
                   await pc.current?.setLocalDescription(answer);
                   sendJsonMessage({
                     type: "answer", 
-                    description: answer.sdp 
+                    payload: answer.sdp 
                   });
                 }
               } else if (candidate) {
