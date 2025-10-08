@@ -11,11 +11,16 @@ import LogInLayout from './LogInLayout';
 import  RoomLayout  from './RoomLayout';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import FAQLayout from "./FAQLayout";
 
 const router = createHashRouter([
   {
     path: "/login",
     element: <LogInLayout />
+  },
+  {
+    path: 'faq',
+    element: <FAQLayout />
   },
   {
     path: "/",
@@ -47,6 +52,10 @@ const router = createHashRouter([
       {
         path: 'workspace',
         element: <WorkspaceLayout />
+      },
+      {
+        path: 'faq',
+        element: <FAQLayout />
       }
     ],
   },
