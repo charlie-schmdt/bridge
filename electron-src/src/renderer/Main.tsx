@@ -12,6 +12,8 @@ import  RoomLayout  from './RoomLayout';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import FAQLayout from "./FAQLayout";
+import AuthCallback from './AuthCallback';
+
 
 const router = createHashRouter([
   {
