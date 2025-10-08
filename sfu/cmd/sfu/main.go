@@ -1,4 +1,3 @@
-//go:generate protoc --go_out=../../proto --go-grpc_out=../../proto -I../../../proto ../../../proto/sfu.proto
 package main
 
 import (
