@@ -9,7 +9,7 @@ const http = require('http');
 const ws = require('ws');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 50031;
 
 const path = require('path');
 const fs = require('fs');
@@ -58,7 +58,7 @@ app.use('*', (req, res) => {
 
 
 const server = http.createServer(app);
-const wss = new ws.WebSocketServer({ server });
+const wss = new ws.WebSocketServer({ server, path: '/ws' });
 sfuClient.initSfuConnection();
 signalingSocket.initSignalingSocket(wss);
 

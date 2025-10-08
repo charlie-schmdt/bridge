@@ -1,4 +1,5 @@
 const WebSocket = require('ws');
+const clientRegistry = require('../utils/clientRegistry');
 
 let sfuSocket = null;
 
@@ -10,7 +11,7 @@ const initSfuConnection = () => {
     });
 
     sfuSocket.on('message', (data) => {
-        console.log('Received message from SFU server:', message);
+        console.log('Received message from SFU server:', data);
         try {
             const msg = JSON.parse(data.toString());
             console.log('SFU Message received:', msg);
@@ -42,7 +43,8 @@ const handleSfuMessage = (message) => {
     if (message.clientId !== undefined) {
         const client = clientRegistry.getClientById(message.clientId);
         if (client && client.readyState === client.OPEN) {
-            client.send(JSON.stringify(message.message));
+            client.send(JSON.stringify(message));
+            //client.send(message);
         }
     }
 }

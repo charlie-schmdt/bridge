@@ -16,9 +16,8 @@ var upgrader = websocket.Upgrader{
 }
 
 type session struct {
-	conn *websocket.Conn
-	pc   *webrtc.PeerConnection
-	id   string
+	conn   *websocket.Conn
+	router sfu.Router
 }
 
 func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
@@ -30,7 +29,7 @@ func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
 	defer conn.Close()
 
 	// Handle the signaling session
-	sess := createSession(conn)
+	sess := createSession(conn, router)
 	for {
 		var msg signaling.SignalMessage
 		if err = conn.ReadJSON(&msg); err != nil {
@@ -46,30 +45,26 @@ func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
 		case signaling.SignalMessageTypeOffer:
 			var offer signaling.SdpOffer
 			if err := json.Unmarshal(msg.Payload, &offer); err != nil {
-				panic(fmt.Sprintf("failed to unmarshal offer: %v", err))
+				panic(fmt.Sprintf("failed to unmarshal offer: %s, %v", msg.Payload, err))
 			}
-			pc, err := handleOffer(conn, &offer)
+			pc, err := sess.handleOffer(conn, msg.ClientID, &offer)
 			if err != nil {
 				panic(fmt.Sprintf("failed to handle offer: %v", err))
 			}
-			// Add the PeerConnection to the stream context for later use
-			sess.pc = pc
-			sess.id = msg.ClientID // TODO: get this from remote peer
-
-			// Add the PeerConnection to the router
-			err = router.AddPeerConnection(sess.id, sess.pc)
+			// Register the PeerConnection with the router
+			err = router.AddPeerConnection(msg.ClientID, pc)
 			if err != nil {
 				panic(fmt.Sprintf("failed to add PeerConnection to router: %v", err))
 			}
 
-			sess.registerConnectionHandlers(router)
+			sess.registerConnectionHandlers(msg.ClientID, pc)
 
 		case signaling.SignalMessageTypeCandidate:
 			var candidate signaling.IceCandidate
 			if err := json.Unmarshal(msg.Payload, &candidate); err != nil {
-				panic(fmt.Sprintf("failed to unmarshal candidate: %v", err))
+				panic(fmt.Sprintf("failed to unmarshal candidate: %s, %v", msg.Payload, err))
 			}
-			err := sess.handleRemoteCandidate(&candidate)
+			err := sess.handleRemoteCandidate(msg.ClientID, &candidate)
 			if err != nil {
 				panic(fmt.Sprintf("failed to handle candidate: %v", err))
 			}
@@ -80,15 +75,14 @@ func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
 	}
 }
 
-func createSession(conn *websocket.Conn) *session {
+func createSession(conn *websocket.Conn, router sfu.Router) *session {
 	return &session{
-		conn: conn,
-		id:   "",
-		pc:   nil,
+		conn:   conn,
+		router: router,
 	}
 }
 
-func handleOffer(conn *websocket.Conn, offer *signaling.SdpOffer) (*webrtc.PeerConnection, error) {
+func (s *session) handleOffer(conn *websocket.Conn, id string, offer *signaling.SdpOffer) (*webrtc.PeerConnection, error) {
 	// Create a new PeerConnection
 	config := webrtc.Configuration{}
 	pc, err := webrtc.NewPeerConnection(config)
@@ -121,8 +115,9 @@ func handleOffer(conn *websocket.Conn, offer *signaling.SdpOffer) (*webrtc.PeerC
 	// Send the answer back to the client
 	payload, _ := json.Marshal(signaling.SdpAnswer{SDP: answer.SDP})
 	err = conn.WriteJSON(signaling.SignalMessage{
-		Type:    signaling.SignalMessageTypeAnswer,
-		Payload: payload,
+		Type:     signaling.SignalMessageTypeAnswer,
+		ClientID: id,
+		Payload:  payload,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to send answer: %w", err)
@@ -131,17 +126,17 @@ func handleOffer(conn *websocket.Conn, offer *signaling.SdpOffer) (*webrtc.PeerC
 	return pc, nil
 }
 
-func (s *session) registerConnectionHandlers(router sfu.Router) {
+func (s *session) registerConnectionHandlers(id string, pc *webrtc.PeerConnection) {
 	// Register the ICE candidate handler
-	s.pc.OnICECandidate(func(c *webrtc.ICECandidate) {
+	pc.OnICECandidate(func(c *webrtc.ICECandidate) {
 		if c == nil {
 			return
 		}
-		s.handleLocalCandidate(c)
+		s.handleLocalCandidate(id, c)
 	})
 
 	// Register the ICE connection state handler (wait for ICE connection)
-	s.pc.OnICEConnectionStateChange(func(state webrtc.ICEConnectionState) {
+	pc.OnICEConnectionStateChange(func(state webrtc.ICEConnectionState) {
 		if state == webrtc.ICEConnectionStateConnected {
 			// ICE connection is ready, wait for data channels
 			fmt.Println("ICE connection is ready")
@@ -151,17 +146,17 @@ func (s *session) registerConnectionHandlers(router sfu.Router) {
 	})
 
 	// Register the connection state handler
-	s.pc.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
+	pc.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
 		if state == webrtc.PeerConnectionStateConnected {
 			fmt.Println("PeerConnection is connected")
 
 			// Set the track handler
-			s.pc.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
+			pc.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
 				fmt.Printf("New incoming track: kind=%s, ssrc=%d\n", track.Kind(), track.SSRC())
 
 				if track.Kind() == webrtc.RTPCodecTypeVideo {
 					// Forward video track to all other clients
-					router.ForwardVideoTrack(s.id, track)
+					s.router.ForwardVideoTrack(id, track)
 				}
 				// TODO: handle audio track
 
@@ -173,7 +168,7 @@ func (s *session) registerConnectionHandlers(router sfu.Router) {
 	})
 }
 
-func (s *session) handleLocalCandidate(candidate *webrtc.ICECandidate) {
+func (s *session) handleLocalCandidate(id string, candidate *webrtc.ICECandidate) {
 	// This function can be used to handle local ICE candidates, e.g., send them to the remote peer via signaling
 	jsonCandidate := candidate.ToJSON()
 	newCandidate := signaling.IceCandidate{Candidate: jsonCandidate.Candidate}
@@ -186,8 +181,9 @@ func (s *session) handleLocalCandidate(candidate *webrtc.ICECandidate) {
 
 	payload, _ := json.Marshal(newCandidate)
 	pbCandidate := &signaling.SignalMessage{
-		Type:    signaling.SignalMessageTypeCandidate,
-		Payload: payload,
+		Type:     signaling.SignalMessageTypeCandidate,
+		ClientID: id,
+		Payload:  payload,
 	}
 
 	err := s.conn.WriteJSON(pbCandidate)
@@ -197,12 +193,16 @@ func (s *session) handleLocalCandidate(candidate *webrtc.ICECandidate) {
 	}
 }
 
-func (s *session) handleRemoteCandidate(candidate *signaling.IceCandidate) error {
+func (s *session) handleRemoteCandidate(id string, candidate *signaling.IceCandidate) error {
 	// Add the ICE candidate to the PeerConnection
 	iceCandidate := webrtc.ICECandidateInit{
 		Candidate: candidate.Candidate,
 	}
-	err := s.pc.AddICECandidate(iceCandidate)
+	clientPC := s.router.GetPeerConnection(id)
+	if clientPC == nil {
+		return fmt.Errorf("PeerConnection with id %s does not exist", id)
+	}
+	err := clientPC.AddICECandidate(iceCandidate)
 	if err != nil {
 		return fmt.Errorf("failed to add ICE candidate: %w", err)
 	}

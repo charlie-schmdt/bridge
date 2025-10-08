@@ -10,6 +10,7 @@ import (
 type Router interface {
 	AddPeerConnection(id string, pc *webrtc.PeerConnection) error
 	ForwardVideoTrack(id string, track *webrtc.TrackRemote) error
+	GetPeerConnection(id string) *webrtc.PeerConnection
 }
 
 type defaultRouter struct {
@@ -20,8 +21,17 @@ type defaultRouter struct {
 
 func NewRouter() Router {
 	return &defaultRouter{
-		connections: make(map[string]*webrtc.PeerConnection),
+		connections:  make(map[string]*webrtc.PeerConnection),
+		broadcasters: make(map[string]Broadcaster),
 	}
+}
+
+func (r *defaultRouter) GetPeerConnection(id string) *webrtc.PeerConnection {
+	pc, exists := r.connections[id]
+	if !exists {
+		return nil
+	}
+	return pc
 }
 
 func (r *defaultRouter) AddPeerConnection(id string, pc *webrtc.PeerConnection) error {

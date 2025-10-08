@@ -28,7 +28,8 @@ type SdpAnswer struct {
 }
 
 type IceCandidate struct {
-	Candidate     string `json:"candidate"`
-	SdpMid        string `json:"sdpMid"`
-	SdpMLineIndex int    `json:"sdpMLineIndex"`
+	Candidate        string `json:"candidate"`
+	SdpMid           string `json:"sdpMid"`
+	SdpMLineIndex    int    `json:"sdpMLineIndex"`
+	UsernameFragment string `json:"usernameFragment"`
 }
