@@ -3,6 +3,10 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const { sequelize, testConnection } = require('./config/database');
+const sfuClient = require('./services/sfuClient');
+const signalingSocket = require('./websocket/signalingSocket');
+const http = require('http');
+const ws = require('ws');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -63,8 +67,15 @@ app.use('*', (req, res) => {
   });
 });
 
+
+
+const server = http.createServer(app);
+const wss = new ws.WebSocketServer({ server, path: '/ws' });
+sfuClient.initSfuConnection();
+signalingSocket.initSignalingSocket(wss);
+
 // Start server
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
 });
 
