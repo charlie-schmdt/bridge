@@ -27,6 +27,15 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING, // URL to profile picture
     allowNull: true
   },
+  bio: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  timezone: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: 'UTC-5' // Eastern Time default
+  },
   // OAuth fields
   provider: {
     type: DataTypes.ENUM('local', 'google', 'github', 'microsoft'),
@@ -43,6 +52,49 @@ const User = sequelize.define('User', {
   lastLogin: {
     type: DataTypes.DATE,
     allowNull: true
+  },
+  // Notification settings
+  emailNotifications: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
+  },
+  pushNotifications: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
+  },
+  meetingReminders: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
+  },
+  weeklyDigest: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
+  },
+  // Privacy settings
+  profileVisibility: {
+    type: DataTypes.ENUM('public', 'team', 'private'),
+    allowNull: false,
+    defaultValue: 'team'
+  },
+  showOnlineStatus: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
+  },
+  allowDirectMessages: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
+  },
+  // Appearance settings
+  theme: {
+    type: DataTypes.ENUM('light', 'dark', 'system'),
+    allowNull: false,
+    defaultValue: 'system'
   }
 }, {
   timestamps: true, // Adds createdAt and updatedAt

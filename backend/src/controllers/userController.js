@@ -3,7 +3,154 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
 const generateToken = (userId) => {
-  return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
+  // return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
+};
+
+const getSettings = async (req, res) => {
+  try {
+    console.log('Get settings request received');
+    console.log('Query params:', req.query);
+    const { userId } = req.query;
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'User ID is required' });
+    }
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const settings = {
+      profile: {
+        name: user.name,
+        email: user.email,
+        bio: user.bio,
+        timezone: user.timezone,
+      },
+      notifications: {
+        emailNotifications: user.emailNotifications,
+        pushNotifications: user.pushNotifications,
+        meetingReminders: user.meetingReminders,
+        weeklyDigest: user.weeklyDigest,
+      },
+      privacy: {
+        profileVisibility: user.profileVisibility,
+        showOnlineStatus: user.showOnlineStatus,
+        allowDirectMessages: user.allowDirectMessages,
+      },
+      appearance: {
+        theme: user.theme,
+      }
+    };
+
+    res.json({ success: true, data: settings });
+  } catch (error) {
+    console.error('Get settings error:', error);
+    res.status(500).json({ success: false, message: 'Error retrieving settings' });
+  }
+};
+
+const updateSettings = async (req, res) => {
+  try {
+    console.log('Updating settings...', req.body);
+    const { userId } = req.body;
+    const updates = req.body;
+    
+    if (!userId) {
+      console.log('No userId provided');
+      return res.status(400).json({ success: false, message: 'User ID is required' });
+    }
+    console.log('Found userId:', userId);
+
+    // Find the user
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Create an object to hold all updates
+    const updateData = {};
+
+    // Update profile settings
+    if (updates.profile) {
+      if (updates.profile.name) updateData.name = updates.profile.name;
+      if (updates.profile.email) updateData.email = updates.profile.email;
+      if (updates.profile.bio !== undefined) updateData.bio = updates.profile.bio;
+      if (updates.profile.timezone) updateData.timezone = updates.profile.timezone;
+    }
+    
+    // Update notification settings
+    if (updates.notifications) {
+      if (updates.notifications.emailNotifications !== undefined) {
+        updateData.emailNotifications = updates.notifications.emailNotifications;
+      }
+      if (updates.notifications.pushNotifications !== undefined) {
+        updateData.pushNotifications = updates.notifications.pushNotifications;
+      }
+      if (updates.notifications.meetingReminders !== undefined) {
+        updateData.meetingReminders = updates.notifications.meetingReminders;
+      }
+      if (updates.notifications.weeklyDigest !== undefined) {
+        updateData.weeklyDigest = updates.notifications.weeklyDigest;
+      }
+    }
+    
+    // Update privacy settings
+    if (updates.privacy) {
+      if (updates.privacy.profileVisibility) {
+        updateData.profileVisibility = updates.privacy.profileVisibility;
+      }
+      if (updates.privacy.showOnlineStatus !== undefined) {
+        updateData.showOnlineStatus = updates.privacy.showOnlineStatus;
+      }
+      if (updates.privacy.allowDirectMessages !== undefined) {
+        updateData.allowDirectMessages = updates.privacy.allowDirectMessages;
+      }
+    }
+    
+    // Update appearance settings
+    if (updates.appearance && updates.appearance.theme) {
+      updateData.theme = updates.appearance.theme;
+    }
+
+    // Apply all updates at once
+    await user.update(updateData);
+
+    // Get fresh user data for response
+    const updatedUser = await User.findByPk(userId);
+    const updatedSettings = {
+      profile: {
+        name: updatedUser.name,
+        email: updatedUser.email,
+        bio: updatedUser.bio,
+        timezone: updatedUser.timezone,
+      },
+      notifications: {
+        emailNotifications: updatedUser.emailNotifications,
+        pushNotifications: updatedUser.pushNotifications,
+        meetingReminders: updatedUser.meetingReminders,
+        weeklyDigest: updatedUser.weeklyDigest,
+      },
+      privacy: {
+        profileVisibility: updatedUser.profileVisibility,
+        showOnlineStatus: updatedUser.showOnlineStatus,
+        allowDirectMessages: updatedUser.allowDirectMessages,
+      },
+      appearance: {
+        theme: updatedUser.theme,
+      }
+    };
+
+    return res.json({ 
+      success: true, 
+      message: 'Settings updated successfully',
+      data: updatedSettings
+    });
+  } catch (error) {
+    console.error('Update settings error:', error);
+    return res.status(500).json({ success: false, message: 'Error updating settings' });
+  }
 };
 
 const validatePasswordStrength = (password) => {
@@ -230,5 +377,7 @@ const logoutUser = async (req, res) => {
 module.exports = {
   createUser,
   loginUser,
-  logoutUser
+  logoutUser,
+  getSettings,
+  updateSettings
 };

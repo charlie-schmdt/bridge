@@ -19,11 +19,13 @@
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.16.3",
     "pg-hstore": "^2.3.4",
+    "postgres": "^3.4.7",
+    "psql": "^0.0.1",
     "sequelize": "^6.35.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1",
-    "sequelize-cli": "^6.6.1"
+    "sequelize-cli": "^6.6.3"
   },
   "author": "BridgeMakers",
   "license": "ISC"

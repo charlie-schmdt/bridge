@@ -2,7 +2,9 @@ const express = require('express');
 const router = express.Router();
 
 // Import controllers
-const { createUser, loginUser } = require('../controllers/userController');
+const { createUser, loginUser, getSettings, updateSettings } = require('../controllers/userController');
+const { getWorkspaces, createWorkspace } = require('../controllers/workspaceController');
+const auth = require('../middleware/auth');
 
 // Basic routes
 router.get('/', (req, res) => {
@@ -12,10 +14,16 @@ router.get('/', (req, res) => {
     endpoints: [
       'POST /api/auth/register - Register new user',
       'POST /api/auth/login - Login user',
-      'GET /api/health - Health check'
+      'GET /api/health - Health check',
+      'GET /api/settings - Get user settings',
+      'PUT /api/settings - Update user settings'
     ]
   });
 });
+
+// Settings routes
+router.get('/settings', auth, getSettings);
+router.put('/settings', auth, updateSettings);
 
 // We can delete this later
 router.get('/health', (req, res) => {
@@ -29,5 +37,9 @@ router.get('/health', (req, res) => {
 // Authentication routes
 router.post('/auth/register', createUser);
 router.post('/auth/login', loginUser);
+
+// Workspace routes
+router.get('/workspaces/public', getWorkspaces);
+router.post('/workspaces', createWorkspace); // Removed auth middleware
 
 module.exports = router;

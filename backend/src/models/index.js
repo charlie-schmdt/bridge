@@ -11,7 +11,12 @@ const db = {
   sequelize,
   // Add your models here
   // Example: User: require('./User')(sequelize, Sequelize),
+  
 };
+
+// Association Models for later
+User.hasMany(Workspace, { foreignKey: 'ownerId' });
+Workspace.belongsTo(User, { foreignKey: 'ownerId' });
 
 // Sync all models with the database
 sequelize.sync()
