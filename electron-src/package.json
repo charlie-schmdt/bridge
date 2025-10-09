@@ -30,6 +30,7 @@
     "@heroui/react": "^2.8.2",
     "@radix-ui/react-switch": "^1.2.6",
     "@react-types/shared": "^3.32.0",
+    "@supabase/supabase-js": "^2.74.0",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.12",
     "init": "^0.1.2",

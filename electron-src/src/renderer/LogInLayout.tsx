@@ -1,7 +1,7 @@
-import React, { useState } from "react";
-import Header from "./components/Header";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from './contexts/AuthContext';
+import { useAuth } from "./contexts/AuthContext";
+import Header from "./components/Header";
 import Banner from "./components/Banner";
 
 const LogInLayout: React.FC = () => {
@@ -12,15 +12,24 @@ const LogInLayout: React.FC = () => {
     const [confirmPassword, setConfirmPassword] = useState("");
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    
     const navigate = useNavigate();
-    const { login } = useAuth();
+    const { loginManual, loginWithGoogle, register, isAuthenticated } = useAuth();
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            console.log('✅ User already authenticated, redirecting to main page');
+            navigate('/');
+        }
+    }, [isAuthenticated, navigate]);
 
 
+    // Manual form submission
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
         setIsLoading(true);
-
+        
         if (!email || !password || (!isLogin && !name)) {
             setError("Please fill in all required fields.");
             setIsLoading(false);
@@ -29,52 +38,44 @@ const LogInLayout: React.FC = () => {
 
         if (!isLogin && password !== confirmPassword) {
             setError("Passwords do not match.");
+            setIsLoading(false);
             return;
         }
         
         try {
-            const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-            const payload = isLogin 
-                ? { email, password }
-                : { email, password, name };
-
-            console.log('🔄 Attempting authentication:', { endpoint, email });
-
-            const response = await fetch(`http://localhost:50031${endpoint}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload),
-            });
-
-            const data = await response.json();
-            console.log('📡 Backend response:', data);
-
-            if (data.success) {
-                // Store token securely (we'll improve this later)
-                await login(data.data.token, data.data.user);
-                
-                console.log('✅ Authentication successful:', data.data.user.email);
-                // alert(`${isLogin ? 'Login' : 'Registration'} successful!`);
-
-                // Redirect to home page
-                navigate('/');
+            if (isLogin) {
+                await loginManual(email, password);
             } else {
-            if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
-                const errorMessage = `${data.message}:\n• ${data.errors.join('\n• ')}`;
-                setError(errorMessage);
-            } else {
-                setError(data.message || 'Authentication failed');
+                await register(email, password, name);
             }
-            }
-        } catch (error) {
-            console.error('❌ Authentication error:', error);
-            setError('Network error. Please make sure the backend is running.');
+            console.log('✅ Manual authentication successful');
+            navigate('/');
+        } catch (error: any) {
+            console.error('❌ Manual authentication failed:', error);
+            setError(error.message || 'Authentication failed');
         } finally {
             setIsLoading(false);
         }
     };
+
+    // Google OAuth
+const handleGoogleLogin = async () => {
+  try {
+    setError("");
+    setIsLoading(true);
+    console.log('🔄 Starting Google OAuth...');
+    
+    await loginWithGoogle();
+    
+    // Don't navigate here - the AuthContext will handle navigation after OAuth completes
+    console.log('✅ OAuth initiated, waiting for completion...');
+    
+  } catch (error: any) {
+    console.error('❌ Google OAuth failed:', error);
+    setError('Google login failed: ' + (error.message || 'Unknown error'));
+    setIsLoading(false);
+  }
+};
 
     return (
         <div>
@@ -83,6 +84,24 @@ const LogInLayout: React.FC = () => {
             <div style={styles.container}>
                 <div style={styles.formContainer}>
                     <h2>{isLogin ? "Log In" : "Create Account"}</h2>
+                    
+                    {/* OAuth Buttons */}
+                    <div style={styles.oauthSection}>
+                        <button
+                            type="button"
+                            onClick={handleGoogleLogin}
+                            style={styles.googleButton}
+                            disabled={isLoading}
+                        >
+                            {isLoading ? '🔄' : '🔍'} Continue with Google
+                        </button>
+                    </div>
+
+                    <div style={styles.divider}>
+                        <span>or</span>
+                    </div>
+
+                    {/* Manual Form */}
                     <form onSubmit={handleSubmit} style={styles.form}>
                         {!isLogin && (
                             <input
@@ -120,7 +139,9 @@ const LogInLayout: React.FC = () => {
                                 required
                             />
                         )}
+                        
                         {error && <div style={styles.error}>{error}</div>}
+                        
                         <button 
                             type="submit" 
                             style={{
@@ -133,6 +154,7 @@ const LogInLayout: React.FC = () => {
                             {isLoading ? 'Processing...' : (isLogin ? "Log In" : "Create Account")}
                         </button>
                     </form>
+
                     <div style={styles.toggle}>
                         {isLogin ? (
                             <>
@@ -168,7 +190,33 @@ const styles: { [key: string]: React.CSSProperties } = {
         padding: "2rem 2.5rem",
         borderRadius: "8px",
         boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
-        minWidth: "320px",
+        minWidth: "400px",
+        maxWidth: "500px",
+    },
+    oauthSection: {
+        marginBottom: "1rem",
+    },
+    googleButton: {
+        width: "100%",
+        padding: "0.75rem",
+        borderRadius: "4px",
+        border: "1px solid #dadce0",
+        background: "#fff",
+        color: "#3c4043",
+        fontSize: "14px",
+        fontWeight: "500",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "0.5rem",
+        transition: "background-color 0.2s",
+    },
+    divider: {
+        textAlign: "center",
+        margin: "1.5rem 0",
+        position: "relative",
+        color: "#666",
     },
     form: {
         display: "flex",
@@ -207,15 +255,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     },
     error: {
         color: "#d32f2f",
-        fontSize: "0.9rem",
+        fontSize: "0.95rem",
         marginBottom: "0.5rem",
-        textAlign: "left", 
+        textAlign: "center",
         backgroundColor: "#ffebee",
-        padding: "0.75rem",
+        padding: "0.5rem",
         borderRadius: "4px",
         border: "1px solid #ffcdd2",
-        whiteSpace: "pre-line",
-        fontFamily: "monospace", 
     },
 };
 

@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef } from 'react';
-import { VideoFeedContext } from './contexts/VideoFeedContext';
+import { useVideoFeedContext, VideoFeedContext } from './contexts/VideoFeedContext';
 import { v4 as uuid } from 'uuid';
 
 // TODO: move this into a separate types directory
@@ -26,7 +26,7 @@ interface IceCandidate {
 }
 
 export default function VideoFeed() {
-    const VF = useContext(VideoFeedContext);
+    const VF = useVideoFeedContext();
 
     const wsRef = useRef<WebSocket | null>(null);
     const pcRef = useRef<RTCPeerConnection | null>(null);

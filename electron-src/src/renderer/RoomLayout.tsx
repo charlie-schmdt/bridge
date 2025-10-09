@@ -6,16 +6,21 @@ import { useNavigate } from "react-router-dom";
 import back_button from "@assets/back-button.png"
 import {useVideoFeedContext, VideoFeedContext} from "./contexts/VideoFeedContext";
 import { VideoFeedType } from "./contexts/VideoFeedContext";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { VideoFeedProvider } from "./providers/VideoFeedProvider";
+import Chat from "./components/Chat";
 
   
   interface RoomLayoutProps{}
 
 export default function RoomLayout({}: RoomLayoutProps){  
-
+  const [isChatOpen, setIsChatOpen ] = useState(false);
+  const openChat = () => setIsChatOpen(true);
+  const closeChat = () => setIsChatOpen(false);
 
   const navigate = useNavigate();
+  
+  
   
 
 
@@ -37,12 +42,15 @@ export default function RoomLayout({}: RoomLayoutProps){
               </button>
           </header>
           <h1>Test Room</h1>
-          <VideoFeedProvider>
-              <VideoFeed />
-        
-            <CallSettingsFooter />
-          </VideoFeedProvider>
           
+          <VideoFeedProvider>
+            <div className="flex-1">
+              <VideoFeed />
+            </div>
+            <CallSettingsFooter onOpenChat={openChat} />
+            <Chat isOpen={isChatOpen} onClose={closeChat} />
+          </VideoFeedProvider>
+
           
       </CardBody>
     </Card>

@@ -2,15 +2,18 @@ import React, { useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import ProfileMenuButton from "./ProfileMenuButton";
 import mic from "@assets/microphone_active.png";
+import micOff from "@assets/microphone_inactive.png";
 import videopng from "@assets/video.png"
+import video_inactivepng from "@assets/video_inactive.png"
 import { VideoFeedProvider } from "../providers/VideoFeedProvider";
-import { VideoFeedContext } from "../contexts/VideoFeedContext";
+import { useVideoFeedContext, VideoFeedContext } from "../contexts/VideoFeedContext";
   
-interface CallSettingsFooterProps {}
 
-export function CallSettingsFooter({}: CallSettingsFooterProps) {
+
+
+export function CallSettingsFooter({ onOpenChat }) {
   const navigate = useNavigate();
-  const VF = useContext(VideoFeedContext);
+  const VF = useVideoFeedContext();
 
   return (
     <footer className="w-full bg-white shadow-sm px-6 py-4 flex justify-between items-center">
@@ -20,21 +23,22 @@ export function CallSettingsFooter({}: CallSettingsFooterProps) {
          * AUDIO & VIDEO CONTROLS 
          */}
          
-        <nav className="flex gap-4">
+        <div className="flex gap-4">
           <VideoFeedProvider>
-            <button 
-              className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer"
-              onClick={VF.toggleAudio}
-              >
-              <img src={mic} alt="App Icon" className="h-auto w-auto max-w-[32px] max-h-[32px]" />          
+            <button className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer"
+              onClick={VF.toggleAudio}>
+                
+              <img src={ VF.isAudioEnabled? mic : micOff} alt="App Icon" className="h-auto w-auto max-w-[32px] max-h-[32px]" />  
+
             </button>
+            
             <button className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer"
               onClick={VF.toggleVideo}
             >
-              <img src={videopng} alt="App Icon" className="h-auto w-auto max-w-[32px] max-h-[32px]" />          
+              <img src={VF.isVideoEnabled? videopng : video_inactivepng} alt="App Icon" className="h-auto w-auto max-w-[32px] max-h-[32px]" />          
             </button>
           </VideoFeedProvider>
-        </nav>
+        </div>
       </div>
 
       {/* user settings */}
@@ -42,7 +46,7 @@ export function CallSettingsFooter({}: CallSettingsFooterProps) {
         <button
           className="text-gray-500 hover:text-blue-600 cursor-pointer"
         >
-          filler
+          User Features Menu
         </button>
       </div>
 
@@ -51,8 +55,9 @@ export function CallSettingsFooter({}: CallSettingsFooterProps) {
       <div className="flex items-center gap-4">
         <button
           className="text-gray-500 hover:text-blue-600 cursor-pointer"
+          onClick={onOpenChat}
         >
-          filler
+          Chat
         </button>
       </div>
     </footer>

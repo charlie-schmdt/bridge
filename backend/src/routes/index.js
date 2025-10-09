@@ -2,7 +2,9 @@ const express = require('express');
 const router = express.Router();
 
 // Import controllers
-const { createUser, loginUser } = require('../controllers/userController');
+const { createUser, loginUser, oauthLogin, deleteAccount } = require('../controllers/userController');
+// Import middleware
+const { authenticateToken } = require('../middleware/auth');
 
 // Basic routes
 router.get('/', (req, res) => {
@@ -29,5 +31,9 @@ router.get('/health', (req, res) => {
 // Authentication routes
 router.post('/auth/register', createUser);
 router.post('/auth/login', loginUser);
+router.post('/auth/oauth', oauthLogin);
+
+// Protected routes (require authentication)
+router.delete('/auth/delete-account', authenticateToken, deleteAccount);
 
 module.exports = router;
