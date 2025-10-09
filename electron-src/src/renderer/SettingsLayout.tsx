@@ -10,6 +10,7 @@ import { Bell, User, Lock, Palette } from "lucide-react";
 import Banner from "./components/Banner";
 import Header from "./components/Header";
 import { useAuth } from "./contexts/AuthContext";
+import NotificationBanner from "./components/NotificationBanner";
 
 export function SettingsLayout() {
     const { user, logout } = useAuth();
