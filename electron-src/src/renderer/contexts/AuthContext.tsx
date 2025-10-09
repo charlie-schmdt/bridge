@@ -1,4 +1,13 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '../lib/supabase';
+
+// Add OAuth handler to window
+declare global {
+  interface Window {
+    processOAuthCallback: (fragment: string) => void;
+    handleOAuthSuccess: (tokens: any) => void;
+  }
+}
 
 interface User {
   id: string;
@@ -7,90 +16,300 @@ interface User {
   picture?: string;
   provider?: string;
   isVerified?: boolean;
+  createdAt?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  isLoading: boolean;
   login: (token: string, userData: User) => Promise<void>;
+  loginManual: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
+  register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
+  deleteAccount: (password?: string, reauthToken?: string) => Promise<void>;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkAuthStatus();
+    // Check for existing token on startup
+    const token = localStorage.getItem('bridge_token');
+    const userData = localStorage.getItem('bridge_user');
+    
+    if (token && userData) {
+      try {
+        setUser(JSON.parse(userData));
+      } catch (error) {
+        console.error('Error parsing stored user data:', error);
+        localStorage.removeItem('bridge_token');
+        localStorage.removeItem('bridge_user');
+      }
+    }
+
+    // Define OAuth success handler for Electron main process
+    window.handleOAuthSuccess = async (tokens: any) => {
+      console.log('🎉 OAuth success handler called with tokens:', tokens);
+      
+      try {
+        const providerToken = tokens.provider_token || tokens.access_token;
+        
+        if (providerToken) {
+          console.log('🔄 Getting user info from Google...');
+          
+          const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+            headers: {
+              Authorization: `Bearer ${providerToken}`
+            }
+          });
+          
+          if (userResponse.ok) {
+            const googleUser = await userResponse.json();
+            console.log('✅ Google user info:', googleUser);
+            
+            // Send to your backend
+            const response = await fetch('http://localhost:3000/api/auth/oauth', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                email: googleUser.email,
+                name: googleUser.name,
+                picture: googleUser.picture,
+                provider: 'google',
+                providerId: googleUser.id
+              }),
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+              console.log('✅ Backend OAuth processing successful');
+              await login(data.data.token, data.data.user);
+              
+              // Navigate to home
+              window.location.hash = '#/';
+              console.log('✅ User authenticated and redirected!');
+            } else {
+              console.error('❌ Backend OAuth failed:', data.message);
+            }
+          } else {
+            console.error('❌ Failed to get user info from Google');
+          }
+        } else {
+          console.error('❌ No provider token found');
+        }
+      } catch (error) {
+        console.error('❌ Error in OAuth success handler:', error);
+      }
+    };
+
+    setLoading(false);
   }, []);
 
-  const checkAuthStatus = async () => {
-    try {
-      console.log('🔍 Checking authentication status...');
+    const processOAuth = async (tokens: any) => {
+      console.log('🎉 Processing OAuth with tokens:', tokens);
       
-      const token = localStorage.getItem('bridge_token');
-      const userData = localStorage.getItem('bridge_user');
-      
-      if (token && userData) {
-        console.log('🔍 Token and user data found');
-        try {
-          const parsedUser = JSON.parse(userData);
-          setUser(parsedUser);
-          console.log('✅ User restored from storage:', parsedUser.email);
-        } catch (error) {
-          console.error('❌ Error parsing user data:', error);
-          localStorage.removeItem('bridge_token');
-          localStorage.removeItem('bridge_user');
+      try {
+        const providerToken = tokens.provider_token || tokens.access_token;
+        
+        if (!providerToken) {
+          console.error('❌ No provider token found in:', tokens);
+          return;
         }
-      } else {
-        console.log('🔍 No valid session found');
+
+        console.log('🔄 Getting user info from Google API...');
+        
+        const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+          headers: {
+            Authorization: `Bearer ${providerToken}`
+          }
+        });
+        
+        if (!userResponse.ok) {
+          console.error('❌ Failed to get user info from Google:', userResponse.status, userResponse.statusText);
+          return;
+        }
+
+        const googleUser = await userResponse.json();
+        console.log('✅ Got Google user info:', googleUser);
+        
+        // Send to your backend
+        console.log('🔄 Sending user data to backend...');
+        const response = await fetch('http://localhost:3000/api/auth/oauth', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: googleUser.email,
+            name: googleUser.name,
+            picture: googleUser.picture,
+            provider: 'google',
+            providerId: googleUser.id
+          }),
+        });
+
+        const data = await response.json();
+        console.log('📨 Backend response:', data);
+        
+        if (data.success) {
+          console.log('✅ Backend OAuth processing successful');
+          await login(data.data.token, data.data.user);
+          
+          // Navigate to home
+          console.log('🏠 Navigating to home...');
+          window.location.hash = '#/';
+          console.log('✅ OAuth flow completed successfully!');
+        } else {
+          console.error('❌ Backend OAuth failed:', data.message);
+        }
+        
+      } catch (error) {
+        console.error('❌ Error processing OAuth:', error);
       }
-    } catch (error) {
-      console.error('❌ Auth check failed:', error);
-      localStorage.removeItem('bridge_token');
-      localStorage.removeItem('bridge_user');
-    } finally {
-      console.log('🏁 Auth check complete');
-      setIsLoading(false);
+    };
+
+    // Set up OAuth callback functions on window
+    window.processOAuthCallback = async (fragment: string) => {
+      console.log('🔄 processOAuthCallback called with fragment');
+      
+      try {
+        const params = new URLSearchParams(fragment);
+        const tokens = {
+          access_token: params.get('access_token'),
+          provider_token: params.get('provider_token'),
+          refresh_token: params.get('refresh_token'),
+          expires_in: params.get('expires_in')
+        };
+        
+        console.log('📋 Parsed tokens from fragment:', tokens);
+        await processOAuth(tokens);
+      } catch (error) {
+        console.error('❌ Error in processOAuthCallback:', error);
+      }
+    };
+
+
+  const login = async (token: string, userData: User) => {
+    localStorage.setItem('bridge_token', token);
+    localStorage.setItem('bridge_user', JSON.stringify(userData));
+    setUser(userData);
+  };
+
+  const loginManual = async (email: string, password: string) => {
+    const response = await fetch('http://localhost:3000/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await response.json();
+    
+    if (data.success) {
+      await login(data.data.token, data.data.user);
+    } else {
+      throw new Error(data.message);
     }
   };
 
-  const login = async (token: string, userData: User) => {
-    try {
-      console.log('✅ Logging in user:', userData.email);
-      localStorage.setItem('bridge_token', token);
-      localStorage.setItem('bridge_user', JSON.stringify(userData));
-      setUser(userData);
-    } catch (error) {
-      console.error('❌ Login failed:', error);
+  const loginWithGoogle = async () => {
+    console.log('🔄 Starting Google OAuth...');
+    
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin, // This will trigger the navigation handler
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      }
+    });
+    
+    if (error) {
+      console.error('❌ OAuth error:', error);
       throw error;
     }
+    
+    console.log('✅ OAuth initiated');
   };
-  
+
+  const register = async (email: string, password: string, name: string) => {
+    const response = await fetch('http://localhost:3000/api/auth/register', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password, name }),
+    });
+
+    const data = await response.json();
+    
+    if (data.success) {
+      await login(data.data.token, data.data.user);
+    } else {
+      throw new Error(data.message);
+    }
+  };
+
   const logout = async () => {
     try {
-      console.log('👋 Logging out user');
       localStorage.removeItem('bridge_token');
       localStorage.removeItem('bridge_user');
       setUser(null);
+      await supabase.auth.signOut();
     } catch (error) {
       console.error('❌ Logout failed:', error);
     }
   };
 
-  const value = {
-    user,
-    isAuthenticated: !!user,
-    isLoading,
-    login,
-    logout
+  const deleteAccount = async (password?: string, reauthToken?: string) => {
+    const token = localStorage.getItem('bridge_token');
+    
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+
+    const response = await fetch('http://localhost:3000/api/auth/account', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ password, reauthToken }),
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      // Clear local storage and logout
+      await logout();
+    } else {
+      throw new Error(data.message || 'Failed to delete account');
+    }
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{
+      user,
+      isAuthenticated: !!user,
+      login,
+      loginManual,
+      loginWithGoogle,
+      register,
+      logout,
+      deleteAccount,
+      loading
+    }}>
       {children}
     </AuthContext.Provider>
   );

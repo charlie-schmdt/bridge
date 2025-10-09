@@ -9,8 +9,10 @@ import {
 import { Bell, User, Lock, Palette } from "lucide-react";
 import Banner from "./components/Banner";
 import Header from "./components/Header";
+import { useAuth } from "./contexts/AuthContext";
 
 export function SettingsLayout() {
+  const { user, logout } = useAuth();
 
   {/* TO DO - Fetch from backend*/ }
   /*const [profile, setProfile] = useState({
@@ -114,6 +116,81 @@ const updateSettings = async (section: string, data: any) => {
 useEffect(() => {
   getSettings();
 }, []);
+
+  const [showDeleteForm, setShowDeleteForm] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteStep, setDeleteStep] = useState(1);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
+  const isOAuthUser = user?.provider === 'google';
+  
+  const handleStartDelete = () => {
+    setShowDeleteForm(true);
+    setDeleteStep(isOAuthUser ? 2 : 1);
+    setDeletePassword('');
+    setDeleteConfirmText('');
+    setDeleteError('');
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteForm(false);
+    setDeleteStep(isOAuthUser ? 2 : 1);
+    setDeletePassword('');
+    setDeleteConfirmText('');
+    setDeleteError('');
+    setIsDeleting(false);
+  };
+
+  const handlePasswordNext = () => {
+    if (!deletePassword.trim()) {
+      setDeleteError('Please enter your password');
+      return;
+    }
+    setDeleteStep(2);
+    setDeleteError('');
+  };
+
+  const handleFinalDelete = async () => {
+    if (deleteConfirmText !== 'DELETE') {
+      setDeleteError('You must type "DELETE" exactly');
+      return;
+    }
+
+    setIsDeleting(true);
+    setDeleteError('');
+
+    try {
+      const token = localStorage.getItem('bridge_token');
+      
+      const requestBody = isOAuthUser ? {} : { password: deletePassword };
+      
+      const response = await fetch('http://localhost:3000/api/auth/delete-account', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        await logout();
+        window.location.hash = '#/login';
+      } else {
+        setDeleteError(data.message || 'Failed to delete account');
+      }
+
+    } catch (error) {
+      console.error('Delete account error:', error);
+      setDeleteError('Failed to delete account. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
 
@@ -236,34 +313,159 @@ useEffect(() => {
                   </Select>
                 </div>
 
-               <div className="flex justify-between items-center w-full pt-4"> 
-        
-                {/* 1. DELETE ACCOUNT BUTTON (Left Side) */}
-                <Button
-                  size="md"
-                  className="h-9 px-4 text-sm font-medium bg-white shadow-lg border border-neutral-200 rounded-lg bg-white w-fit inline-flex self-start rounded-lg py-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-                  fullWidth={false}
-                  onClick={() => {
-                      // 💡 Use window.confirm() to show the browser's native dialog
-                      const isConfirmed = window.confirm(
-                          "Are you sure you want to delete your account? This action is permanent."
-                      );
-                      
-                      if (isConfirmed) {
-                          // Put your actual delete logic here
-                          console.log("Account Deletion Confirmed and Initiated!"); 
-                          // navigate("/goodbye-page");
-                      } else {
-                          console.log("Deletion cancelled.");
-                      }
-                  }}
-              >
-                  Delete Account
-              </Button>
+                {/* DELETE ACCOUNT SECTION */}
+                <div className="border-t border-red-200 bg-red-50 p-4 rounded-lg mt-6">
+                  <div className="mb-4">
+                    <h3 className="text-lg font-semibold text-red-800 mb-2">Delete Account</h3>
+                    <p className="text-sm text-red-700 mb-4">
+                      This will permanently delete your account and all data. This action cannot be undone.
+                    </p>
+                  </div>
 
-                {/* 2. SAVE CHANGES BUTTON (Right Side) */}
-                {/* Note: Removed the wrapping div from your previous example */}
-                <Button
+                  {!showDeleteForm ? (
+                    <Button
+                      size="md"
+                      className="h-9 px-4 text-sm font-medium shadow-lg border border-red-300 rounded-lg bg-white text-red-600 hover:text-red-700 hover:bg-red-100"
+                      fullWidth={false}
+                      onPress={handleStartDelete}
+                    >
+                      Delete Account
+                    </Button>
+                  ) : (
+                    // Inline delete form (GitHub/AWS style)
+                    <div className="space-y-4 bg-white p-4 rounded-lg border border-red-300">
+                      {deleteStep === 1 && !isOAuthUser ? (
+                        // Step 1: Password verification (only for password users)
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                            <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">Step 1</span>
+                            Verify your identity
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">Current Password</label>
+                            <Input
+                              type="password"
+                              placeholder="Enter your current password"
+                              value={deletePassword}
+                              onChange={(e) => setDeletePassword(e.target.value)}
+                              isDisabled={isDeleting}
+                              size="sm"
+                              classNames={{
+                                inputWrapper: "border border-gray-300"
+                              }}
+                            />
+                            <p className="text-xs text-gray-500">
+                              Enter your current account password to verify your identity
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="bordered"
+                              onPress={handleCancelDelete}
+                              isDisabled={isDeleting}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              size="sm"
+                              color="primary"
+                              onPress={handlePasswordNext}
+                              isDisabled={isDeleting || !deletePassword.trim()}
+                            >
+                              Continue
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        // Step 2: Final confirmation (or only step for OAuth users)
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                            {isOAuthUser ? (
+                              <>
+                                <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">OAuth User</span>
+                                Confirm deletion
+                              </>
+                            ) : (
+                              <>
+                                <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs">Step 2</span>
+                                Final confirmation
+                              </>
+                            )}
+                          </div>
+                          
+                          {isOAuthUser && (
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                              <p className="text-sm text-blue-800">
+                                <strong>OAuth Account:</strong> You're signed in with Google, so no password verification is needed.
+                              </p>
+                            </div>
+                          )}
+                          
+                          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                            <p className="text-sm text-red-800 font-medium">
+                              This action cannot be undone. All your data will be permanently deleted.
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">
+                              Type "DELETE" to confirm
+                            </label>
+                            <Input
+                              placeholder='Type "DELETE" to confirm'
+                              value={deleteConfirmText}
+                              onChange={(e) => setDeleteConfirmText(e.target.value)}
+                              isDisabled={isDeleting}
+                              size="sm"
+                              classNames={{
+                                inputWrapper: "border border-gray-300"
+                              }}
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            {!isOAuthUser && (
+                              <Button
+                                size="sm"
+                                variant="bordered"
+                                onPress={() => setDeleteStep(1)}
+                                isDisabled={isDeleting}
+                              >
+                                Back
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="bordered"
+                              onPress={handleCancelDelete}
+                              isDisabled={isDeleting}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              size="sm"
+                              color="danger"
+                              onPress={handleFinalDelete}
+                              isLoading={isDeleting}
+                              isDisabled={deleteConfirmText !== 'DELETE'}
+                            >
+                              {isDeleting ? "Deleting..." : "Delete Account"}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {deleteError && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                          <p className="text-sm text-red-600">{deleteError}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* SAVE CHANGES BUTTON */}
+                <div className="flex justify-end w-full">
+                  <Button
                     color="primary"
                     size="md"
                     className="h-9 px-4 text-sm font-medium shadow-sm w-fit inline-flex self-start rounded-lg bg-blue-600 text-white py-2"
