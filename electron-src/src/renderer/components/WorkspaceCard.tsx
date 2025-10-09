@@ -1,7 +1,14 @@
 import { useNavigate } from "react-router-dom";
 import { MdClass } from "react-icons/md"; // Example: using react-icons
 
-export default function WorkspaceCard({ title, description, nextMeeting, members }) {
+interface WorkspaceCardProps {
+  title: string;
+  description: string;
+  nextMeeting?: string;
+  members: number;
+}
+
+export default function WorkspaceCard({ title, description, nextMeeting, members }: WorkspaceCardProps) {
   const navigate = useNavigate();
 
   const handleEnter = () => {

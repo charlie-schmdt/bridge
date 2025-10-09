@@ -1,11 +1,19 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+// Basic auth middleware that just passes through
+const auth = async (req, res, next) => {
+  // Just pass through for now
+  next();
+};
+
 const authenticateToken = async (req, res, next) => {
   try {
     // Get token from Authorization header
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    console.log(authHeader);
+    console.log(token);
 
     if (!token) {
       return res.status(401).json({
@@ -16,7 +24,7 @@ const authenticateToken = async (req, res, next) => {
 
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
+    console.log('\n\nDecoded token:', decoded);
     // Find user
     const user = await User.findByPk(decoded.userId);
     if (!user) {
@@ -55,5 +63,6 @@ const authenticateToken = async (req, res, next) => {
 };
 
 module.exports = {
+  auth,
   authenticateToken
 };

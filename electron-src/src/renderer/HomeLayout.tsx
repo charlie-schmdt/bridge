@@ -6,19 +6,52 @@ import NotificationBanner from "./components/NotificationBanner";
 import CreateWorkspaceCard from "./components/CreateWorskpaceCard";
 import Banner from "./components/Banner";
 import { VideoFeedProvider } from "./providers/VideoFeedProvider";
-import { useContext } from "react";
+import { useContext, useEffect, useState } from "react";
 import { VideoFeedContext } from "./contexts/VideoFeedContext";
 
-// REMOVE the AuthContext import for now - let's test basic console first
-// import { useAuth } from './contexts/AuthContext';
-
+interface Workspace {
+  id: number;          // Changed from string to number since workspace_id is BIGINT
+  name: string | null; // Made nullable to match database
+  description: string | null;
+  isPrivate: boolean;
+  authorizedUsers: string[];
+  ownerId: string;     // UUID from owner_real_id
+  createdAt: string;   // created_at timestamp
+}
 
 export const homeLoader = async () => {
   return { message: "Home Page" };
 }
 
 export const HomeLayout = () => {
-  console.log('🟢 BASIC TEST: HomeLayout component rendering');
+  const [publicWorkspaces, setPublicWorkspaces] = useState<Workspace[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchPublicWorkspaces = async () => {
+      try {
+        const response = await fetch('http://localhost:3000/api/workspaces/public', {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch public workspaces');
+        }
+
+        const data = await response.json();
+        setPublicWorkspaces(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch public workspaces');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPublicWorkspaces();
+  }, []);
 
 
   return (
@@ -55,14 +88,29 @@ export const HomeLayout = () => {
           </section>
 
           {/* Joinable Workspaces (below) */}
-        <section className="col-span-full w-full"> {/* guarantees full width even if a parent is grid */}
+        <section className="col-span-full w-full">
           <div className="mb-6">
             <h2 className="text-3xl font-bold text-gray-900">Joinable Workspaces</h2>
             <p className="mt-2 text-gray-600 text-lg">
               Discover and join workspaces that are open for collaboration.
             </p>
           </div>
-          {/* Cards go here! */}
+          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {loading ? (
+              <div className="col-span-full text-center">Loading public workspaces...</div>
+            ) : error ? (
+              <div className="col-span-full text-center text-red-600">{error}</div>
+            ) : (
+              publicWorkspaces.map((workspace) => (
+                <WorkspaceCard
+                  key={workspace.id}
+                  title={workspace.name}
+                  description={workspace.description}
+                  members={workspace.authorizedUsers.length}
+                />
+              ))
+            )}
+          </div>
         </section>
     </div>
     </Card >

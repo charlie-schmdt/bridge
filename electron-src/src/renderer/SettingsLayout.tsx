@@ -1,5 +1,5 @@
 // src/pages/SettingsLayout.tsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Tabs, Tab,
   Card, CardHeader, CardBody,
@@ -10,17 +10,27 @@ import { Bell, User, Lock, Palette } from "lucide-react";
 import Banner from "./components/Banner";
 import Header from "./components/Header";
 import { useAuth } from "./contexts/AuthContext";
+import { useAuth } from "./contexts/AuthContext";
 
 export function SettingsLayout() {
   const { user, logout } = useAuth();
+  const { user, logout } = useAuth();
 
   {/* TO DO - Fetch from backend*/ }
-  const [profile, setProfile] = useState({
+  /*const [profile, setProfile] = useState({
     name: "Gang Violence",
     email: "user@purdue.edu",
     bio: "professional meower for hire",
     timezone: "UTC-8",
+  });*/
+  
+  const [profile, setProfile] = useState({
+    name: "",
+    email: "",
+    bio: "",
+    timezone: "UTC-8",
   });
+  
 
   const [notifications, setNotifications] = useState({
     emailNotifications: true,
@@ -34,6 +44,80 @@ export function SettingsLayout() {
     showOnlineStatus: true,
     allowDirectMessages: true,
   });
+
+  // Retrieve user settings from backend 
+  const getSettings = async () => {
+    try {
+      console.log('Fetching settings...');
+      const userData = localStorage.getItem('bridge_user');
+      if (!userData) {
+        console.error('No user data found');
+        return;
+      }
+      const user = JSON.parse(userData);
+      console.log('User ID:', user.id);
+      const response = await fetch(`http://localhost:3000/api/settings?userId=${user.id}`, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log('Response:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Data:', data);
+      if (data.success) {
+        setProfile(data.data.profile);
+        setNotifications(data.data.notifications);
+        setPrivacy(data.data.privacy);
+      }
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+    }
+  };
+
+const updateSettings = async (section: string, data: any) => {
+  try {
+    console.log(`Updating ${section}...`, data);
+    const userData = localStorage.getItem('bridge_user');
+    if (!userData) {
+      console.error('No user data found');
+      return;
+    }
+    const user = JSON.parse(userData);
+
+    const response = await fetch('http://localhost:3000/api/settings', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        userId: user.id,
+        [section]: data 
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result = await response.json();
+    if (result.success) {
+      console.log(`${section} updated successfully`);
+      // Refresh the settings
+      await getSettings();
+    }
+  } catch (error) {
+    console.error(`Error updating ${section}:`, error);
+  }
+};
+
+useEffect(() => {
+  getSettings();
+}, []);
 
   const [showDeleteForm, setShowDeleteForm] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
@@ -388,10 +472,16 @@ export function SettingsLayout() {
                     size="md"
                     className="h-9 px-4 text-sm font-medium shadow-sm w-fit inline-flex self-start rounded-lg bg-blue-600 text-white py-2"
                     fullWidth={false}
-                  >
-                    Save Changes
-                  </Button>
-                </div>
+                    onClick={() => updateSettings('profile', {
+                      name: profile.name,
+                      email: profile.email,
+                      bio: profile.bio,
+                      timezone: profile.timezone
+                    })}
+                >
+                    Save Appearance Settings
+                </Button>
+            </div>
               </CardBody>
             </Card>
           </Tab>
@@ -444,6 +534,7 @@ export function SettingsLayout() {
                     size="md"
                     className="h-9 px-4 text-sm font-medium shadow-sm w-fit inline-flex self-start rounded-lg bg-blue-600 text-white py-2"
                     fullWidth={false}
+                    onClick={() => updateSettings('notifications', notifications)}
                   >
                     Save Preferences
                 </Button>
@@ -511,6 +602,7 @@ export function SettingsLayout() {
                   size="md"
                   className="h-9 px-4 text-sm font-medium shadow-sm w-fit inline-flex self-start rounded-lg bg-blue-600 text-white py-2"
                   fullWidth={false}
+                  onClick={() => updateSettings('privacy', privacy)}
                 >
                   Update Privacy Settings
                 </Button>
@@ -561,6 +653,9 @@ export function SettingsLayout() {
                   size="md"
                   className="h-9 px-4 text-sm font-medium shadow-sm w-fit inline-flex self-start rounded-lg bg-blue-600 text-white py-2"
                   fullWidth={false}
+                  onClick={() => updateSettings('appearance', {
+                    theme: 'system' // You might want to add a state for this
+                  })}
                 >
                   Save Appearance Settings
                 </Button>
