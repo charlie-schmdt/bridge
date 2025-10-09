@@ -13,6 +13,7 @@ type SignalMessageType string
 
 const (
 	SignalMessageTypeJoin        SignalMessageType = "join"
+	SignalMessageTypeExit        SignalMessageType = "exit"
 	SignalMessageTypeOffer       SignalMessageType = "offer"
 	SignalMessageTypeAnswer      SignalMessageType = "answer"
 	SignalMessageTypeCandidate   SignalMessageType = "candidate"

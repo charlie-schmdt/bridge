@@ -60,6 +60,12 @@ func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
 				panic(fmt.Sprintf("failed to add PeerConnection to router: %v", err))
 			}
 
+		case signaling.SignalMessageTypeExit:
+			fmt.Println("Message type exit receiver")
+			// Unregister the client
+			// TODO: Handle room-based exits, return error to client??
+			sess.handleExit(msg.ClientID)
+
 		case signaling.SignalMessageTypeOffer:
 			var offer signaling.SdpOffer
 			if err := json.Unmarshal(msg.Payload, &offer); err != nil {
@@ -144,6 +150,15 @@ func (s *session) handleJoin(writer Writer, id string) (*webrtc.PeerConnection, 
 	return pc, nil
 }
 
+func (s *session) handleExit(id string) {
+	err := s.router.RemovePeerConnection(id)
+	if err != nil {
+		fmt.Printf("Error removing connection %s: %v\n", id, err)
+	} else {
+		fmt.Printf("Connection %s removed successfully\n", id)
+	}
+}
+
 func (s *session) handleOffer(writer Writer, id string, offer *signaling.SdpOffer) (*webrtc.PeerConnection, error) {
 	// Create a new PeerConnection
 	config := webrtc.Configuration{}
@@ -226,6 +241,7 @@ func (s *session) registerConnectionHandlers(id string, pc *webrtc.PeerConnectio
 			// ICE connection is ready, wait for data channels
 			fmt.Println("ICE connection is ready")
 		} else {
+			// TODO: implement reconnection attempt on disconnect, then cleanup PeerConnection on failure
 			fmt.Println("ICE connection state change: ", state)
 		}
 	})
@@ -245,6 +261,8 @@ func (s *session) registerConnectionHandlers(id string, pc *webrtc.PeerConnectio
 					if err != nil {
 						panic(fmt.Sprintf("failed to forward video track: %v", err))
 					}
+				} else {
+					fmt.Println("Received non-video track")
 				}
 				// TODO: handle audio track
 

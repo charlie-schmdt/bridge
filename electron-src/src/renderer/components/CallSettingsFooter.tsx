@@ -24,20 +24,18 @@ export function CallSettingsFooter({ onOpenChat }) {
          */}
          
         <div className="flex gap-4">
-          <VideoFeedProvider>
-            <button className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer"
-              onClick={VF.toggleAudio}>
-                
-              <img src={ VF.isAudioEnabled? mic : micOff} alt="App Icon" className="h-auto w-auto max-w-[32px] max-h-[32px]" />  
+          <button className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer"
+            onClick={VF.toggleAudio}>
+              
+            <img src={ VF.isAudioEnabled? mic : micOff} alt="App Icon" className="h-auto w-auto max-w-[32px] max-h-[32px]" />  
 
-            </button>
-            
-            <button className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer"
-              onClick={VF.toggleVideo}
-            >
-              <img src={VF.isVideoEnabled? videopng : video_inactivepng} alt="App Icon" className="h-auto w-auto max-w-[32px] max-h-[32px]" />          
-            </button>
-          </VideoFeedProvider>
+          </button>
+          
+          <button className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer"
+            onClick={VF.toggleVideo}
+          >
+            <img src={VF.isVideoEnabled? videopng : video_inactivepng} alt="App Icon" className="h-auto w-auto max-w-[32px] max-h-[32px]" />          
+          </button>
         </div>
       </div>
 
