@@ -127,46 +127,6 @@ export default function VideoFeed() {
 
         exitedRef.current = false;
 
-        // Register a new message handler for the websocket that includes WebRTC messages
-        ws.onmessage = async (event: MessageEvent) => {
-            const pc = pcRef.current;
-            if (!pc) return;
-
-            console.log("Message received (call active): " + event.data);
-            const msg: SignalMessage = JSON.parse(event.data);
-            console.log("msg: ", msg)
-
-            switch (msg.type) {
-                case "offer":
-                    const offer = msg.payload as SdpOffer;
-                    pc.setRemoteDescription(new RTCSessionDescription({type: "offer", sdp: offer.sdp}));
-                    pc.createAnswer().then((answer) => {
-                        pc.setLocalDescription(answer).then(() => {
-                            if (!pc.localDescription) return;
-                            const answerMessage: SignalMessage = {
-                                type: "answer",
-                                clientId: clientId.current,
-                                payload: pc.localDescription,
-                            }
-                            wsRef.current?.send(JSON.stringify(answerMessage));
-                        })
-                    })
-                    break;
-                case "answer":
-                    const answer = msg.payload as SdpAnswer;
-                    pc.setRemoteDescription(new RTCSessionDescription({type: "answer", sdp: answer.sdp}));
-                    break;
-                case "candidate":
-                    const candidate = msg.payload as IceCandidate;
-                    pc.addIceCandidate(new RTCIceCandidate(candidate));
-                    console.log("New ice candidate: ", candidate)
-                    break;
-                default:
-                    console.log("Unknown message type:", msg.type);
-                    break;
-            }
-        }
-
         // Initiation PeerConnection with websocket signaling server
         const pc = new RTCPeerConnection({
             iceServers: [
@@ -180,13 +140,6 @@ export default function VideoFeed() {
         // Add local tracks
         pc.addTrack(stream.getVideoTracks()[0], stream) // Also add audio track when available
         
-        // Handle remote tracks
-        pc.ontrack = (event: RTCTrackEvent) => {
-            if (remoteVideoRef.current) {
-                remoteVideoRef.current.srcObject = event.streams[0];
-            }
-        }
-
         // Send local ICE candidates through web socket
         pc.onicecandidate = (event: RTCPeerConnectionIceEvent) => {
             if (event.candidate) {
@@ -209,20 +162,58 @@ export default function VideoFeed() {
             }
         }
 
+        // Accept incoming track
+        pc.ontrack = (event: RTCTrackEvent) => {
+            console.log("Got remote track: ", event);
+            if (remoteVideoRef.current) {
+                remoteVideoRef.current.srcObject = event.streams[0];
+                remoteVideoRef.current.play()
+            }
+        }
+
+        // Register a new message handler for the websocket that includes WebRTC messages
+        ws.onmessage = async (event: MessageEvent) => {
+            const pc = pcRef.current;
+            if (!pc) return;
+
+            console.log("Message received (call active): " + event.data);
+            const msg: SignalMessage = JSON.parse(event.data);
+            console.log("msg: ", msg)
+
+            switch (msg.type) {
+                case "offer":
+                    const offer = msg.payload as SdpOffer;
+                    pc.setRemoteDescription(new RTCSessionDescription({type: "offer", sdp: offer.sdp}));
+                    const ans = await pc.createAnswer();
+                    await pc.setLocalDescription(ans);
+                    const answerMessage: SignalMessage = {
+                        type: "answer",
+                        clientId: clientId.current,
+                        payload: pc.localDescription,
+                    }
+                    wsRef.current?.send(JSON.stringify(answerMessage));
+                    break;
+                case "answer":
+                    const answer = msg.payload as SdpAnswer;
+                    await pc.setRemoteDescription(new RTCSessionDescription({type: "answer", sdp: answer.sdp}));
+                    break;
+                case "candidate":
+                    const candidate = msg.payload as IceCandidate;
+                    pc.addIceCandidate(new RTCIceCandidate(candidate));
+                    console.log("New ice candidate: ", candidate)
+                    break;
+                default:
+                    console.log("Unknown message type:", msg.type);
+                    break;
+            }
+        }
+
         // Send join message
         const joinMessage: SignalMessage = {
             type: "join",
             clientId: clientId.current,
         }
         wsRef.current?.send(JSON.stringify(joinMessage));
-
-        // Accept incoming track
-        pc.ontrack = (event: RTCTrackEvent) => {
-            console.log("Got remote track: ", event);
-            if (remoteVideoRef.current) {
-                remoteVideoRef.current.srcObject = event.streams[0];
-            }
-        }
     }
 
     const exitRoom = async () => {

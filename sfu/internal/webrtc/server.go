@@ -120,33 +120,33 @@ func (s *session) handleJoin(writer Writer, id string) (*webrtc.PeerConnection, 
 		return nil, fmt.Errorf("failed to create PeerConnection: %w", err)
 	}
 
-	for range 1 {
-		pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo, webrtc.RTPTransceiverInit{
-			Direction: webrtc.RTPTransceiverDirectionSendonly,
-		})
-	}
+	//for range 1 {
+	//	pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo, webrtc.RTPTransceiverInit{
+	//		Direction: webrtc.RTPTransceiverDirectionSendonly,
+	//	})
+	//}
 	pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo, webrtc.RTPTransceiverInit{
 		Direction: webrtc.RTPTransceiverDirectionRecvonly,
 	})
 
-	offer, err := pc.CreateOffer(nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create offer: %w", err)
-	}
+	//offer, err := pc.CreateOffer(nil)
+	//if err != nil {
+	//	return nil, fmt.Errorf("failed to create offer: %w", err)
+	//}
 
-	err = pc.SetLocalDescription(offer)
-	if err != nil {
-		return nil, fmt.Errorf("failed to set local description: %w", err)
-	}
+	//err = pc.SetLocalDescription(offer)
+	//if err != nil {
+	//	return nil, fmt.Errorf("failed to set local description: %w", err)
+	//}
 
 	s.registerConnectionHandlers(id, pc)
 
-	payload, _ := json.Marshal(signaling.SdpOffer{SDP: offer.SDP})
-	writer.WriteJSON(signaling.SignalMessage{
-		Type:     signaling.SignalMessageTypeOffer,
-		ClientID: id,
-		Payload:  payload,
-	})
+	//payload, _ := json.Marshal(signaling.SdpOffer{SDP: offer.SDP})
+	//writer.WriteJSON(signaling.SignalMessage{
+	//	Type:     signaling.SignalMessageTypeOffer,
+	//	ClientID: id,
+	//	Payload:  payload,
+	//})
 	return pc, nil
 }
 
@@ -227,6 +227,29 @@ func (s *session) handleAnswer(id string, answer *signaling.SdpAnswer) error {
 }
 
 func (s *session) registerConnectionHandlers(id string, pc *webrtc.PeerConnection) {
+	// Register negotiation needed
+	pc.OnNegotiationNeeded(func() {
+		fmt.Println("Negotiation needed for client " + id)
+		offer, err := pc.CreateOffer(nil)
+		if err != nil {
+			fmt.Printf("Failed to create offer: %v\n", err)
+			return
+		}
+
+		err = pc.SetLocalDescription(offer)
+		if err != nil {
+			fmt.Printf("Failed to set local description: %v\n", err)
+			return
+		}
+
+		payload, _ := json.Marshal(signaling.SdpOffer{SDP: offer.SDP})
+		s.writer.WriteJSON(signaling.SignalMessage{
+			Type:     signaling.SignalMessageTypeOffer,
+			ClientID: id,
+			Payload:  payload,
+		})
+	})
+
 	// Register the ICE candidate handler
 	pc.OnICECandidate(func(c *webrtc.ICECandidate) {
 		if c == nil {

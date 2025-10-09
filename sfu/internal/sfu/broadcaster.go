@@ -40,7 +40,15 @@ func (b *defaultBroadcaster) AddSink(id string, pc *webrtc.PeerConnection) {
 	if err != nil {
 		fmt.Printf("failed to create local track: %s", err)
 	}
-	pc.GetTransceivers()[0].Sender().ReplaceTrack(localTrack)
+	//var sender *webrtc.RTPSender
+	//for _, transceiver := range pc.GetTransceivers() {
+	//	if transceiver.Direction() == webrtc.RTPTransceiverDirectionSendonly {
+	//		sender = transceiver.Sender()
+	//		break
+	//	}
+	//}
+	//sender.ReplaceTrack(localTrack)
+	_, err = pc.AddTrack(localTrack)
 	fmt.Println("Track added for id: ", id)
 	if err != nil {
 		fmt.Printf("failed to add track to PeerConnection: %s", err)
