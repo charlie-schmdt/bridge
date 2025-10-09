@@ -3,7 +3,7 @@ const Workspace = require('../models/Workspaces');
 const User = require('../models/User');
 
 const generateToken = (userID) => {
-  return jwt.sign({ id: userID }, process.env.JWT_SECRET, { expiresIn: '1h' });
+  return jwt.sign({ userID }, process.env.JWT_SECRET, { expiresIn: '1h' });
 };
 
 const getWorkspaces = async (req, res) => {

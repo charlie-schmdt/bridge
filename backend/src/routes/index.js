@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 
 // Import controllers
-const { createUser, loginUser, getSettings, updateSettings } = require('../controllers/userController');
+const { createUser, loginUser, getSettings, updateSettings, oauthLogin, deleteAccount } = require('../controllers/userController');
 const { getWorkspaces, createWorkspace } = require('../controllers/workspaceController');
-const auth = require('../middleware/auth');
+// Import middleware
+const { auth, authenticateToken } = require('../middleware/auth');
 
 // Basic routes
 router.get('/', (req, res) => {
@@ -41,5 +42,9 @@ router.post('/auth/login', loginUser);
 // Workspace routes
 router.get('/workspaces/public', getWorkspaces);
 router.post('/workspaces', createWorkspace); // Removed auth middleware
+router.post('/auth/oauth', oauthLogin);
+
+// Protected routes (require authentication)
+router.delete('/auth/delete-account', authenticateToken, deleteAccount);
 
 module.exports = router;

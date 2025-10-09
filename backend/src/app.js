@@ -3,6 +3,10 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const { sequelize, testConnection } = require('./config/database');
+const sfuClient = require('./services/sfuClient');
+const signalingSocket = require('./websocket/signalingSocket');
+const http = require('http');
+const ws = require('ws');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,6 +27,18 @@ testConnection();
 // Routes
 const routes = require('./routes');
 app.use('/api', routes);
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
+
 
 // Basic root route
 app.get('/', (req, res) => {
@@ -51,8 +67,15 @@ app.use('*', (req, res) => {
   });
 });
 
+
+
+const server = http.createServer(app);
+const wss = new ws.WebSocketServer({ server, path: '/ws' });
+sfuClient.initSfuConnection();
+signalingSocket.initSignalingSocket(wss);
+
 // Start server
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
 });
 
