@@ -10,11 +10,9 @@ import { Bell, User, Lock, Palette } from "lucide-react";
 import Banner from "./components/Banner";
 import Header from "./components/Header";
 import { useAuth } from "./contexts/AuthContext";
-import { useAuth } from "./contexts/AuthContext";
 
 export function SettingsLayout() {
-  const { user, logout } = useAuth();
-  const { user, logout } = useAuth();
+    const { user, logout } = useAuth();
 
   {/* TO DO - Fetch from backend*/ }
   /*const [profile, setProfile] = useState({
