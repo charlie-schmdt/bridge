@@ -10,10 +10,9 @@ import { Bell, User, Lock, Palette } from "lucide-react";
 import Banner from "./components/Banner";
 import Header from "./components/Header";
 import { useAuth } from "./contexts/AuthContext";
-import { useAuth } from "./contexts/AuthContext";
+import NotificationBanner from "./components/NotificationBanner";
 
 export function SettingsLayout() {
-  const { user, logout } = useAuth();
   const { user, logout } = useAuth();
 
   {/* TO DO - Fetch from backend*/ }
@@ -107,6 +106,9 @@ const updateSettings = async (section: string, data: any) => {
     const result = await response.json();
     if (result.success) {
       console.log(`${section} updated successfully`);
+      // Show success banner
+      setShowNotification(true);
+      setTimeout(() => setShowNotification(false), 3000);
       // Refresh the settings
       await getSettings();
     }
@@ -125,6 +127,7 @@ useEffect(() => {
   const [deleteStep, setDeleteStep] = useState(1);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [showNotification, setShowNotification] = useState(false);
 
   const isOAuthUser = user?.provider === 'google';
   
@@ -202,6 +205,12 @@ useEffect(() => {
         title="Settings"
         subtitle="Manage your account and preferences"
       />
+      {/* Notification Banner */}
+      {showNotification && (
+        <div className="fixed top-20 right-4 z-[9999]">
+          <NotificationBanner message="Settings Updated! 🎉" type="success" />
+        </div>
+      )}
 
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -690,3 +699,4 @@ const SettingRow = ({ title, description, isSelected, onChange }: SettingRowProp
     </div>
   );
 };
+

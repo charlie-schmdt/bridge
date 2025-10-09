@@ -215,7 +215,7 @@ export default function CreateWorkspaceCard() {
 
       {/* Notification Banner */}
       {showNotification && (
-        <div className="fixed bottom-4 right-4 z-[9999]">
+        <div className="fixed top-20 right-4 z-[9999]">
           <NotificationBanner message="Workspace created successfully! 🎉" type="created" />
         </div>
       )}
