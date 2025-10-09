@@ -40,6 +40,15 @@ func (r *defaultRouter) AddPeerConnection(id string, pc *webrtc.PeerConnection) 
 	if _, exists := r.connections[id]; exists {
 		fmt.Printf("PeerConnection with id %s already exists, replacing PeerConnection\n", id)
 	}
+	// If peer is present already, add the track
+	if len(r.connections) > 0 {
+		// Add peer to the new PeerConnection
+		for rid, broadcaster := range r.broadcasters {
+			if rid != id {
+				broadcaster.AddSink(id, pc)
+			}
+		}
+	}
 	r.connections[id] = pc
 	return nil
 }
@@ -63,16 +72,7 @@ func (r *defaultRouter) ForwardVideoTrack(id string, remote *webrtc.TrackRemote)
 	// Automatically forward video to all peers -- TODO subscriber management
 	for rid, pc := range r.connections {
 		if rid != id {
-			localTrack, err := webrtc.NewTrackLocalStaticRTP(remote.Codec().RTPCodecCapability, remote.ID(), remote.StreamID())
-			if err != nil {
-				return fmt.Errorf("failed to create local track: %w", err)
-			}
-			pc.GetTransceivers()[0].Sender().ReplaceTrack(localTrack)
-			fmt.Println("Track added for id: ", rid)
-			if err != nil {
-				return fmt.Errorf("failed to add track to PeerConnection: %w", err)
-			}
-			broadcaster.AddSink(rid, localTrack)
+			broadcaster.AddSink(rid, pc)
 		}
 	}
 	return nil

@@ -9,7 +9,7 @@ import (
 )
 
 type Broadcaster interface {
-	AddSink(id string, writer *webrtc.TrackLocalStaticRTP)
+	AddSink(id string, pc *webrtc.PeerConnection)
 	// TODO: Remove sink, graceful cleanup
 }
 
@@ -29,10 +29,21 @@ func InitBroadcaster(src *webrtc.TrackRemote) Broadcaster {
 	return b
 }
 
-func (b *defaultBroadcaster) AddSink(id string, writer *webrtc.TrackLocalStaticRTP) {
-	b.mu.Lock()
+func (b *defaultBroadcaster) AddSink(id string, pc *webrtc.PeerConnection) {
+
+	localTrack, err := webrtc.NewTrackLocalStaticRTP(b.src.Codec().RTPCodecCapability, b.src.ID(), b.src.StreamID())
+	if err != nil {
+		fmt.Printf("failed to create local track: %s", err)
+	}
+	pc.GetTransceivers()[0].Sender().ReplaceTrack(localTrack)
+	fmt.Println("Track added for id: ", id)
+	if err != nil {
+		fmt.Printf("failed to add track to PeerConnection: %s", err)
+	}
+
 	fmt.Println("Adding sink", id)
-	b.sinks[id] = writer
+	b.mu.Lock()
+	b.sinks[id] = localTrack
 	b.mu.Unlock()
 }
 
