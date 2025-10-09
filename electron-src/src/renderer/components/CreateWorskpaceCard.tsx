@@ -67,7 +67,6 @@ export default function CreateWorkspaceCard() {
     isPrivate: true,
   });
   const [error, setError] = useState("");
-
   const handleOpen = () => setIsModalOpen(true);
   const handleClose = () => setIsModalOpen(false);
 
@@ -81,22 +80,60 @@ export default function CreateWorkspaceCard() {
     setFormData((prev) => ({ ...prev, isPrivate: checked }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.name.trim()) {
       setError("Workspace name is required.");
       console.error("Submission blocked: Workspace name required");
       return;
     }
 
-    console.log("✅ Workspace Data:", formData);
-    handleClose();
+    try {
+      const userData = localStorage.getItem('bridge_user');
+      if (!userData) {
+        console.error('No user data found');
+        return;
+      }
+      const user = JSON.parse(userData);
+      console.log('User data:', user); // Added logging to verify user data
+      if (!user.id) {
+        console.error('No user ID found in stored data');
+        return;
+      }
 
-    // Reset form after submission
-    setFormData({ name: "", description: "", isPrivate: true });
+      const response = await fetch('http://localhost:3000/api/workspaces', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          description: formData.description,
+          isPrivate: formData.isPrivate,
+          ownerId: user.id  // Changed from 'id' to 'ownerId' to match controller
+        })
+      });
 
-    // Show banner
-    setShowNotification(true);
-    setTimeout(() => setShowNotification(false), 3000);
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to create workspace');
+      }
+
+      console.log("✅ Workspace Created:", data);
+      handleClose();
+
+      // Reset form after successful submission
+      setFormData({ name: "", description: "", isPrivate: true });
+      setError("");
+
+      // Show success banner
+      setShowNotification(true);
+      setTimeout(() => setShowNotification(false), 3000);
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create workspace');
+      console.error('Error creating workspace:', err);
+    }
   };
 
   return (
