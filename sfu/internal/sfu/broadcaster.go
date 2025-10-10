@@ -11,7 +11,7 @@ import (
 type Broadcaster interface {
 	AddSink(id string, pc *webrtc.PeerConnection)
 	RemoveSink(id string)
-	Close()
+	Close(closeSubscriber func(id string))
 }
 
 type defaultBroadcaster struct {
@@ -66,8 +66,13 @@ func (b *defaultBroadcaster) RemoveSink(id string) {
 	delete(b.sinks, id)
 }
 
-func (b *defaultBroadcaster) Close() {
+func (b *defaultBroadcaster) Close(closeSubscriber func(id string)) {
 	close(b.stop)
+
+	// Send out the peerClose signal to all subscribers
+	for id := range b.sinks {
+		closeSubscriber(id)
+	}
 	//<-b.done
 }
 

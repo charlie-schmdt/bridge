@@ -5,7 +5,7 @@ import { Spinner, Button } from '@heroui/react';
 import { lchown } from 'fs';
 
 // TODO: move this into a separate types directory
-type SignalMessageType = "join" | "offer" | "answer" | "candidate" | "subscribe" | "unsubscribe";
+type SignalMessageType = "join" | "exit" | "peerExit" | "offer" | "answer" | "candidate" | "subscribe" | "unsubscribe";
 interface SignalMessage {
     type: SignalMessageType;
     clientId?: string;
@@ -201,6 +201,14 @@ export default function VideoFeed() {
                     const candidate = msg.payload as IceCandidate;
                     pc.addIceCandidate(new RTCIceCandidate(candidate));
                     console.log("New ice candidate: ", candidate)
+                    break;
+                case "peerExit":
+                    // Close remote stream
+                    if (remoteVideoRef.current?.srcObject) {
+                        const tracks = (remoteVideoRef.current.srcObject as MediaStream).getTracks();
+                        tracks.forEach(track => track.stop());
+                        remoteVideoRef.current.srcObject = null;
+                    }
                     break;
                 default:
                     console.log("Unknown message type:", msg.type);

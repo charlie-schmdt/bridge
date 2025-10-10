@@ -9,7 +9,7 @@ import (
 
 type Router interface {
 	AddPeerConnection(id string, pc *webrtc.PeerConnection) error
-	RemovePeerConnection(id string) error
+	RemovePeerConnection(id string, closeSubscriber func(id string)) error
 	ForwardVideoTrack(id string, track *webrtc.TrackRemote) error
 	GetPeerConnection(id string) *webrtc.PeerConnection
 }
@@ -54,7 +54,7 @@ func (r *defaultRouter) AddPeerConnection(id string, pc *webrtc.PeerConnection) 
 	return nil
 }
 
-func (r *defaultRouter) RemovePeerConnection(id string) error {
+func (r *defaultRouter) RemovePeerConnection(id string, closeSubscriber func(id string)) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -62,7 +62,7 @@ func (r *defaultRouter) RemovePeerConnection(id string) error {
 	if _, exists := r.broadcasters[id]; !exists {
 		return fmt.Errorf("Broadcaster for connection %s doesn't exist", id)
 	}
-	r.broadcasters[id].Close()
+	r.broadcasters[id].Close(closeSubscriber)
 	delete(r.broadcasters, id)
 
 	// Remove local sinks from all other broadcasters

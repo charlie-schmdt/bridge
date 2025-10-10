@@ -151,7 +151,16 @@ func (s *session) handleJoin(writer Writer, id string) (*webrtc.PeerConnection, 
 }
 
 func (s *session) handleExit(id string) {
-	err := s.router.RemovePeerConnection(id)
+
+	// TODO: implement specific close messages, not a generic without specifying who to close
+	closeSubscriber := func(id string) {
+		s.writer.WriteJSON(signaling.SignalMessage{
+			Type:     signaling.SignalMessageTypePeerExit,
+			ClientID: id,
+		})
+	}
+
+	err := s.router.RemovePeerConnection(id, closeSubscriber)
 	if err != nil {
 		fmt.Printf("Error removing connection %s: %v\n", id, err)
 	} else {
