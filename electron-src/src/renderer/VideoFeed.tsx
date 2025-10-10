@@ -3,6 +3,7 @@ import { useVideoFeedContext, VideoFeedContext } from './contexts/VideoFeedConte
 import { v4 as uuid } from 'uuid';
 import { Spinner, Button } from '@heroui/react';
 import { lchown } from 'fs';
+import { ref } from 'process';
 
 // TODO: move this into a separate types directory
 type SignalMessageType = "join" | "exit" | "peerExit" | "offer" | "answer" | "candidate" | "subscribe" | "unsubscribe";
@@ -29,7 +30,8 @@ interface IceCandidate {
 
 type callStatus = "active" | "inactive" | "loading";
 
-export default function VideoFeed() {
+
+export default function VideoFeed({streamChatClient, streamChatChannel}) {
     const VF = useVideoFeedContext();
 
     const wsRef = useRef<WebSocket | null>(null);
@@ -260,13 +262,25 @@ export default function VideoFeed() {
             pcRef.current.close(); // Throws error if fails
             pcRef.current = null;
         }
+
+        //Reset message channel
+        if (streamChatChannel && streamChatClient) {
+            streamChatChannel.truncate();
+            //streamChatClient.disconnectUser();
+
+        }
+
+
         setCallStatus("inactive");
     }
 
     return (
         <div className="w-full h-full">
             { callStatus === "inactive" ? (
-                <Button onPress={joinRoom}>Call</Button>
+                <Button 
+                className="text-white bg-blue-600 font-medium hover:text-black cursor-pointer px-2"
+                
+                onPress={joinRoom}>Call In</Button>
             )
                 :
             (
@@ -281,7 +295,12 @@ export default function VideoFeed() {
                             <video className="h-full w-1/2 rounded-lg" ref={remoteVideoRef} autoPlay />
                         </div>
                     )}
-                    <Button onPress={exitRoom}>Exit Room</Button>
+                    <Button 
+                        onPress={exitRoom}
+                        className="text-white bg-red-600 font-medium hover:text-black cursor-pointer px-2"
+                    >
+                        Call Out
+                    </Button>
                 </div>
             )}
         </div>

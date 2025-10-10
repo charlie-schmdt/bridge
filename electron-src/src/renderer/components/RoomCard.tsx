@@ -1,3 +1,5 @@
+import { useNavigate } from "react-router-dom";
+
 const statusColors = {
   active: "text-green-600",
   scheduled: "text-yellow-600",
@@ -12,6 +14,8 @@ export interface RoomCardProps {
 }
 
 export function RoomCard({ title, description, status, nextMeeting }: RoomCardProps) {
+  const navigate = useNavigate();
+
   return (
     <div className="w-full min-w-0 min-h-[15rem] bg-white rounded-xl shadow p-4 flex flex-col justify-between">
       <div className="flex justify-between items-center">
@@ -23,7 +27,10 @@ export function RoomCard({ title, description, status, nextMeeting }: RoomCardPr
       <p className="text-sm text-gray-500">{description}</p>
 
       {status === "active" && (
-        <button className="mt-4 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition cursor-pointer">
+        <button 
+        className="mt-4 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition cursor-pointer"
+        onClick={() => navigate("/TestRoom")}
+        >
           Join Room
         </button>
       )}
