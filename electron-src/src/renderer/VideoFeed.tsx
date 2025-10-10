@@ -138,7 +138,8 @@ export default function VideoFeed() {
         pcRef.current = pc;
 
         // Add local tracks
-        pc.addTrack(stream.getVideoTracks()[0], stream) // Also add audio track when available
+        pc.addTrack(stream.getVideoTracks()[0], stream)
+        pc.addTrack(stream.getAudioTracks()[0], stream)
         
         // Send local ICE candidates through web socket
         pc.onicecandidate = (event: RTCPeerConnectionIceEvent) => {

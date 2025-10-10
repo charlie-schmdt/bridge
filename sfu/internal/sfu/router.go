@@ -11,6 +11,7 @@ type Router interface {
 	AddPeerConnection(id string, pc *webrtc.PeerConnection) error
 	RemovePeerConnection(id string, closeSubscriber func(id string)) error
 	ForwardVideoTrack(id string, track *webrtc.TrackRemote) error
+	ForwardAudioTrack(id string, track *webrtc.TrackRemote) error
 	GetPeerConnection(id string) *webrtc.PeerConnection
 }
 
@@ -46,7 +47,8 @@ func (r *defaultRouter) AddPeerConnection(id string, pc *webrtc.PeerConnection) 
 		// Add peer to the new PeerConnection
 		for rid, broadcaster := range r.broadcasters {
 			if rid != id {
-				broadcaster.AddSink(id, pc)
+				broadcaster.AddVideoSink(id, pc)
+				broadcaster.AddAudioSink(id, pc)
 			}
 		}
 	}
@@ -67,7 +69,7 @@ func (r *defaultRouter) RemovePeerConnection(id string, closeSubscriber func(id 
 
 	// Remove local sinks from all other broadcasters
 	for _, broadcaster := range r.broadcasters {
-		broadcaster.RemoveSink(id)
+		broadcaster.RemoveSinks(id)
 	}
 
 	// Delete from connections
@@ -83,6 +85,33 @@ func (r *defaultRouter) RemovePeerConnection(id string, closeSubscriber func(id 
 	return nil
 }
 
+func (r *defaultRouter) ForwardAudioTrack(id string, remote *webrtc.TrackRemote) error {
+	_, exists := r.connections[id]
+	if !exists {
+		return fmt.Errorf("PeerConnection with id %s does not exist", id)
+	}
+
+	// Add a broadcaster for the audio track
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var broadcaster Broadcaster
+	if _, exists := r.broadcasters[id]; exists {
+		broadcaster = r.broadcasters[id]
+	} else {
+		broadcaster = InitBroadcaster(nil, remote)
+		r.broadcasters[id] = broadcaster
+	}
+
+	// Automatically forward audio to all peers -- TODO subscriber management
+	for rid, pc := range r.connections {
+		if rid != id {
+			broadcaster.AddAudioSink(rid, pc)
+		}
+	}
+	return nil
+
+}
+
 func (r *defaultRouter) ForwardVideoTrack(id string, remote *webrtc.TrackRemote) error {
 	_, exists := r.connections[id]
 	if !exists {
@@ -92,17 +121,18 @@ func (r *defaultRouter) ForwardVideoTrack(id string, remote *webrtc.TrackRemote)
 	// Add a broadcaster for the video track
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	var broadcaster Broadcaster
 	if _, exists := r.broadcasters[id]; exists {
-		return fmt.Errorf("broadcaster with id %s already exists", id)
+		broadcaster = r.broadcasters[id]
+	} else {
+		broadcaster = InitBroadcaster(remote, nil)
+		r.broadcasters[id] = broadcaster
 	}
-
-	broadcaster := InitBroadcaster(remote)
-	r.broadcasters[id] = broadcaster
 
 	// Automatically forward video to all peers -- TODO subscriber management
 	for rid, pc := range r.connections {
 		if rid != id {
-			broadcaster.AddSink(rid, pc)
+			broadcaster.AddVideoSink(rid, pc)
 		}
 	}
 	return nil

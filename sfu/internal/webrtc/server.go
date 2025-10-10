@@ -293,10 +293,15 @@ func (s *session) registerConnectionHandlers(id string, pc *webrtc.PeerConnectio
 					if err != nil {
 						panic(fmt.Sprintf("failed to forward video track: %v", err))
 					}
+				} else if track.Kind() == webrtc.RTPCodecTypeAudio {
+					// Forward audio track to all other clients
+					err := s.router.ForwardAudioTrack(id, track)
+					if err != nil {
+						panic(fmt.Sprintf("failed to forward audio track: %v", err))
+					}
 				} else {
-					fmt.Println("Received non-video track")
+					fmt.Println("Received non-video/audio track")
 				}
-				// TODO: handle audio track
 
 			})
 		} else {
