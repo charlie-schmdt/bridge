@@ -19,10 +19,6 @@ export default function RoomLayout({}: RoomLayoutProps){
   const closeChat = () => setIsChatOpen(false);
 
   const navigate = useNavigate();
-  
-  
-  
-
 
   return (
     <Card>

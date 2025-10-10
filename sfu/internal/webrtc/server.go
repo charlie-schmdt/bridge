@@ -60,6 +60,12 @@ func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
 				panic(fmt.Sprintf("failed to add PeerConnection to router: %v", err))
 			}
 
+		case signaling.SignalMessageTypeExit:
+			fmt.Println("Message type exit receiver")
+			// Unregister the client
+			// TODO: Handle room-based exits, return error to client??
+			sess.handleExit(msg.ClientID)
+
 		case signaling.SignalMessageTypeOffer:
 			var offer signaling.SdpOffer
 			if err := json.Unmarshal(msg.Payload, &offer); err != nil {
@@ -114,34 +120,55 @@ func (s *session) handleJoin(writer Writer, id string) (*webrtc.PeerConnection, 
 		return nil, fmt.Errorf("failed to create PeerConnection: %w", err)
 	}
 
-	for range 1 {
-		pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo, webrtc.RTPTransceiverInit{
-			Direction: webrtc.RTPTransceiverDirectionSendonly,
-		})
-	}
+	//for range 1 {
+	//	pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo, webrtc.RTPTransceiverInit{
+	//		Direction: webrtc.RTPTransceiverDirectionSendonly,
+	//	})
+	//}
 	pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo, webrtc.RTPTransceiverInit{
 		Direction: webrtc.RTPTransceiverDirectionRecvonly,
 	})
+	pc.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio, webrtc.RTPTransceiverInit{
+		Direction: webrtc.RTPTransceiverDirectionRecvonly,
+	})
 
-	offer, err := pc.CreateOffer(nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create offer: %w", err)
-	}
+	//offer, err := pc.CreateOffer(nil)
+	//if err != nil {
+	//	return nil, fmt.Errorf("failed to create offer: %w", err)
+	//}
 
-	err = pc.SetLocalDescription(offer)
-	if err != nil {
-		return nil, fmt.Errorf("failed to set local description: %w", err)
-	}
+	//err = pc.SetLocalDescription(offer)
+	//if err != nil {
+	//	return nil, fmt.Errorf("failed to set local description: %w", err)
+	//}
 
 	s.registerConnectionHandlers(id, pc)
 
-	payload, _ := json.Marshal(signaling.SdpOffer{SDP: offer.SDP})
-	writer.WriteJSON(signaling.SignalMessage{
-		Type:     signaling.SignalMessageTypeOffer,
-		ClientID: id,
-		Payload:  payload,
-	})
+	//payload, _ := json.Marshal(signaling.SdpOffer{SDP: offer.SDP})
+	//writer.WriteJSON(signaling.SignalMessage{
+	//	Type:     signaling.SignalMessageTypeOffer,
+	//	ClientID: id,
+	//	Payload:  payload,
+	//})
 	return pc, nil
+}
+
+func (s *session) handleExit(id string) {
+
+	// TODO: implement specific close messages, not a generic without specifying who to close
+	closeSubscriber := func(id string) {
+		s.writer.WriteJSON(signaling.SignalMessage{
+			Type:     signaling.SignalMessageTypePeerExit,
+			ClientID: id,
+		})
+	}
+
+	err := s.router.RemovePeerConnection(id, closeSubscriber)
+	if err != nil {
+		fmt.Printf("Error removing connection %s: %v\n", id, err)
+	} else {
+		fmt.Printf("Connection %s removed successfully\n", id)
+	}
 }
 
 func (s *session) handleOffer(writer Writer, id string, offer *signaling.SdpOffer) (*webrtc.PeerConnection, error) {
@@ -212,6 +239,29 @@ func (s *session) handleAnswer(id string, answer *signaling.SdpAnswer) error {
 }
 
 func (s *session) registerConnectionHandlers(id string, pc *webrtc.PeerConnection) {
+	// Register negotiation needed
+	pc.OnNegotiationNeeded(func() {
+		fmt.Println("Negotiation needed for client " + id)
+		offer, err := pc.CreateOffer(nil)
+		if err != nil {
+			fmt.Printf("Failed to create offer: %v\n", err)
+			return
+		}
+
+		err = pc.SetLocalDescription(offer)
+		if err != nil {
+			fmt.Printf("Failed to set local description: %v\n", err)
+			return
+		}
+
+		payload, _ := json.Marshal(signaling.SdpOffer{SDP: offer.SDP})
+		s.writer.WriteJSON(signaling.SignalMessage{
+			Type:     signaling.SignalMessageTypeOffer,
+			ClientID: id,
+			Payload:  payload,
+		})
+	})
+
 	// Register the ICE candidate handler
 	pc.OnICECandidate(func(c *webrtc.ICECandidate) {
 		if c == nil {
@@ -226,6 +276,7 @@ func (s *session) registerConnectionHandlers(id string, pc *webrtc.PeerConnectio
 			// ICE connection is ready, wait for data channels
 			fmt.Println("ICE connection is ready")
 		} else {
+			// TODO: implement reconnection attempt on disconnect, then cleanup PeerConnection on failure
 			fmt.Println("ICE connection state change: ", state)
 		}
 	})
@@ -245,8 +296,15 @@ func (s *session) registerConnectionHandlers(id string, pc *webrtc.PeerConnectio
 					if err != nil {
 						panic(fmt.Sprintf("failed to forward video track: %v", err))
 					}
+				} else if track.Kind() == webrtc.RTPCodecTypeAudio {
+					// Forward audio track to all other clients
+					err := s.router.ForwardAudioTrack(id, track)
+					if err != nil {
+						panic(fmt.Sprintf("failed to forward audio track: %v", err))
+					}
+				} else {
+					fmt.Println("Received non-video/audio track")
 				}
-				// TODO: handle audio track
 
 			})
 		} else {
