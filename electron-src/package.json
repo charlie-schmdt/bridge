@@ -27,6 +27,8 @@
     "typescript": "^5.9.2"
   },
   "dependencies": {
+    "@dicebear/collection": "^9.2.4",
+    "@dicebear/core": "^9.2.4",
     "@heroui/react": "^2.8.2",
     "@radix-ui/react-switch": "^1.2.6",
     "@react-types/shared": "^3.32.0",

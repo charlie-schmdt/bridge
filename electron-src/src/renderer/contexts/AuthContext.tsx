@@ -28,6 +28,7 @@ interface AuthContextType {
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
   deleteAccount: (password?: string, reauthToken?: string) => Promise<void>;
+  updateUser: (userData: Partial<User>) => void;
   loading: boolean;
 }
 
@@ -298,6 +299,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const updateUser = (userData: Partial<User>) => {
+    if (!user) return;
+    const updatedUser = { ...user, ...userData };
+    localStorage.setItem('bridge_user', JSON.stringify(updatedUser));
+    setUser(updatedUser);
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -308,6 +316,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       register,
       logout,
       deleteAccount,
+      updateUser,
       loading
     }}>
       {children}
