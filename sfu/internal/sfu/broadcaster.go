@@ -13,6 +13,8 @@ type Broadcaster interface {
 	AddAudioSink(id string, pc *webrtc.PeerConnection)
 	RemoveSinks(id string)
 	Close(closeSubscriber func(id string))
+	SetVideoSource(videoSrc *webrtc.TrackRemote)
+	SetAudioSource(audioSrc *webrtc.TrackRemote)
 }
 
 type defaultBroadcaster struct {
@@ -33,7 +35,7 @@ func InitBroadcaster(videoSrc *webrtc.TrackRemote, audioSrc *webrtc.TrackRemote)
 	b := &defaultBroadcaster{
 		videoSrc:   videoSrc,
 		videoSinks: map[string]*webrtc.TrackLocalStaticRTP{},
-		audioSrc:   videoSrc,
+		audioSrc:   audioSrc,
 		audioSinks: map[string]*webrtc.TrackLocalStaticRTP{},
 		vstop:      make(chan struct{}),
 		vdone:      make(chan struct{}),
@@ -46,8 +48,19 @@ func InitBroadcaster(videoSrc *webrtc.TrackRemote, audioSrc *webrtc.TrackRemote)
 	return b
 }
 
+func (b *defaultBroadcaster) SetVideoSource(videoSrc *webrtc.TrackRemote) {
+	b.videoSrc = videoSrc
+}
+
+func (b *defaultBroadcaster) SetAudioSource(audioSrc *webrtc.TrackRemote) {
+	b.audioSrc = audioSrc
+}
+
 func (b *defaultBroadcaster) AddVideoSink(id string, pc *webrtc.PeerConnection) {
 
+	if b.videoSrc == nil {
+		return
+	}
 	localTrack, err := webrtc.NewTrackLocalStaticRTP(b.videoSrc.Codec().RTPCodecCapability, b.videoSrc.ID(), b.videoSrc.StreamID())
 	if err != nil {
 		fmt.Printf("failed to create local track: %s", err)
@@ -73,6 +86,9 @@ func (b *defaultBroadcaster) AddVideoSink(id string, pc *webrtc.PeerConnection) 
 }
 
 func (b *defaultBroadcaster) AddAudioSink(id string, pc *webrtc.PeerConnection) {
+	if b.audioSrc == nil {
+		return
+	}
 	localTrack, err := webrtc.NewTrackLocalStaticRTP(b.audioSrc.Codec().RTPCodecCapability, b.audioSrc.ID(), b.audioSrc.StreamID())
 	if err != nil {
 		fmt.Printf("failed to create local audio track: %s", err)
@@ -86,7 +102,7 @@ func (b *defaultBroadcaster) AddAudioSink(id string, pc *webrtc.PeerConnection) 
 
 	fmt.Println("Adding sink", id)
 	b.amu.Lock()
-	b.videoSinks[id] = localTrack
+	b.audioSinks[id] = localTrack
 	b.amu.Unlock()
 }
 
@@ -122,6 +138,9 @@ func (b *defaultBroadcaster) startVideo() {
 			log.Println("Exiting broadcast goroutine")
 			return
 		default:
+			if b.videoSrc == nil {
+				continue
+			}
 			packet, _, err := b.videoSrc.ReadRTP()
 			if err != nil {
 				log.Printf("broadcaster closed: %v", err)
@@ -148,6 +167,9 @@ func (b *defaultBroadcaster) startAudio() {
 			log.Println("Exiting broadcast goroutine")
 			return
 		default:
+			if b.audioSrc == nil {
+				continue
+			}
 			packet, _, err := b.audioSrc.ReadRTP()
 			if err != nil {
 				log.Printf("broadcaster closed: %v", err)

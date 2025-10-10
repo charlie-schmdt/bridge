@@ -128,6 +128,9 @@ func (s *session) handleJoin(writer Writer, id string) (*webrtc.PeerConnection, 
 	pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo, webrtc.RTPTransceiverInit{
 		Direction: webrtc.RTPTransceiverDirectionRecvonly,
 	})
+	pc.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio, webrtc.RTPTransceiverInit{
+		Direction: webrtc.RTPTransceiverDirectionRecvonly,
+	})
 
 	//offer, err := pc.CreateOffer(nil)
 	//if err != nil {

@@ -83,7 +83,15 @@ export default function VideoFeed() {
         if (videoTrack) {
             videoTrack.enabled = VF.isVideoEnabled;
         }
-    }, [VF.isVideoEnabled, VF.isAudioEnabled]);
+    }, [VF.isVideoEnabled]);
+
+    useEffect(() => {
+        const audioTrack = localStreamRef.current?.getAudioTracks()[0];
+        console.log("Changing audioTrack to: " + VF.isAudioEnabled);
+        if (audioTrack) {
+            audioTrack.enabled = VF.isAudioEnabled;
+        }
+    }, [VF.isAudioEnabled])
 
     // Handle loading of video components
     useEffect(() => {
@@ -270,7 +278,7 @@ export default function VideoFeed() {
                     (
                         <div className="flex gap-4 p-4 w-full h-full">
                             <video className="h-full w-1/2 rounded-lg" ref={VF.videoRef} autoPlay muted />
-                            <video className="h-full w-1/2 rounded-lg" ref={remoteVideoRef} autoPlay muted />
+                            <video className="h-full w-1/2 rounded-lg" ref={remoteVideoRef} autoPlay />
                         </div>
                     )}
                     <Button onPress={exitRoom}>Exit Room</Button>
