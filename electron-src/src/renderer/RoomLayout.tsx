@@ -1,7 +1,7 @@
 import { Card, CardBody } from "@heroui/react";
 import Header from './components/Header';
 import CallSettingsFooter from "./components/CallSettingsFooter";
-import VideoFeed from "./VideoFeed";
+import AudioSandbox from "./AudioSandbox";
 import { useNavigate } from "react-router-dom";
 import back_button from "@assets/back-button.png"
 import {useVideoFeedContext, VideoFeedContext} from "./contexts/VideoFeedContext";
@@ -45,10 +45,8 @@ export default function RoomLayout({}: RoomLayoutProps){
           
           <VideoFeedProvider>
             <div className="flex-1">
-              <VideoFeed />
+              <AudioSandbox />
             </div>
-            <CallSettingsFooter onOpenChat={openChat} />
-            <Chat isOpen={isChatOpen} onClose={closeChat} />
           </VideoFeedProvider>
 
           
