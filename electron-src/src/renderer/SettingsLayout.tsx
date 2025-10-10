@@ -11,23 +11,17 @@ import Banner from "./components/Banner";
 import Header from "./components/Header";
 import { useAuth } from "./contexts/AuthContext";
 import NotificationBanner from "./components/NotificationBanner";
+import { buildDiceBearUrl } from "../utils/buildDiceBearURL";
 
 export function SettingsLayout() {
-    const { user, logout } = useAuth();
-
-  {/* TO DO - Fetch from backend*/ }
-  /*const [profile, setProfile] = useState({
-    name: "Gang Violence",
-    email: "user@purdue.edu",
-    bio: "professional meower for hire",
-    timezone: "UTC-8",
-  });*/
+  const { user, logout, updateUser } = useAuth();
   
   const [profile, setProfile] = useState({
     name: "",
     email: "",
     bio: "",
     timezone: "UTC-8",
+    picture: "" as string | null,
   });
   
 
@@ -43,6 +37,17 @@ export function SettingsLayout() {
     showOnlineStatus: true,
     allowDirectMessages: true,
   });
+
+  const AVATAR_STYLES = ["thumbs", "lorelei", "adventurer", "botttsNeutral", "identicon"];
+  const AVATAR_SEEDS = ["eagle", "lion", "koala", "titan", "nova", "bolt", "delta"];
+  const [avatarOpen, setAvatarOpen] = useState(false);
+  const [pendingAvatarURL, setPendingAvatarURL] = useState<string | null>(null);
+  const [pendingAvatarMeta, setPendingAvatarMeta] = useState<{ style: string; seed: string } | null>(null);
+
+  const currentAvatarUrl =
+    pendingAvatarURL ||
+    profile.picture ||
+    buildDiceBearUrl({ style: "thumbs", seed: profile.email || profile.name || "default", size: 128, extra: "&radius=50" });
 
   // Retrieve user settings from backend 
   const getSettings = async () => {
@@ -87,8 +92,7 @@ const updateSettings = async (section: string, data: any) => {
       return;
     }
     const user = JSON.parse(userData);
-
-    const response = await fetch('http://localhost:3000/api/settings', {
+    const response =  await fetch('http://localhost:3000/api/settings', {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -106,9 +110,16 @@ const updateSettings = async (section: string, data: any) => {
     const result = await response.json();
     if (result.success) {
       console.log(`${section} updated successfully`);
+      
+      // Update auth context if profile section was updated
+      if (section === 'profile') {
+        updateUser(data);
+      }
+      
       // Show success banner
       setShowNotification(true);
       setTimeout(() => setShowNotification(false), 3000);
+      
       // Refresh the settings
       await getSettings();
     }
@@ -250,6 +261,127 @@ useEffect(() => {
               </CardHeader>
 
               <CardBody className="space-y-6 px-6 pb-6">
+
+                {/*  Avatar Picker UI (Preview + Change + Modal) DICEBEAR LIBRARY/API */}
+
+                <div className="flex items-center gap-4">
+                  <img
+                    src={currentAvatarUrl}
+                    alt="Profile"
+                    width={96}
+                    height={96}
+                    className="rounded-full shadow-sm ring-2 ring-neutral-200"
+                  />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      className="h-9 px-4 text-sm font-medium shadow-sm rounded-lg bg-white border border-neutral-300"
+                      onPress={() => setAvatarOpen(true)}
+                    >
+                      Change
+                    </Button>
+                    {pendingAvatarURL && (
+                      <span className="text-sm text-neutral-500">Selected (not saved)</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Simple modal overlay */}
+                {avatarOpen && (
+                  <div
+                    role="dialog"
+                    aria-modal="true"
+                    className="fixed inset-0 z-[1000] grid place-items-center bg-black/40 p-4"
+                  >
+                    <div className="w-full max-w-3xl bg-white rounded-2xl border border-neutral-200 shadow-2xl p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-lg font-semibold">Choose an avatar</h3>
+                        <button
+                          className="text-sm text-neutral-500 hover:text-neutral-700"
+                          onClick={() => setAvatarOpen(false)}
+                        >
+                          Close
+                        </button>
+                      </div>
+
+                      {/* Style chips */}
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {AVATAR_STYLES.map((s) => (
+                          <button
+                            key={s}
+                            onClick={() => {
+                              // preview first seed when switching styles
+                              const url = buildDiceBearUrl({ style: s, seed: AVATAR_SEEDS[0], size: 256, extra: "&radius=50" });
+                              setPendingAvatarURL(url);
+                              setPendingAvatarMeta({ style: s, seed: AVATAR_SEEDS[0] });
+                              console.log('Style selected:', s);
+                              console.log('URL:', url);
+                            }}
+                            className="px-3 py-1.5 rounded-lg border text-sm hover:bg-neutral-50"
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Grid of seeds for currently “active” or last-picked style */}
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+                        {AVATAR_SEEDS.map((sd) => {
+                          const style = (pendingAvatarMeta?.style) || "thumbs";
+                          const url = buildDiceBearUrl({ style, seed: sd, size: 128, extra: "&radius=50" });
+                          const isActive = pendingAvatarMeta?.seed === sd;
+                          return (
+                            <button
+                              key={`${style}-${sd}`}
+                              onClick={() => {
+                                setPendingAvatarURL(url);
+                                setPendingAvatarMeta({ style, seed: sd });
+                              }}
+                              className={`p-1 rounded-xl border ${isActive ? "border-blue-500 ring-2 ring-blue-200" : "border-neutral-200"} bg-white hover:shadow`}
+                              title={`${style} • ${sd}`}
+                              aria-label={`Choose ${style} ${sd}`}
+                            >
+                              <img
+                                src={url}
+                                alt={`${style} ${sd}`}
+                                className="rounded-full w-24 h-24 mx-auto"
+                                loading="lazy"
+                              />
+                              <div className="text-center text-xs mt-1 text-neutral-600">{sd}</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div className="flex justify-end gap-2 mt-4">
+                        <Button
+                          variant="bordered"
+                          className="border-neutral-300"
+                          onPress={() => {
+                            setAvatarOpen(false);
+                            setPendingAvatarURL(null);
+                            setPendingAvatarMeta(null);
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          color="primary"
+                          onPress={() => {
+                            if (!pendingAvatarURL) return;
+                            // Apply to local profile immediately; persist on Save button below
+                            setProfile((p) => ({ ...p, picture: pendingAvatarURL }));
+                            setAvatarOpen(false);
+                          }}
+                          isDisabled={!pendingAvatarURL}
+                        >
+                          Use This Avatar
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label htmlFor="name" className="text-sm font-medium text-neutral-700">
@@ -485,7 +617,8 @@ useEffect(() => {
                       name: profile.name,
                       email: profile.email,
                       bio: profile.bio,
-                      timezone: profile.timezone
+                      timezone: profile.timezone,
+                      picture: profile.picture
                     })}
                 >
                     Save Appearance Settings

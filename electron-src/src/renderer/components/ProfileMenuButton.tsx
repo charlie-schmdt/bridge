@@ -60,10 +60,19 @@ const ProfileMenuButton = () => {
         className="bg-gray-200 rounded-full w-8 h-8 flex items-center justify-center hover:ring-2 hover:ring-blue-500 cursor-pointer"
       >
         {isAuthenticated ? (
-          // Show user's first letter or profile picture if logged in
-          <span className="text-gray-600 font-semibold">
-            {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || '👤'}
-          </span>
+          user?.picture ? (
+            // Show user's profile picture if available
+            <img 
+              src={user.picture} 
+              alt={user.name || "Profile"} 
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            // Fallback to first letter if no picture
+            <span className="text-gray-600 font-semibold">
+              {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || '👤'}
+            </span>
+          )
         ) : (
           // Show generic user icon if not logged in
           <span className="text-gray-600">👤</span>
