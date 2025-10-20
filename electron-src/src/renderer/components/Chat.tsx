@@ -1,7 +1,7 @@
 import React from 'react';
 import { Chat as StreamChatComponent, Channel, MessageList, MessageInput, Window } from 'stream-chat-react';
 import { StreamChat, Channel as StreamChannel } from 'stream-chat';
-import 'stream-chat-react/dist/css/index.css';
+import 'stream-chat-react/dist/css/v2/index.css';
 
 interface ChatProps {
     isOpen: boolean;
