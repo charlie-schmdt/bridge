@@ -17,6 +17,6 @@ func main() {
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		webrtc.HandleSession(w, r, router)
 	})
-	fmt.Println("Server listening on port 50031")
+	fmt.Println("Server listening on port 50051")
 	http.ListenAndServe(":50051", nil)
 }
