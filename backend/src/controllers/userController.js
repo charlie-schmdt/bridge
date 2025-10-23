@@ -101,6 +101,7 @@ const getSettings = async (req, res) => {
         email: user.email,
         bio: user.bio,
         timezone: user.timezone,
+        picture: user.picture
       },
       notifications: {
         emailNotifications: user.emailNotifications,
@@ -152,6 +153,7 @@ const updateSettings = async (req, res) => {
       if (updates.profile.email) updateData.email = updates.profile.email;
       if (updates.profile.bio !== undefined) updateData.bio = updates.profile.bio;
       if (updates.profile.timezone) updateData.timezone = updates.profile.timezone;
+      if (updates.profile.picture) updateData.picture = updates.profile.picture;
     }
     
     // Update notification settings
