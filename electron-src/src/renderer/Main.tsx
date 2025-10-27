@@ -6,6 +6,7 @@ import { AppLayout } from '@/renderer/AppLayout';
 import { HomeLayout, homeLoader } from './HomeLayout';
 import { SettingsLayout } from './SettingsLayout';
 import { VideoLayout } from './VideoLayout';
+import { AudioSandbox } from './AudioSandbox';
 import { WorkspaceLayout } from './WorkspaceLayout';
 import LogInLayout from './LogInLayout';
 import  RoomLayout  from './RoomLayout';
@@ -54,6 +55,11 @@ const router = createHashRouter([
       {
         path: 'TestRoom',
         element: <RoomLayout />
+      }
+      ,
+      {
+        path: 'audiosandbox',
+        element: <AudioSandbox />
       }
       ,
       {
