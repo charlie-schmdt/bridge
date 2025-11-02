@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 interface ProtectedRouteProps {
@@ -8,6 +8,8 @@ interface ProtectedRouteProps {
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
+  const { user } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -24,6 +26,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     console.log('Access denied - redirecting to login...');
     return <Navigate to="/login" replace />;
   }
+
+  // Previously we redirected users who hadn't completed onboarding to a separate
+  // /onboarding page. We now run the in-place overlay tour instead, so allow
+  // normal navigation — the overlay component will activate when appropriate.
 
   return <>{children}</>;
 };
