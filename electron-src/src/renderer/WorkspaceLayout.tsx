@@ -1,11 +1,18 @@
 import { Card } from "@heroui/react";
 import Header from "./components/Header";
+import { useAuth } from "./contexts/AuthContext";
+import { useState } from "react";
 import MembersList from "./components/MemberList";
 import { RoomCard } from "./components/RoomCard";
 import { RoomCardProps } from "./components/RoomCard";
 import NotificationBanner from "./components/NotificationBanner";
 
 export const WorkspaceLayout = () => {
+  const { user } = useAuth();
+  const [isJoining, setIsJoining] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
+  const [joinSuccess, setJoinSuccess] = useState(false);
+
   const roomCardProps: RoomCardProps = {
     title: "Test Room",
     description: "This is a test room",
