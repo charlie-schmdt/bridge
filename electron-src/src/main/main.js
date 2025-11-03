@@ -14,6 +14,14 @@ const createWindow = () => {
 
   const indexPath = path.join('dist', 'index.html');
   win.loadFile(indexPath);
+  // Open DevTools automatically for debugging sessions so renderer logs are visible
+  // (temporary; remove when debugging is finished)
+  try {
+    win.webContents.openDevTools({ mode: 'right' });
+    console.log('DevTools opened by main process');
+  } catch (err) {
+    console.error('Failed to open DevTools:', err);
+  }
 
   // Store OAuth tokens when detected, process them after React loads
   let pendingOAuthTokens = null;

@@ -5,6 +5,8 @@ import { createHashRouter, RouterProvider } from 'react-router-dom';
 import { AppLayout } from '@/renderer/AppLayout';
 import { HomeLayout, homeLoader } from './HomeLayout';
 import { SettingsLayout } from './SettingsLayout';
+import ProfileLayout from './ProfileLayout';
+import OnboardingLayout from './OnboardingLayout';
 import { VideoLayout } from './VideoLayout';
 import { AudioSandbox } from './AudioSandbox';
 import { WorkspaceLayout } from './WorkspaceLayout';
@@ -45,6 +47,14 @@ const router = createHashRouter([
         element: <HomeLayout />,
       },
       {
+        path: 'onboarding',
+        element: <OnboardingLayout />,
+      },
+      {
+        path: 'profile',
+        element: <ProfileLayout />,
+      },
+      {
         path: 'settings',
         element: <SettingsLayout />,
       },
@@ -63,7 +73,7 @@ const router = createHashRouter([
       }
       ,
       {
-        path: 'workspace',
+        path: 'workspace/:workspaceId',
         element: <WorkspaceLayout />
       },
       {

@@ -49,7 +49,7 @@ const ProfileMenuButton = () => {
   const handleProfile = () => {
     closeMenu();
     console.log("Profile clicked");
-    navigate('/settings');
+    navigate('/profile');
 
   };
    return (

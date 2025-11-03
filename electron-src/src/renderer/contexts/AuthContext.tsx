@@ -17,6 +17,7 @@ interface User {
   provider?: string;
   isVerified?: boolean;
   createdAt?: string;
+  onboarding_completed?: boolean;
 }
 
 interface AuthContextType {
@@ -45,12 +46,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     if (token && userData) {
       try {
-        setUser(JSON.parse(userData));
+        const parsed = JSON.parse(userData);
+  console.log('AuthContext: rehydrated user from localStorage', parsed);
+        setUser(parsed);
       } catch (error) {
         console.error('Error parsing stored user data:', error);
         localStorage.removeItem('bridge_token');
         localStorage.removeItem('bridge_user');
       }
+    } else {
+      console.log('AuthContext: no stored user/token found during init', { token, userData });
     }
 
     // Define OAuth success handler for Electron main process
@@ -95,7 +100,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               await login(data.data.token, data.data.user);
               
               // Navigate to home
-              window.location.hash = '#/';
+              // window.location.hash = '#/';
               console.log('✅ User authenticated and redirected!');
             } else {
               console.error('❌ Backend OAuth failed:', data.message);
@@ -166,7 +171,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           
           // Navigate to home
           console.log('🏠 Navigating to home...');
-          window.location.hash = '#/';
+          // window.location.hash = '#/';
           console.log('✅ OAuth flow completed successfully!');
         } else {
           console.error('❌ Backend OAuth failed:', data.message);
@@ -199,6 +204,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 
   const login = async (token: string, userData: User) => {
+  console.log('AuthContext: login - storing token and user', { userId: userData?.id });
     localStorage.setItem('bridge_token', token);
     localStorage.setItem('bridge_user', JSON.stringify(userData));
     setUser(userData);
@@ -302,6 +308,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const updateUser = (userData: Partial<User>) => {
     if (!user) return;
     const updatedUser = { ...user, ...userData };
+  console.log('AuthContext: updateUser', { before: user, after: updatedUser });
     localStorage.setItem('bridge_user', JSON.stringify(updatedUser));
     setUser(updatedUser);
   };

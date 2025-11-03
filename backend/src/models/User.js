@@ -96,6 +96,13 @@ const User = sequelize.define('User', {
     allowNull: false,
     defaultValue: 'system'
   }
+  ,
+  // Onboarding flag
+  onboarding_completed: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
+  }
 }, {
   timestamps: true, // Adds createdAt and updatedAt
   tableName: 'users'
