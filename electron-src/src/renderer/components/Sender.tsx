@@ -1,3 +1,42 @@
+import { useEffect, useState, useRef } from "react";
+import {
+  Tabs, Tab,
+  Card, CardHeader, CardBody,
+  Input, Textarea, Button,
+  Select, SelectSection, SelectItem, 
+  Switch
+} from "@heroui/react";
+
+function InputOptions() {
+  const [MicInputs, setMicInputs] = useState([
+    {key: "file", label: "Input File"},
+  ]);
+
+  useEffect(() => {
+    // Fetch available microphone input sources
+    setMicInputs([
+      {key: "file", label: "Input File"},
+      {key: "mic1", label: "Microphone 1"},
+      {key: "mic2", label: "Microphone 2"},
+    ]);
+  }, []);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <label className="mb-2">Input Source:</label>
+      <Select
+        className="w-full max-w-md bg-white text-gray-900"
+        placeholder="Select an input"
+        defaultSelectedKeys={["file"]}
+      >
+        {MicInputs.map((input) => (
+          <SelectItem key={input.key}>{input.label}</SelectItem>
+        ))}
+      </Select>
+    </div>
+  );
+}
+
 export default function Sender() {
   return (
     <div>
@@ -7,7 +46,7 @@ export default function Sender() {
             <label className="mb-2">Source:</label>
           </div>
           <div className="p-4 ">
-            <label className="mb-2">Toggle:</label>
+            <InputOptions />
           </div>
           <div className="p-4 ">
             <label className="mb-2">Input File:</label>
