@@ -48,7 +48,7 @@ const createWorkspace = async (req, res) => {
             description,
             private: isPrivate,
             owner_real_id: ownerId,
-            auth_users: [],
+            auth_users: [ownerId],
             room_ids: {}
         });
         

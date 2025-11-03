@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 // Import controllers
-const { createUser, loginUser, getSettings, updateSettings, oauthLogin, deleteAccount } = require('../controllers/userController');
+const { createUser, loginUser, getSettings, updateSettings, oauthLogin, deleteAccount, setOnboarding } = require('../controllers/userController');
 const { getWorkspaces, createWorkspace } = require('../controllers/workspaceController');
 // Import middleware
 const { auth, authenticateToken } = require('../middleware/auth');
@@ -15,6 +15,7 @@ router.get('/', (req, res) => {
     endpoints: [
       'POST /api/auth/register - Register new user',
       'POST /api/auth/login - Login user',
+        'PUT /api/users/:id/onboarding - Mark onboarding complete',
       'GET /api/health - Health check',
       'GET /api/settings - Get user settings',
       'PUT /api/settings - Update user settings'
@@ -25,6 +26,9 @@ router.get('/', (req, res) => {
 // Settings routes
 router.get('/settings', auth, getSettings);
 router.put('/settings', auth, updateSettings);
+
+// Onboarding route - mark onboarding as completed for a user
+router.put('/users/:id/onboarding', authenticateToken, setOnboarding);
 
 // We can delete this later
 router.get('/health', (req, res) => {
