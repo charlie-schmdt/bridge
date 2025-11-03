@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
+const { Op } = require('sequelize'); // Add this import
 const Workspace = require('../models/Workspaces');
 const User = require('../models/User');
+const { get } = require('../routes');
 
 const generateToken = (userID) => {
   return jwt.sign({ userID }, process.env.JWT_SECRET, { expiresIn: '1h' });
@@ -14,7 +16,7 @@ const getWorkspaces = async (req, res) => {
     const workspaces = await Workspace.findAll({
       where: { 
         private: false
-        }, // Only public workspaces
+      },
     });
 
     const formattedWorkspaces = workspaces.map(workspace => ({
@@ -37,6 +39,70 @@ const getWorkspaces = async (req, res) => {
     });
   }
 }
+
+// leave a workspace
+const leaveWorkspace = async (req, res) => {
+try {
+    const { workspaceId } = req.params;
+    const userId = req.user.id;
+    
+    console.log(`User ${userId} attempting to leave workspace ${workspaceId}`);
+    
+    const workspace = await Workspace.findByPk(workspaceId);
+    
+    if (!workspace) {
+      return res.status(404).json({
+        success: false,
+        message: 'Workspace not found'
+      });
+    }
+    
+    // Check if user is the owner
+    if (workspace.owner_real_id === userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Owner cannot leave workspace. Transfer ownership or delete the workspace instead.'
+      });
+    }
+    
+    const currentAuthUsers = workspace.auth_users || [];
+    if (!currentAuthUsers.includes(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'You are not a member of this workspace'
+      });
+    }
+    
+    // Remove user from auth_users list
+    const updatedAuthUsers = currentAuthUsers.filter(id => id !== userId);
+    
+    await workspace.update({
+      auth_users: updatedAuthUsers
+    });
+    
+    console.log(`✅ User ${userId} successfully left workspace ${workspaceId}`);
+    
+    res.json({
+      success: true,
+      message: 'Successfully left workspace',
+      workspace: {
+        id: workspace.workspace_id,
+        name: workspace.name,
+        authorizedUsers: updatedAuthUsers
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error leaving workspace:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error leaving workspace',
+      error: error.message
+    });
+  }
+};
+
+
 const createWorkspace = async (req, res) => {
     try {
         const { name, description, isPrivate, ownerId } = req.body;
@@ -75,7 +141,283 @@ const createWorkspace = async (req, res) => {
     }
 };
 
+const joinWorkspace = async (req, res) => {
+  try {
+    const { workspaceId } = req.body;
+    const userId = req.user.id; // From auth middleware
+    
+    console.log(`User ${userId} attempting to join workspace ${workspaceId}`);
+    
+    // Find the workspace
+    const workspace = await Workspace.findByPk(workspaceId);
+    
+    if (!workspace) {
+      return res.status(404).json({
+        success: false,
+        message: 'Workspace not found'
+      });
+    }
+    
+    // Check if workspace is private and user is not the owner
+    if (workspace.private && workspace.owner_real_id !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot join private workspace - access denied'
+      });
+    }
+    
+    // Check if user is already in the workspace
+    const currentAuthUsers = workspace.auth_users || [];
+    if (currentAuthUsers.includes(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'You are already a member of this workspace'
+      });
+    }
+    
+    // Add user to auth_users list
+    const updatedAuthUsers = [...currentAuthUsers, userId];
+    
+    await workspace.update({
+      auth_users: updatedAuthUsers
+    });
+    
+    console.log(`✅ User ${userId} successfully joined workspace ${workspaceId}`);
+    
+    res.json({
+      success: true,
+      message: 'Successfully joined workspace',
+      workspace: {
+        id: workspace.workspace_id,
+        name: workspace.name,
+        description: workspace.description,
+        isPrivate: workspace.private,
+        authorizedUsers: updatedAuthUsers,
+        ownerId: workspace.owner_real_id
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error joining workspace:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error joining workspace',
+      error: error.message
+    });
+  }
+};
+
+// Get Members of a Workspace
+const getWorkspaceMembers = async (req, res) => {
+  try {
+    const { workspaceId } = req.params;
+    const userId = req.user.id;
+    
+    console.log(`Fetching members for workspace: ${workspaceId}`);
+    
+    // Find the workspace
+    const workspace = await Workspace.findByPk(workspaceId);
+    
+    if (!workspace) {
+      return res.status(404).json({
+        success: false,
+        message: 'Workspace not found'
+      });
+    }
+    
+    // Check if user has access to this workspace
+    const authUsers = workspace.auth_users || [];
+    const hasAccess = workspace.owner_real_id === userId || authUsers.includes(userId);
+    
+    if (!hasAccess) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied to this workspace'
+      });
+    }
+    
+    // Get all member UUIDs (owner + auth_users)
+    const allMemberIds = [workspace.owner_real_id, ...authUsers];
+    const uniqueMemberIds = [...new Set(allMemberIds)]; // Remove duplicates
+    
+    // Fetch user details for all members
+    const members = await User.findAll({
+      where: {
+        id: uniqueMemberIds
+      },
+      attributes: ['id', 'name', 'email', 'picture'] // Only fetch needed fields
+    });
+    
+    // Format member data
+    const formattedMembers = members.map(member => ({
+      id: member.id,
+      name: member.name,
+      email: member.email,
+      picture: member.picture,
+      isOwner: member.id === workspace.owner_real_id,
+      role: member.id === workspace.owner_real_id ? 'Owner' : 'Member'
+    }));
+    
+    console.log(`✅ Found ${formattedMembers.length} members for workspace ${workspaceId}`);
+    
+    res.json({
+      success: true,
+      workspaceId: workspace.workspace_id,
+      workspaceName: workspace.name,
+      members: formattedMembers
+    });
+    
+  } catch (error) {
+    console.error('Error fetching workspace members:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching workspace members',
+      error: error.message
+    });
+  }
+};
+
+// Get workspaces where user is a member
+const getUserWorkspaces = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    console.log(`Fetching workspaces for user: ${userId}`);
+    
+    // Fetch all workspaces and filter in JavaScript (simpler and more reliable)
+    const allWorkspaces = await Workspace.findAll();
+    
+    // Filter workspaces where user is owner or in auth_users array
+    const userWorkspaces = allWorkspaces.filter(workspace => {
+      const authUsers = workspace.auth_users || [];
+      const isOwner = workspace.owner_real_id === userId;
+      const isMember = authUsers.includes(userId);
+      
+      console.log(`Workspace ${workspace.name}:`, {
+        owner: workspace.owner_real_id,
+        authUsers,
+        userId,
+        isOwner,
+        isMember
+      });
+      
+      return isOwner || isMember;
+    });
+
+    const formattedWorkspaces = userWorkspaces.map(workspace => ({
+      id: workspace.workspace_id,
+      name: workspace.name,
+      description: workspace.description,
+      isPrivate: workspace.private,
+      authorizedUsers: workspace.auth_users || [],
+      ownerId: workspace.owner_real_id,
+      createdAt: workspace.created_at
+    }));
+
+    console.log(`✅ Found ${formattedWorkspaces.length} workspaces for user ${userId}`);
+    console.log('User workspaces:', formattedWorkspaces.map(ws => ws.name));
+    
+    res.json(formattedWorkspaces);
+    
+  } catch (error) {
+    console.error('Error fetching user workspaces:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error fetching user workspaces',
+      error: error.message 
+    });
+  }
+};
+
+// remove a user from a workspace
+const removeUserFromWorkspace = async (req, res) => {
+  try {
+    const { workspaceId, userId } = req.params;
+    const requestingUserId = req.user.id; // User making the request
+    
+    console.log(`User ${requestingUserId} attempting to remove user ${userId} from workspace ${workspaceId}`);
+    
+    // Find the workspace
+    const workspace = await Workspace.findByPk(workspaceId);
+    
+    if (!workspace) {
+      return res.status(404).json({
+        success: false,
+        message: 'Workspace not found'
+      });
+    }
+    
+    // Permission check: Only owner can remove users
+    if (workspace.owner_real_id !== requestingUserId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: Only workspace owner can remove users'
+      });
+    }
+    
+    // Check if user to be removed exists in workspace
+    const currentAuthUsers = workspace.auth_users || [];
+    if (!currentAuthUsers.includes(userId) && workspace.owner_real_id !== userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'User is not a member of this workspace'
+      });
+    }
+    
+    // Prevent owner from removing themselves
+    if (userId === workspace.owner_real_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Owner cannot be removed from workspace'
+      });
+    }
+    
+    // Remove user from auth_users list
+    const updatedAuthUsers = currentAuthUsers.filter(id => id !== userId);
+    
+    await workspace.update({
+      auth_users: updatedAuthUsers
+    });
+    
+    // Get user details for response
+    const removedUser = await User.findByPk(userId, {
+      attributes: ['id', 'name', 'email']
+    });
+    
+    console.log(`✅ User ${userId} (${removedUser?.name}) removed from workspace ${workspaceId} by ${requestingUserId}`);
+    
+    res.json({
+      success: true,
+      message: 'User removed from workspace successfully',
+      removedUser: {
+        id: removedUser?.id,
+        name: removedUser?.name,
+        email: removedUser?.email
+      },
+      workspace: {
+        id: workspace.workspace_id,
+        name: workspace.name,
+        authorizedUsers: updatedAuthUsers
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error removing user from workspace:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error removing user from workspace',
+      error: error.message
+    });
+  }
+};
+
+
+
 module.exports = {
   getWorkspaces,
-  createWorkspace
+  createWorkspace,
+  joinWorkspace,
+  getUserWorkspaces,
+  getWorkspaceMembers,
+  leaveWorkspace,
+  removeUserFromWorkspace
 };

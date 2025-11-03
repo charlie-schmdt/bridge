@@ -67,7 +67,7 @@ const router = createHashRouter([
       }
       ,
       {
-        path: 'workspace',
+        path: 'workspace/:workspaceId',
         element: <WorkspaceLayout />
       },
       {
