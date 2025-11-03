@@ -3,7 +3,7 @@ const router = express.Router();
 
 // Import controllers
 const { createUser, loginUser, getSettings, updateSettings, oauthLogin, deleteAccount } = require('../controllers/userController');
-const { getWorkspaces, createWorkspace, joinWorkspace, getUserWorkspaces } = require('../controllers/workspaceController');
+const { getWorkspaces, createWorkspace, joinWorkspace, getUserWorkspaces, getWorkspaceMembers, leaveWorkspace } = require('../controllers/workspaceController');
 // Import middleware
 const { auth, authenticateToken } = require('../middleware/auth');
 
@@ -48,6 +48,8 @@ router.get('/workspaces/public', getWorkspaces);
 router.post('/workspaces', createWorkspace); // Removed auth middleware
 router.post('/workspace/join', authenticateToken, joinWorkspace);
 router.get('/workspaces/user', authenticateToken, getUserWorkspaces);
+router.get('/workspace/:workspaceId/members', authenticateToken, getWorkspaceMembers);
+router.delete('/workspace/:workspaceId/leave', authenticateToken, leaveWorkspace);
 // Protected routes (require authentication)
 router.delete('/auth/delete-account', authenticateToken, deleteAccount);
 

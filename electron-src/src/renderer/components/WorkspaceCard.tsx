@@ -70,7 +70,7 @@ export default function WorkspaceCard({
         
         // After successful join, navigate to workspace
         setTimeout(() => {
-          navigate("/workspace");
+          navigate(`/workspace/${id}`);
         }, 1000);
         
       } else {
@@ -86,7 +86,7 @@ export default function WorkspaceCard({
   };
 
   const handleEnterWorkspace = () => {
-    navigate("/workspace");
+    navigate(`/workspace/${id}`);
   };
 
   return (

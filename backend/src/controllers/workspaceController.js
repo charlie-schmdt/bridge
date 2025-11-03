@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize'); // Add this import
 const Workspace = require('../models/Workspaces');
 const User = require('../models/User');
+const { get } = require('../routes');
 
 const generateToken = (userID) => {
   return jwt.sign({ userID }, process.env.JWT_SECRET, { expiresIn: '1h' });
@@ -15,7 +16,7 @@ const getWorkspaces = async (req, res) => {
     const workspaces = await Workspace.findAll({
       where: { 
         private: false
-      }, // Only public workspaces
+      },
     });
 
     const formattedWorkspaces = workspaces.map(workspace => ({
@@ -38,6 +39,69 @@ const getWorkspaces = async (req, res) => {
     });
   }
 }
+
+// leave a workspace
+const leaveWorkspace = async (req, res) => {
+try {
+    const { workspaceId } = req.params;
+    const userId = req.user.id;
+    
+    console.log(`User ${userId} attempting to leave workspace ${workspaceId}`);
+    
+    const workspace = await Workspace.findByPk(workspaceId);
+    
+    if (!workspace) {
+      return res.status(404).json({
+        success: false,
+        message: 'Workspace not found'
+      });
+    }
+    
+    // Check if user is the owner
+    if (workspace.owner_real_id === userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Owner cannot leave workspace. Transfer ownership or delete the workspace instead.'
+      });
+    }
+    
+    const currentAuthUsers = workspace.auth_users || [];
+    if (!currentAuthUsers.includes(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'You are not a member of this workspace'
+      });
+    }
+    
+    // Remove user from auth_users list
+    const updatedAuthUsers = currentAuthUsers.filter(id => id !== userId);
+    
+    await workspace.update({
+      auth_users: updatedAuthUsers
+    });
+    
+    console.log(`✅ User ${userId} successfully left workspace ${workspaceId}`);
+    
+    res.json({
+      success: true,
+      message: 'Successfully left workspace',
+      workspace: {
+        id: workspace.workspace_id,
+        name: workspace.name,
+        authorizedUsers: updatedAuthUsers
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error leaving workspace:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error leaving workspace',
+      error: error.message
+    });
+  }
+};
+
 
 const createWorkspace = async (req, res) => {
     try {
@@ -143,6 +207,76 @@ const joinWorkspace = async (req, res) => {
   }
 };
 
+// Get Members of a Workspace
+const getWorkspaceMembers = async (req, res) => {
+  try {
+    const { workspaceId } = req.params;
+    const userId = req.user.id;
+    
+    console.log(`Fetching members for workspace: ${workspaceId}`);
+    
+    // Find the workspace
+    const workspace = await Workspace.findByPk(workspaceId);
+    
+    if (!workspace) {
+      return res.status(404).json({
+        success: false,
+        message: 'Workspace not found'
+      });
+    }
+    
+    // Check if user has access to this workspace
+    const authUsers = workspace.auth_users || [];
+    const hasAccess = workspace.owner_real_id === userId || authUsers.includes(userId);
+    
+    if (!hasAccess) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied to this workspace'
+      });
+    }
+    
+    // Get all member UUIDs (owner + auth_users)
+    const allMemberIds = [workspace.owner_real_id, ...authUsers];
+    const uniqueMemberIds = [...new Set(allMemberIds)]; // Remove duplicates
+    
+    // Fetch user details for all members
+    const members = await User.findAll({
+      where: {
+        id: uniqueMemberIds
+      },
+      attributes: ['id', 'name', 'email', 'picture'] // Only fetch needed fields
+    });
+    
+    // Format member data
+    const formattedMembers = members.map(member => ({
+      id: member.id,
+      name: member.name,
+      email: member.email,
+      picture: member.picture,
+      isOwner: member.id === workspace.owner_real_id,
+      role: member.id === workspace.owner_real_id ? 'Owner' : 'Member'
+    }));
+    
+    console.log(`✅ Found ${formattedMembers.length} members for workspace ${workspaceId}`);
+    
+    res.json({
+      success: true,
+      workspaceId: workspace.workspace_id,
+      workspaceName: workspace.name,
+      members: formattedMembers
+    });
+    
+  } catch (error) {
+    console.error('Error fetching workspace members:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching workspace members',
+      error: error.message
+    });
+  }
+};
+
 // Get workspaces where user is a member
 const getUserWorkspaces = async (req, res) => {
   try {
@@ -198,5 +332,7 @@ module.exports = {
   getWorkspaces,
   createWorkspace,
   joinWorkspace,
-  getUserWorkspaces
+  getUserWorkspaces,
+  getWorkspaceMembers,
+  leaveWorkspace
 };
