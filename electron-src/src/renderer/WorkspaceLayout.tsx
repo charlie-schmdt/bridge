@@ -127,6 +127,22 @@ export const WorkspaceLayout = () => {
     );
   }
 
+  const handleMemberRemoved = (removedUserId: string) => {
+  console.log(`Member ${removedUserId} removed from workspace`);
+  
+  // Update local state to remove the member
+  setMembers(prevMembers => prevMembers.filter(member => member.id !== removedUserId));
+  
+  // Update workspace info if needed
+  if (workspaceInfo) {
+    setWorkspaceInfo(prev => prev ? {
+      ...prev,
+      members: prev.members.filter(member => member.id !== removedUserId)
+    } : null);
+  }
+};
+
+
   return (
     <Card className="min-h-screen bg-gray-50">
       <div className="workspace-app">
@@ -172,8 +188,13 @@ export const WorkspaceLayout = () => {
 
           {/* Right: Members list (25%) */}
           <div className="lg:w-1/4 w-full">
-            <MembersList members={members} />
-          </div>
+            <MembersList 
+              members={members} 
+              workspaceId={workspaceId}
+              workspaceName={workspaceInfo?.name}
+              onMemberRemoved={handleMemberRemoved}
+            />          
+            </div>
         </div>
       </div>
     </Card>

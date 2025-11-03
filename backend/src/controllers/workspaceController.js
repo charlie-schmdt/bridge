@@ -114,7 +114,7 @@ const createWorkspace = async (req, res) => {
             description,
             private: isPrivate,
             owner_real_id: ownerId,
-            auth_users: [],
+            auth_users: [ownerId],
             room_ids: {}
         });
         
@@ -328,11 +328,96 @@ const getUserWorkspaces = async (req, res) => {
   }
 };
 
+// remove a user from a workspace
+const removeUserFromWorkspace = async (req, res) => {
+  try {
+    const { workspaceId, userId } = req.params;
+    const requestingUserId = req.user.id; // User making the request
+    
+    console.log(`User ${requestingUserId} attempting to remove user ${userId} from workspace ${workspaceId}`);
+    
+    // Find the workspace
+    const workspace = await Workspace.findByPk(workspaceId);
+    
+    if (!workspace) {
+      return res.status(404).json({
+        success: false,
+        message: 'Workspace not found'
+      });
+    }
+    
+    // Permission check: Only owner can remove users
+    if (workspace.owner_real_id !== requestingUserId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: Only workspace owner can remove users'
+      });
+    }
+    
+    // Check if user to be removed exists in workspace
+    const currentAuthUsers = workspace.auth_users || [];
+    if (!currentAuthUsers.includes(userId) && workspace.owner_real_id !== userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'User is not a member of this workspace'
+      });
+    }
+    
+    // Prevent owner from removing themselves
+    if (userId === workspace.owner_real_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Owner cannot be removed from workspace'
+      });
+    }
+    
+    // Remove user from auth_users list
+    const updatedAuthUsers = currentAuthUsers.filter(id => id !== userId);
+    
+    await workspace.update({
+      auth_users: updatedAuthUsers
+    });
+    
+    // Get user details for response
+    const removedUser = await User.findByPk(userId, {
+      attributes: ['id', 'name', 'email']
+    });
+    
+    console.log(`✅ User ${userId} (${removedUser?.name}) removed from workspace ${workspaceId} by ${requestingUserId}`);
+    
+    res.json({
+      success: true,
+      message: 'User removed from workspace successfully',
+      removedUser: {
+        id: removedUser?.id,
+        name: removedUser?.name,
+        email: removedUser?.email
+      },
+      workspace: {
+        id: workspace.workspace_id,
+        name: workspace.name,
+        authorizedUsers: updatedAuthUsers
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error removing user from workspace:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error removing user from workspace',
+      error: error.message
+    });
+  }
+};
+
+
+
 module.exports = {
   getWorkspaces,
   createWorkspace,
   joinWorkspace,
   getUserWorkspaces,
   getWorkspaceMembers,
-  leaveWorkspace
+  leaveWorkspace,
+  removeUserFromWorkspace
 };
