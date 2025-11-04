@@ -23,12 +23,12 @@ const initSfuConnection = () => {
     });
 
     sfuSocket.on('close', () => {
-        console.log('[SFU] Disconnected — retrying...');
+        // console.log('[SFU] Disconnected — retrying...');
         setTimeout(initSfuConnection, 2000);
     });
 
     sfuSocket.on('error', (err) => {
-        console.error('[SFU] WebSocket error:', err);
+        // console.error('[SFU] WebSocket error:', err);
     });
 }
 

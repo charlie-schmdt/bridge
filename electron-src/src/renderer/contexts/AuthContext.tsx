@@ -101,7 +101,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               await login(data.data.token, data.data.user);
               
               // Navigate to home
-              window.location.hash = '#/';
+              // window.location.hash = '#/';
               console.log('✅ User authenticated and redirected!');
             } else {
               console.error('❌ Backend OAuth failed:', data.message);
@@ -172,7 +172,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           
           // Navigate to home
           console.log('🏠 Navigating to home...');
-          window.location.hash = '#/';
+          // window.location.hash = '#/';
           console.log('✅ OAuth flow completed successfully!');
         } else {
           console.error('❌ Backend OAuth failed:', data.message);

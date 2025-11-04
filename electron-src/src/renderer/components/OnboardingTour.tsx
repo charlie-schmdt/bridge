@@ -17,7 +17,7 @@ const STEPS: Step[] = [
     id: 'workspaces',
     title: 'Workspaces',
     body: 'This is your workspace — see rooms, members, and important info here.',
-    path: '/workspace',
+    path: '/',
     selector: '.workspace-app'
   },
   {
