@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { MdClass } from "react-icons/md";
 import { useAuth } from "../contexts/AuthContext";
 import { CheckCircle, Plus, Users } from "lucide-react";
+import { Endpoints } from "@/utils/endpoints";
 
 interface WorkspaceCardProps {
   id: number; // Add workspace ID
@@ -46,7 +47,7 @@ export default function WorkspaceCard({
       const token = localStorage.getItem('bridge_token');
       console.log(user);
       
-      const response = await fetch('http://localhost:3000/api/workspace/join', {
+      const response = await fetch(Endpoints.WORKSPACE_JOIN, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

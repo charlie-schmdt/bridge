@@ -8,6 +8,7 @@ import { RoomCardProps } from "./components/RoomCard";
 import NotificationBanner from "./components/NotificationBanner";
 import { useParams } from "react-router-dom";
 import LeaveWorkspaceButton from "./components/LeaveWorkspaceButton";
+import { Endpoints } from "@/utils/endpoints";
 
 interface WorkspaceMember {
   id: string;
@@ -49,7 +50,7 @@ export const WorkspaceLayout = () => {
         console.log(`🔍 Fetching data for workspace ID: ${workspaceId}`);
         
         const token = localStorage.getItem('bridge_token');
-        const response = await fetch(`http://localhost:3000/api/workspace/${workspaceId}/members`, {
+        const response = await fetch(`${Endpoints.WORKSPACE}${workspaceId}/members`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'

@@ -4,7 +4,7 @@ const clientRegistry = require('../utils/clientRegistry');
 let sfuSocket = null;
 
 const initSfuConnection = () => {
-    sfuSocket = new WebSocket('ws://localhost:50051/ws');
+    sfuSocket = new WebSocket(process.env.SFU_URL);
 
     sfuSocket.on('open', () => {
         console.log('Connected to SFU server');

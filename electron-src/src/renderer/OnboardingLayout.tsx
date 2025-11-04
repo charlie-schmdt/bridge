@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Card, CardBody, CardHeader } from '@heroui/react';
 import { useAuth } from './contexts/AuthContext';
+import { Endpoints } from '@/utils/endpoints';
 
 const OnboardingLayout: React.FC = () => {
   const { user, updateUser } = useAuth();
@@ -32,7 +33,7 @@ const OnboardingLayout: React.FC = () => {
     setSaving(true);
     try {
       const token = localStorage.getItem('bridge_token');
-      const res = await fetch(`http://localhost:3000/api/users/${user.id}/onboarding`, {
+      const res = await fetch(`${Endpoints.USERS}${user.id}/onboarding`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

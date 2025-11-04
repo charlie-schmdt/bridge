@@ -10,6 +10,8 @@ import { useContext, useEffect, useState, useMemo } from "react";
 import { VideoFeedContext } from "./contexts/VideoFeedContext";
 import { Search, Users, Calendar, Plus } from "lucide-react";
 import { Button } from "@heroui/react";
+import { Endpoints } from "../utils/endpoints"
+
 import { useAuth } from "./contexts/AuthContext";
 
 interface Workspace {
@@ -49,7 +51,7 @@ export const HomeLayout = () => {
 
       try {
         const token = localStorage.getItem('bridge_token');
-        const response = await fetch('http://localhost:3000/api/workspaces/user', {
+        const response = await fetch(Endpoints.WORKSPACES_USER, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -78,7 +80,7 @@ export const HomeLayout = () => {
   useEffect(() => {
     const fetchPublicWorkspaces = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/workspaces/public', {
+        const response = await fetch(Endpoints.WORKSPACES_PUBLIC, {
           headers: {
             'Content-Type': 'application/json'
           }
@@ -111,7 +113,7 @@ export const HomeLayout = () => {
       setUserWorkspacesLoading(true);
       try {
         const token = localStorage.getItem('bridge_token');
-        const response = await fetch('http://localhost:3000/api/workspaces/user', {
+        const response = await fetch(Endpoints.WORKSPACES_USER, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -131,7 +133,7 @@ export const HomeLayout = () => {
 
     // Refresh public workspaces
     try {
-      const response = await fetch('http://localhost:3000/api/workspaces/public');
+      const response = await fetch(Endpoints.WORKSPACES_PUBLIC);
       if (response.ok) {
         const data = await response.json();
         setPublicWorkspaces(data);

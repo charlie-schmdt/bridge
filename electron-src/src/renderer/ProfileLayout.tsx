@@ -10,6 +10,7 @@ import Header from "./components/Header";
 import { useAuth } from "./contexts/AuthContext";
 import NotificationBanner from "./components/NotificationBanner";
 import { buildDiceBearUrl } from "../utils/buildDiceBearURL";
+import { Endpoints } from "@/utils/endpoints";
 
 export function ProfileLayout() {
   const { user, logout, updateUser } = useAuth();
@@ -40,7 +41,7 @@ export function ProfileLayout() {
       const userData = localStorage.getItem('bridge_user');
       if (!userData) return;
       const stored = JSON.parse(userData);
-      const res = await fetch(`http://localhost:3000/api/settings?userId=${stored.id}`, { headers: { 'Content-Type': 'application/json' } });
+      const res = await fetch(`${Endpoints.SETTINGS}?userId=${stored.id}`, { headers: { 'Content-Type': 'application/json' } });
       if (!res.ok) return;
       const data = await res.json();
       if (data.success) {
@@ -56,7 +57,7 @@ export function ProfileLayout() {
       const userData = localStorage.getItem('bridge_user');
       if (!userData) return;
       const userStored = JSON.parse(userData);
-      const response = await fetch('http://localhost:3000/api/settings', {
+      const response = await fetch(Endpoints.SETTINGS, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: userStored.id, [section]: data })
