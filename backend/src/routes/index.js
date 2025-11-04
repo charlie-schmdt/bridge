@@ -2,10 +2,8 @@ const express = require('express');
 const router = express.Router();
 
 // Import controllers
-const { createUser, loginUser, getSettings, updateSettings, oauthLogin, deleteAccount } = require('../controllers/userController');
 const { getWorkspaces, createWorkspace, joinWorkspace, getUserWorkspaces, getWorkspaceMembers, leaveWorkspace, removeUserFromWorkspace } = require('../controllers/workspaceController');
 const { createUser, loginUser, getSettings, updateSettings, oauthLogin, deleteAccount, setOnboarding } = require('../controllers/userController');
-const { getWorkspaces, createWorkspace } = require('../controllers/workspaceController');
 // Import middleware
 const { auth, authenticateToken } = require('../middleware/auth');
 
