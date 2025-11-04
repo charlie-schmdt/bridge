@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '@heroui/react';
 import { UserMinus, AlertCircle, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { Endpoints } from '@/utils/endpoints';
 
 interface RemoveUserButtonProps {
   workspaceId: string;
@@ -46,7 +47,7 @@ export const RemoveUserButton: React.FC<RemoveUserButtonProps> = ({
     try {
       const token = localStorage.getItem('bridge_token');
       
-      const response = await fetch(`http://localhost:3000/api/workspace/${workspaceId}/member/${userId}`, {
+      const response = await fetch(`${Endpoints.WORKSPACE}${workspaceId}/member/${userId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

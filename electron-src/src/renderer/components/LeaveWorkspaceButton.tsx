@@ -4,6 +4,7 @@ import { Button } from '@heroui/react';
 import { LogOut, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { Endpoints } from '@/utils/endpoints';
 
 interface LeaveWorkspaceButtonProps {
   workspaceId: string;
@@ -41,7 +42,7 @@ export const LeaveWorkspaceButton: React.FC<LeaveWorkspaceButtonProps> = ({
     try {
       const token = localStorage.getItem('bridge_token');
       
-      const response = await fetch(`http://localhost:3000/api/workspace/${workspaceId}/leave`, {
+      const response = await fetch(`${Endpoints.WORKSPACE}${workspaceId}/leave`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
