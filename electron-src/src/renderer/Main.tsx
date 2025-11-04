@@ -16,6 +16,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import FAQLayout from "./FAQLayout";
 import AuthCallback from './AuthCallback';
+import { AudioContextProvider } from './contexts/AudioContext';
 
 
 const router = createHashRouter([
@@ -87,7 +88,9 @@ const router = createHashRouter([
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <AuthProvider>
-      <RouterProvider router={router} />
+      <AudioContextProvider>
+        <RouterProvider router={router} />
+      </AudioContextProvider>
     </AuthProvider>
   </React.StrictMode>
 );

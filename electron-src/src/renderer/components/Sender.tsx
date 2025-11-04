@@ -5,37 +5,79 @@ import {
   Card, CardHeader, CardBody,
   Input, Textarea, Button, Slider,
   Select, SelectItem, 
-  Switch
+  Switch,
+  select
 } from "@heroui/react";
+import {useAudioContext} from "../contexts/AudioContext";
 
 
 function InputOptions() {
-  const [AudioInputs, setAudioInputs] = useState([
+  const {audioContext,
+      senderInputDevice,
+      senderOutputDevice,
+      setMicInput,
+      setSenderInputDevice,
+      setSenderOutputDevice,
+      setVolumeSensitivityGainValue,} = useAudioContext();
+
+  const [audioInputList, setAudioInputList] = useState([
     {key: "file", label: "Input File"},
   ]);
 
-  function updateInputs(inputs) {
-    // Logic to update input sources can be added here
-    setAudioInputs(inputs);
-  }
 
   useEffect(() => {
-    //TODO: Fetch available input sources from backend or system API
-    updateInputs([
-      {key: "file", label: "Input File"},
-      {key: "mic1", label: "Microphone 1"},
-      {key: "mic2", label: "Microphone 2"},
-    ]);
-  }, []);
+      console.log("audioContext:", audioContext); // Check if audioContext is defined
+
+      const updateInputs = async () => {
+        let inputs = [{ key: "file", label: "Input File" }];
+        try {
+          if (audioContext) {
+            // Enumerate devices with await
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            devices.forEach((device) => {
+              if (device.kind === "audioinput") {
+                inputs.push({
+                  key: device.deviceId,
+                  label: device.label || `Microphone ${inputs.length}`,
+                });
+              }
+            });
+            setAudioInputList(inputs);
+            console.log("inputs:", inputs); // Debugging line to check inputs
+          }
+        } catch (error) {
+          console.error("Error fetching audio input devices:", error);
+        }
+      };
+
+      if (audioContext) {
+        updateInputs(); // Call the async function
+        console.log("Audio inputs updated"); // Debugging line
+      }
+      
+  }, [audioContext]);
+
+  const handleInputChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedDevice = event.target.value; // Get the selected device ID
+    if (selectedDevice === 'file') {
+      console.log("File input selected");
+      setMicInput('file');
+    }
+    else {
+      setMicInput(selectedDevice);
+    }
+    
+  };
 
   return (
     <div className="flex flex-col gap-2">
       <Select
         className="w-full max-w-md bg-white text-gray-900"
-        value={AudioInputs[0].key}
+        value={senderInputDevice}
+        onChange={handleInputChange}
         radius="md"
       >
-        {AudioInputs.map((input) => (
+        {audioInputList.map((input) => (
           <SelectItem 
             className="bg-white hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" 
             key={input.key}>
@@ -51,7 +93,9 @@ function InputFile() {
 
   return (
     <div className="flex w-full flex-wrap md:flex-nowrap gap-4">
-      <Input placeholder="File"/>
+      <Input 
+      placeholder="File"
+      type="file"/>
     </div>
   )
 }
@@ -63,7 +107,7 @@ function ProcessButton() {
       <Button isIconOnly aria-label="Process">
         <img
           src="/Users/tylerptak/Documents/Class/Fall_25/407/bridge/electron-src/src/assets/record.avif" // Replace with the path to your image
-          alt="Record Icon"
+          alt="Process Icon"
           className="w-8 h-8" // You can adjust the size here
         />
       </Button>
@@ -72,32 +116,28 @@ function ProcessButton() {
 }
 
 function OutputOptions() {
-  const [AudioOutputs, setAudioOutputs] = useState([
-    {key: "file", label: "Output File"},
+  const audioContext = useAudioContext();
+
+  const [audioOutputs, setAudioOutputs] = useState([
+    {key: "file", label: "Output File"},{key: "default", label: "Default - Macbook Pro Speakers (Built-in)"},
   ]);
+  const [selectedOutput, setSelectedOutput] = useState<string>('file');
 
-  function updateOutputs(outputs) {
-    // Logic to update output sources can be added here
-    setAudioOutputs(outputs);
-  }
-
-  useEffect(() => {
-    //TODO: Fetch available input sources from backend or system API
-    updateOutputs([
-      {key: "file", label: "Output File"},
-      {key: "mic1", label: "Speaker 1"},
-      {key: "mic2", label: "Speaker 2"},
-    ]);
-  }, []);
+  const handleOutputChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedDevice = event.target.value; // Get the selected device ID
+    setSelectedOutput(selectedDevice); // Update the state with the selected input source
+    console.log(selectedDevice)
+  };
 
   return (
     <div className="flex flex-col gap-2">
       <Select
         className="w-full max-w-md bg-white text-gray-900"
-        value={AudioOutputs[0].key}
+        value={selectedOutput}
+        onChange={handleOutputChange}
         radius="md"
       >
-        {AudioOutputs.map((output) => (
+        {audioOutputs.map((output) => (
           <SelectItem 
             className="bg-white hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" 
             key={output.key}>
@@ -181,6 +221,12 @@ function Latency() {
 }
 
 export default function Sender() {
+
+  useEffect(()=>{
+
+  }, []
+  );
+
   return (
     <div>
       <div className="flex flex-row  rounded-xl shadow gap-4">
@@ -198,7 +244,7 @@ export default function Sender() {
             <InputFile/>
           </div>
           <div className="p-4 ">
-            <label className="mb-2">Record:</label>
+            <label className="mb-2">Process:</label>
           </div>
           <div className="p-4 ">
             <ProcessButton />
