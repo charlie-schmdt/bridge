@@ -4,6 +4,7 @@ import { v4 as uuid } from 'uuid';
 import { Spinner, Button } from '@heroui/react';
 import { lchown } from 'fs';
 import { ref } from 'process';
+import { WebSocketURL } from '@/utils/endpoints';
 
 // TODO: move this into a separate types directory
 type SignalMessageType = "join" | "exit" | "peerExit" | "offer" | "answer" | "candidate" | "subscribe" | "unsubscribe";
@@ -56,7 +57,7 @@ export default function VideoFeed({streamChatClient, streamChatChannel}) {
         clientId.current = uuid();
 
         // Connect to the WebSocket signaling server (TODO: refactor into separate component)
-        const ws = new WebSocket("ws://localhost:50031/ws")
+        const ws = new WebSocket(WebSocketURL)
         wsRef.current = ws;
 
         // Simple message handler

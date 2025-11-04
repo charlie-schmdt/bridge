@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Input, Switch, Button, Textarea } from "@heroui/react";
 import { PlusCircle, Lock, X } from "lucide-react";
 import NotificationBanner from "./NotificationBanner";
+import { Endpoints } from "@/utils/endpoints";
 
 // ============================
 // Custom Modal Component
@@ -100,7 +101,7 @@ export default function CreateWorkspaceCard() {
         return;
       }
 
-      const response = await fetch('http://localhost:3000/api/workspaces', {
+      const response = await fetch(Endpoints.WORKSPACES, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

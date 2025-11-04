@@ -10,6 +10,8 @@ import { useContext, useEffect, useState, useMemo } from "react";
 import { VideoFeedContext } from "./contexts/VideoFeedContext";
 import { Search, Users, Calendar, Plus } from "lucide-react";
 import { Button } from "@heroui/react";
+import { Endpoints } from "../utils/endpoints"
+
 import { useAuth } from "./contexts/AuthContext";
 
 interface Workspace {
@@ -78,7 +80,7 @@ export const HomeLayout = () => {
   useEffect(() => {
     const fetchPublicWorkspaces = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/workspaces/public', {
+        const response = await fetch(Endpoints.WORKSPACES_PUBLIC, {
           headers: {
             'Content-Type': 'application/json'
           }

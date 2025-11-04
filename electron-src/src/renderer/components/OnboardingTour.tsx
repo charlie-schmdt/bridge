@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@heroui/react';
 import { useAuth } from '../contexts/AuthContext';
+import { Endpoints } from '@/utils/endpoints';
 
 type Step = {
   id: string;
@@ -197,7 +198,7 @@ const OnboardingTour: React.FC = () => {
     if (!user) return setActive(false);
     try {
       const token = localStorage.getItem('bridge_token');
-      await fetch(`http://localhost:3000/api/users/${user.id}/onboarding`, {
+      await fetch(`${Endpoints.USERS}${user.id}/onboarding`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

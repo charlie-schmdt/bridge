@@ -1,0 +1,20 @@
+version: "3.9" 
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: node-server
+    env_file:
+      - ./backend/.env
+    ports:
+      - 8080:8080
+
+  sfu:
+    build:
+      context: ./sfu
+      dockerfile: Dockerfile
+    container_name: sfu
+    ports:
+      - 50051:50051
