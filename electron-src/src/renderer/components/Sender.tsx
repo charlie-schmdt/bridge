@@ -57,10 +57,10 @@ function InputFile() {
 }
 
 //TODO: update the url
-function RecordButton() {
+function ProcessButton() {
   return (
     <div className="flex gap-4 items-center">
-      <Button isIconOnly aria-label="Record">
+      <Button isIconOnly aria-label="Process">
         <img
           src="/Users/tylerptak/Documents/Class/Fall_25/407/bridge/electron-src/src/assets/record.avif" // Replace with the path to your image
           alt="Record Icon"
@@ -201,7 +201,7 @@ export default function Sender() {
             <label className="mb-2">Record:</label>
           </div>
           <div className="p-4 ">
-            <RecordButton />
+            <ProcessButton />
           </div>      
         </div>
         <div className="grid grid-cols-2 grid-rows-3 gap-4 flex-1 min-w-[300px] mt-2 mb-2">
