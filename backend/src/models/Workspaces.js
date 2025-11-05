@@ -35,6 +35,10 @@ const Workspace = sequelize.define('Workspace', {
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
+  },
+  authorized_users: {
+    type: DataTypes.JSONB,
+    allowNull: true
   }
 }, {
   timestamps: false,

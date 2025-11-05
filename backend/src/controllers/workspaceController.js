@@ -105,17 +105,17 @@ try {
 
 const createWorkspace = async (req, res) => {
     try {
-        const { name, description, isPrivate, ownerId } = req.body;
+        const { name, description, private, owner_real_id } = req.body;
         console.log('Creating workspace with data:', req.body);
-        console.log('Owner ID:', ownerId);
-        
+        console.log('Owner ID:', owner_real_id);
+
         const newWorkspace = await Workspace.create({
             name,
             description,
-            private: isPrivate,
-            owner_real_id: ownerId,
-            auth_users: [ownerId],
-            room_ids: {}
+            private: private,
+            owner_real_id: owner_real_id,
+            auth_users: [owner_real_id],
+            room_ids: []
         });
         
         res.status(201).json({
@@ -450,6 +450,37 @@ const updateWorkspace = async (req, res) => {
 }
 
 
+const setPermissions = async (req, res) => {
+  try {
+    const { userId, permissions } = req.body;
+    const { workspaceId } = req.params;
+    const { canCreateRooms, canDeleteRooms, canEditWorkspace } = permissions;
+
+    const workspace = await Workspace.findByPk(workspaceId);
+    const users = workspace.authorized_users || [];
+
+    const userIndex = users.findIndex(u => u.id === userId);
+    if (userIndex !== -1) {
+      users[userIndex].permissions = { canCreateRooms, canDeleteRooms, canEditWorkspace };
+    } else {
+      users.push({
+        id: userId,
+        role: "member",
+        permissions: { canCreateRooms, canDeleteRooms, canEditWorkspace }
+      });
+    }
+
+    workspace.authorized_users = users;
+    await workspace.save();
+
+    res.json({ success: true, message: 'Permissions updated successfully' });
+  } catch (error) {
+    console.error('❌ Set permissions error:', error);
+    res.status(500).json({ success: false, message: 'Error updating permissions' });
+  }
+};
+
+
 
 module.exports = {
   getWorkspaces,
@@ -459,5 +490,6 @@ module.exports = {
   getWorkspaceMembers,
   leaveWorkspace,
   removeUserFromWorkspace,
-  updateWorkspace
+  updateWorkspace,
+  setPermissions
 };

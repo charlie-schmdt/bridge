@@ -109,8 +109,8 @@ export default function CreateWorkspaceCard() {
         body: JSON.stringify({
           name: formData.name,
           description: formData.description,
-          isPrivate: formData.isPrivate,
-          ownerId: user.id  // Changed from 'id' to 'ownerId' to match controller
+          private: formData.isPrivate,
+          owner_real_id: user.id  // Changed from 'id' to 'owner_real_id' to match controller
         })
       });
 

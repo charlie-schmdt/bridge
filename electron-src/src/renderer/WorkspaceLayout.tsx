@@ -524,6 +524,7 @@ export const WorkspaceLayout = () => {
               workspaceId={workspaceId}
               workspaceName={workspaceInfo?.name}
               onMemberRemoved={handleMemberRemoved}
+              isEditing={editMode}
             />
           </div>
         </div>
