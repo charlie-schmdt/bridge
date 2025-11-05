@@ -46,6 +46,10 @@ const Room = sequelize.define('Room', {
     type: DataTypes.UUID,
     allowNull: false,
   },
+  categories: {
+    type: DataTypes.ARRAY(DataTypes.TEXT),
+    allowNull: true,
+  },
   
 }, {
   timestamps: false,

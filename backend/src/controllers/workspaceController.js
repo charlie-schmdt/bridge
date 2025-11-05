@@ -410,6 +410,45 @@ const removeUserFromWorkspace = async (req, res) => {
   }
 };
 
+const updateWorkspace = async (req, res) => {
+  try {
+    const { workspaceId } = req.params;
+    const { name, description, isPrivate } = req.body;
+    const userId = req.user.id;
+    console.log(`User ${userId} attempting to update workspace ${workspaceId}`);
+    
+    const workspace = await Workspace.findByPk(workspaceId);
+    if (!workspace) {
+      return res.status(404).json({ success: false, message: 'Workspace not found' });
+    }
+    // Only owner can update workspace
+    if (workspace.owner_real_id !== userId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized: Only workspace owner can update workspace' });
+    }
+    await workspace.update({
+      name: name || workspace.name,
+      description: description || workspace.description,
+      private: isPrivate !== undefined ? isPrivate : workspace.private
+    });
+    console.log(`✅ Workspace ${workspaceId} updated successfully by user ${userId}`);
+    res.json({
+      success: true,
+      message: 'Workspace updated successfully',
+      workspace: {
+        id: workspace.workspace_id,
+        name: workspace.name,
+        description: workspace.description,
+        isPrivate: workspace.private,
+        authorizedUsers: workspace.auth_users || [],
+        ownerId: workspace.owner_real_id,
+        createdAt: workspace.created_at
+      }
+    });
+  } catch (e) {
+    return res.status(500);
+  }
+}
+
 
 
 module.exports = {
@@ -419,5 +458,6 @@ module.exports = {
   getUserWorkspaces,
   getWorkspaceMembers,
   leaveWorkspace,
-  removeUserFromWorkspace
+  removeUserFromWorkspace,
+  updateWorkspace
 };

@@ -40,7 +40,7 @@ async function getRooms(req, res) {
 }
 
 async function createRoom(req, res) {
-  const { workspaceId, name, description } = req.body;
+  const { workspaceId, name, description, categories } = req.body;
   const userId = req.user?.id;
 
   if (!workspaceId || !name) {
@@ -57,6 +57,7 @@ async function createRoom(req, res) {
     const newRoom = await Room.create({
       name,
       description,
+      categories,
       workspace_id: workspaceId,
       created_by: userId,
     });
