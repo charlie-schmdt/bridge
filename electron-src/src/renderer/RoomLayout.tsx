@@ -42,7 +42,7 @@ export default function RoomLayout({}: RoomLayoutProps){
         const chatChannel = chatClient.channel('messaging', 'test-room', {
           name: 'Room',
           members: [test_user.id]
-        });
+        } as any);
         
         setChannel(chatChannel);
         setClient(chatClient);
@@ -70,6 +70,7 @@ export default function RoomLayout({}: RoomLayoutProps){
               <button
                 className="text-white bg-red-600 font-medium hover:text-black cursor-pointer px-2"
                 onClick={() => navigate("/")}
+                // onClick={() => navigate(`/workspace/${workspaceId}`)}
               >
                 Exit Room
               </button>
