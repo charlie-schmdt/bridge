@@ -245,7 +245,8 @@ const getWorkspaceMembers = async (req, res) => {
       where: {
         id: uniqueMemberIds
       },
-      attributes: ['id', 'name', 'email', 'picture'] // Only fetch needed fields
+      // Fetch additional public profile fields so the frontend can render member profiles
+      attributes: ['id', 'name', 'email', 'picture', 'bio', 'timezone']
     });
     
     // Format member data
@@ -254,6 +255,8 @@ const getWorkspaceMembers = async (req, res) => {
       name: member.name,
       email: member.email,
       picture: member.picture,
+      bio: member.bio || '',
+      timezone: member.timezone || 'UTC-8',
       isOwner: member.id === workspace.owner_real_id,
       role: member.id === workspace.owner_real_id ? 'Owner' : 'Member'
     }));
