@@ -54,6 +54,10 @@ const router = createHashRouter([
         element: <ProfileLayout />,
       },
       {
+        path: 'profile/:userId',
+        element: <ProfileLayout />,
+      },
+      {
         path: 'settings',
         element: <SettingsLayout />,
       },
