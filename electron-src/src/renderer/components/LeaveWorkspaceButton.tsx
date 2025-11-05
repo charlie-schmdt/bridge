@@ -42,7 +42,7 @@ export const LeaveWorkspaceButton: React.FC<LeaveWorkspaceButtonProps> = ({
     try {
       const token = localStorage.getItem('bridge_token');
       
-      const response = await fetch(`${Endpoints.WORKSPACE}${workspaceId}/leave`, {
+      const response = await fetch(`${Endpoints.WORKSPACE}/${workspaceId}/leave`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -47,7 +47,7 @@ export const RemoveUserButton: React.FC<RemoveUserButtonProps> = ({
     try {
       const token = localStorage.getItem('bridge_token');
       
-      const response = await fetch(`${Endpoints.WORKSPACE}${workspaceId}/member/${userId}`, {
+      const response = await fetch(`${Endpoints.WORKSPACE}/${workspaceId}/member/${userId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
