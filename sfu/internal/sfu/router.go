@@ -2,6 +2,7 @@ package sfu
 
 import (
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/pion/webrtc/v3"
@@ -49,6 +50,13 @@ func (r *defaultRouter) AddPeerConnection(id string, pc *webrtc.PeerConnection) 
 			if rid != id {
 				broadcaster.AddVideoSink(id, pc)
 				broadcaster.AddAudioSink(id, pc)
+				// send a PLI to the existing broadcaster's publisher
+				publisherPc := r.connections[rid]
+				if publisherPc == nil {
+					log.Printf("Failed to send PLI, no PeerConnection exists for broadcaster with id %s", rid)
+					continue
+				}
+				broadcaster.SendPublisherPli(publisherPc)
 			}
 		}
 	}
@@ -114,7 +122,7 @@ func (r *defaultRouter) ForwardAudioTrack(id string, remote *webrtc.TrackRemote)
 }
 
 func (r *defaultRouter) ForwardVideoTrack(id string, remote *webrtc.TrackRemote) error {
-	_, exists := r.connections[id]
+	forwardedPc, exists := r.connections[id]
 	if !exists {
 		return fmt.Errorf("PeerConnection with id %s does not exist", id)
 	}
@@ -137,5 +145,12 @@ func (r *defaultRouter) ForwardVideoTrack(id string, remote *webrtc.TrackRemote)
 			broadcaster.AddVideoSink(rid, pc)
 		}
 	}
+
+	forwardedBroadcaster := r.broadcasters[id]
+	if forwardedBroadcaster == nil {
+		return fmt.Errorf("Broadcaster for PeerConnection with id %s does not exist", id)
+	}
+	forwardedBroadcaster.SendPublisherPli(forwardedPc)
+
 	return nil
 }

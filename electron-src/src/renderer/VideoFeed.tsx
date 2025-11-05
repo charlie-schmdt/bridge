@@ -179,7 +179,18 @@ export default function VideoFeed({streamChatClient, streamChatChannel}) {
             console.log("Got remote track: ", event);
             if (remoteVideoRef.current) {
                 remoteVideoRef.current.srcObject = event.streams[0];
-                remoteVideoRef.current.play()
+                remoteVideoRef.current.play().then(_ => {
+                    // Automatic media track playback started successfully
+                })
+                .catch(error => {
+                    // Playback was prevented or interrupted
+                    if (error.name === 'AbortError') {
+                        console.warn('Video play() interrupted or prevented', error)
+                    }
+                    else {
+                        console.error('Video playback failed:', error);
+                    }
+                });
             }
         }
 

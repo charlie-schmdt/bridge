@@ -5,10 +5,12 @@ import (
 	"log"
 	"sync"
 
+	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
 )
 
 type Broadcaster interface {
+	SendPublisherPli(pc *webrtc.PeerConnection)
 	AddVideoSink(id string, pc *webrtc.PeerConnection)
 	AddAudioSink(id string, pc *webrtc.PeerConnection)
 	RemoveSinks(id string)
@@ -46,6 +48,14 @@ func InitBroadcaster(videoSrc *webrtc.TrackRemote, audioSrc *webrtc.TrackRemote)
 	go b.startVideo()
 	go b.startAudio()
 	return b
+}
+
+func (b *defaultBroadcaster) SendPublisherPli(pc *webrtc.PeerConnection) {
+	// pc MUST match the id of the broadcaster (sending PLI for this videoSrc through pc)
+	pli := &rtcp.PictureLossIndication{
+		MediaSSRC: uint32(b.videoSrc.SSRC()),
+	}
+	pc.WriteRTCP([]rtcp.Packet{pli})
 }
 
 func (b *defaultBroadcaster) SetVideoSource(videoSrc *webrtc.TrackRemote) {

@@ -115,7 +115,17 @@ func createSession(writer Writer, router sfu.Router) *session {
 }
 
 func (s *session) handleJoin(writer Writer, id string) (*webrtc.PeerConnection, error) {
-	pc, err := webrtc.NewPeerConnection(webrtc.Configuration{})
+	config := webrtc.Configuration{
+		ICEServers: []webrtc.ICEServer{
+			{
+				URLs: []string{"stun:stun.l.google.com:19302"},
+			},
+			{
+				URLs: []string{"stun:global.stun.twilio.com:3478"},
+			},
+		},
+	}
+	pc, err := webrtc.NewPeerConnection(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create PeerConnection: %w", err)
 	}
