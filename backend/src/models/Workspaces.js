@@ -29,12 +29,16 @@ const Workspace = sequelize.define('Workspace', {
     allowNull: true,
   },
   room_ids: {
-    type: DataTypes.JSONB,
+    type: DataTypes.ARRAY(DataTypes.UUID), // Postgres-only
     allowNull: true
   },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
+  },
+  authorized_users: {
+    type: DataTypes.JSONB,
+    allowNull: true
   }
 }, {
   timestamps: false,
