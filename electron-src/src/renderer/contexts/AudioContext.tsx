@@ -1,111 +1,156 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
+// Helper classes to manage AudioNode input/output ports
+
 // Create the context to manage AudioContext
 const WebAudioContext = createContext<{
   audioContext: AudioContext | null;
   senderInputDevice: string | null;
   senderOutputDevice: string | null;
-  setMicInput: (deviceId: string) => Promise<void>;
+  echoCancellation: boolean | null;
+  noiseSuppression: boolean | null;
+  setMicInput: (deviceId: string, context:AudioContext) => Promise<MediaStreamAudioSourceNode | undefined>;
   setSenderInputDevice: (deviceId: string | null) => void;
   setSenderOutputDevice: (deviceId: string | null) => void;
-  setVolumeSensitivityGainValue: (value: number) => void;
+  setSenderMicSensitivity: (value: number | null) => void;
+  setEchoCancellation: (value: boolean | null) => void;
+  setNoiseSuppression: (value: boolean | null) => void;
 } | null>(null);
 
-// Custom hook to use AudioContext
+// Hook to use AudioContext
 export const useAudioContext = () => {
   const context = useContext(WebAudioContext);
   return context;
 };
 
-// Create the AudioContextProvider to manage the AudioContext lifecycle
-
+// AudioContext Provider Component
 export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
-  const [micInputSourceNode, setMicInputSourceNode] = useState<MediaStreamAudioSourceNode | null>(null);
+  const [micInput, setMicInputState] = useState<MediaStreamAudioSourceNode | null>(null);
   const [senderInputDevice, setSenderInputDevice] = useState<string | null>(null);
   const [senderOutputDevice, setSenderOutputDevice] = useState<string | null>(null);
-  const [volumeSensitivityGainValue, setVolumeSensitivityGainValue] = useState<number>(1.0);
   const [volumeSensitivityGainNode, setVolumeSensitivityGainNode] = useState<GainNode | null>(null);
-  const [initializationDone, setInitializationDone] = useState<boolean>(false);
+  const [senderMicSensitivity, setSenderMicSensitivity] = useState<number | null>(null);  // Store the selected file
+  const [echoCancellation, setEchoCancellation] = useState<boolean | null>(false);  // Store the selected file
+  const [noiseSuppression, setNoiseSuppression] = useState<boolean | null>(false);  // Store the selected file
 
+  //create the functions to initialize the audio graph
   useEffect(() => {
-    // Create the AudioContext once the component is mounted
-    const context = new AudioContext();
-    setAudioContext(context);
+    const initializeAudioGraph = async () => {
+      console.log("Creating AudioContext");
+      // Create a All neccesary graph objects
+      const context = new AudioContext();
+      const micInput = await setMicInput('default', context);
+      const volumeSensitivityGainNode = context.createGain();
+      volumeSensitivityGainNode.gain.value = 1.0;
 
-    // Set default input device to system default
-    setMicInput('file');
+      //Connect the nodes
+      console.log("Connecting audio nodes");
+      micInput.connect(volumeSensitivityGainNode);
+      volumeSensitivityGainNode.connect(context.destination);
+      
 
-    //create the gain node
-    const volumeSensitivityGainNode = context.createGain();
-    volumeSensitivityGainNode.gain.value = volumeSensitivityGainValue;
-    setVolumeSensitivityGainNode(volumeSensitivityGainNode);
+      //Set the states
+      console.log("Setting state values");
+      setAudioContext(context);
+      setMicInputState(micInput);
+      setVolumeSensitivityGainNode(volumeSensitivityGainNode);
+      console.log("AudioContext created:", context);
+    }
 
-    setInitializationDone(true); //queue the next effect
+    initializeAudioGraph();
+
     
     // Cleanup when the component is unmounted (close AudioContext)
     return () => {
-      if (context.state !== 'closed') {
-        context.close();
+      if (audioContext.state !== 'closed') {
+        audioContext.close();
       }
+      micInput?.disconnect();
+      volumeSensitivityGainNode?.disconnect();
     };
   }, []);
 
+  //create the functions to initialize the audio graph
   useEffect(() => {
-    // Update gain value when volumeSensitivityGainValue changes
-    if (volumeSensitivityGainNode && audioContext.destination) {
-      volumeSensitivityGainNode.connect(audioContext.destination);
+    console.log("Sender Input Device changed:", senderInputDevice);
+    if (senderInputDevice === null) return;
+
+    //Update the mic input source based on the selected device
+    const updateInputSource = async () => {
+      micInput?.disconnect();
+
+      //Set the mic input to the selected device
+      console.log("Setting mic input to device ID:", senderInputDevice);
+      const newMicInput = await setMicInput(senderInputDevice, audioContext);
+
+      //Connect the new mic input to the volume sensitivity gain node
+      console.log("Connecting new mic input to volume sensitivity gain node");
+      newMicInput?.connect(volumeSensitivityGainNode);
+
+      setMicInputState(newMicInput);
     }
-  }, [volumeSensitivityGainNode, audioContext]);
+    updateInputSource();
+    
+    // Cleanup when the component is unmounted (close AudioContext)
+    return () => {
+    };
+  }, [senderInputDevice, echoCancellation, noiseSuppression]);
 
-  // Function to set the microphone input device and create the source node
-  const setMicInput = async (deviceId: string) => {
+  //Function to set the microphone input source
+  const setMicInput = async (deviceId: string, context:AudioContext) => {
+  return new Promise<MediaStreamAudioSourceNode | null>(async (resolve, reject) => {
     try {
-      console.log("Setting mic input to deviceId:", deviceId);
-      if (deviceId === 'file') {
-        console.log("File input selected - no microphone source created");
-        setMicInputSourceNode(null); // No source node for file input
-        setSenderInputDevice('file'); // Update the state with 'file' input
-        return;
-      }
-
-      if (micInputSourceNode) {
-        const oldStream = (micInputSourceNode as any).mediaStream; // Extract the mediaStream from the source node (casting)
-        oldStream.getTracks().forEach((track: MediaStreamTrack) => track.stop()); // Stop all tracks
-        micInputSourceNode.disconnect(); // Disconnect the old source from the AudioContext
-      }
-
+      //Get user media with the selected device ID
+      console.log("Setting mic input to device ID:", deviceId);
+      console.log("Echo Cancellation:", echoCancellation);
+      console.log("Noise Suppression:", noiseSuppression);
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          deviceId: deviceId ? { exact: deviceId } : undefined, // Use specific deviceId or let browser choose
+          deviceId: deviceId ? { exact: deviceId } : undefined,
+          echoCancellation: echoCancellation,
+          noiseSuppression: noiseSuppression,
         },
       });
-
-      const newSource = audioContext?.createMediaStreamSource(stream);
-      setMicInputSourceNode(newSource); // Update the global source
-      setSenderInputDevice(deviceId); // Update the state with the selected input source
-
-      if (volumeSensitivityGainNode && newSource) {
-        micInputSourceNode.connect(volumeSensitivityGainNode); // Connect to the volume node
-      }
-      
-      console.log("Audio source set to deviceId:", deviceId);
-
+      //Create MediaStreamSource from the stream
+      console.log("Creating MediaStreamAudioSourceNode from stream");
+      const newSource = context.createMediaStreamSource(stream);
+      resolve(newSource);
     } catch (err) {
-      console.error("Error accessing audio input:", err);
-      setMicInputSourceNode(null); // Set to empty source on error
+      reject(err);
     }
+  });
   };
 
+  //Effect for mic sensitivity
+  useEffect(() => {
+    if (audioContext === null) return;
+    if (volumeSensitivityGainNode === null) return;
+    if (senderMicSensitivity === null) return;
+
+    console.log("Setting mic sensitivity to:", senderMicSensitivity);
+    volumeSensitivityGainNode.gain.value = senderMicSensitivity;
+    
+    // Cleanup when the component is unmounted (close AudioContext)
+    return () => {
+    };
+  }, [senderMicSensitivity]);
+
+
+  // Provide the context values to children components
   return (
     <WebAudioContext.Provider value={{
       audioContext,
       senderInputDevice,
       senderOutputDevice,
+      echoCancellation,
+      noiseSuppression,
       setMicInput,
       setSenderInputDevice,
       setSenderOutputDevice,
-      setVolumeSensitivityGainValue,
+      setSenderMicSensitivity,
+      setEchoCancellation,
+      setNoiseSuppression
     }}>
       {children}
     </WebAudioContext.Provider>
