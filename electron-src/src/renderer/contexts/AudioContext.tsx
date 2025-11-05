@@ -9,6 +9,7 @@ const WebAudioContext = createContext<{
   senderOutputDevice: string | null;
   echoCancellation: boolean | null;
   noiseSuppression: boolean | null;
+  analyserNode: AnalyserNode | null;
   setMicInput: (deviceId: string, context:AudioContext) => Promise<MediaStreamAudioSourceNode | undefined>;
   setSenderInputDevice: (deviceId: string | null) => void;
   setSenderOutputDevice: (deviceId: string | null) => void;
@@ -30,6 +31,8 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [senderInputDevice, setSenderInputDevice] = useState<string | null>(null);
   const [senderOutputDevice, setSenderOutputDevice] = useState<string | null>(null);
   const [volumeSensitivityGainNode, setVolumeSensitivityGainNode] = useState<GainNode | null>(null);
+  const [gainStage, setGainStage] = useState<number | null>(1.0);
+  const [analyserNode, setAnalyserNode] = useState<AnalyserNode | null>(null);
   const [senderMicSensitivity, setSenderMicSensitivity] = useState<number | null>(null);  // Store the selected file
   const [echoCancellation, setEchoCancellation] = useState<boolean | null>(false);  // Store the selected file
   const [noiseSuppression, setNoiseSuppression] = useState<boolean | null>(false);  // Store the selected file
@@ -42,19 +45,29 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
       const context = new AudioContext();
       const micInput = await setMicInput('default', context);
       const volumeSensitivityGainNode = context.createGain();
-      volumeSensitivityGainNode.gain.value = 1.0;
+      volumeSensitivityGainNode.gain.value = gainStage;
+      const preProcessingGainNode = context.createGain();
+      preProcessingGainNode.gain.value = 10.0;
+      const analyser = context.createAnalyser();
+      const postProcessingGainNode = context.createGain();
+      postProcessingGainNode.gain.value = 0.1;
+      analyser.fftSize = 2048;
 
       //Connect the nodes
       console.log("Connecting audio nodes");
       micInput.connect(volumeSensitivityGainNode);
-      volumeSensitivityGainNode.connect(context.destination);
+      volumeSensitivityGainNode.connect(preProcessingGainNode);
+      preProcessingGainNode.connect(analyser);
+      analyser.connect(postProcessingGainNode);
+      postProcessingGainNode.connect(context.destination);
       
-
+      
       //Set the states
       console.log("Setting state values");
       setAudioContext(context);
       setMicInputState(micInput);
       setVolumeSensitivityGainNode(volumeSensitivityGainNode);
+      setAnalyserNode(analyser)
       console.log("AudioContext created:", context);
     }
 
@@ -128,8 +141,8 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
     if (volumeSensitivityGainNode === null) return;
     if (senderMicSensitivity === null) return;
 
-    console.log("Setting mic sensitivity to:", senderMicSensitivity);
-    volumeSensitivityGainNode.gain.value = senderMicSensitivity;
+    console.log("Setting mic sensitivity to:", gainStage * senderMicSensitivity);
+    volumeSensitivityGainNode.gain.value = gainStage * senderMicSensitivity;
     
     // Cleanup when the component is unmounted (close AudioContext)
     return () => {
@@ -145,6 +158,7 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
       senderOutputDevice,
       echoCancellation,
       noiseSuppression,
+      analyserNode,
       setMicInput,
       setSenderInputDevice,
       setSenderOutputDevice,
