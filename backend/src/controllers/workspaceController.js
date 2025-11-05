@@ -457,30 +457,91 @@ const setPermissions = async (req, res) => {
     const { canCreateRooms, canDeleteRooms, canEditWorkspace } = permissions;
 
     const workspace = await Workspace.findByPk(workspaceId);
-    const users = workspace.authorized_users || [];
+    if (!workspace) {
+      return res.status(404).json({ success: false, message: 'Workspace not found' });
+    }
 
-    const userIndex = users.findIndex(u => u.id === userId);
+    // Ensure authorized_users is an array
+    const users = Array.isArray(workspace.authorized_users)
+      ? workspace.authorized_users
+      : [];
+
+    // Find the index of the target user
+    const userIndex = users.findIndex((u) => u.id === userId);
+
     if (userIndex !== -1) {
-      users[userIndex].permissions = { canCreateRooms, canDeleteRooms, canEditWorkspace };
+      // Update existing user's permissions
+      users[userIndex].permissions = {
+        canCreateRooms,
+        canDeleteRooms,
+        canEditWorkspace,
+      };
     } else {
+      // Add new user with default role if not found
       users.push({
         id: userId,
-        role: "member",
-        permissions: { canCreateRooms, canDeleteRooms, canEditWorkspace }
+        role: 'member',
+        permissions: {
+          canCreateRooms,
+          canDeleteRooms,
+          canEditWorkspace,
+        },
       });
     }
 
-    workspace.authorized_users = users;
-    await workspace.save();
+    // Save updated array back to DB
+    //workspace.authorized_users = users;
+    await workspace.update({ authorized_users: users }, { where: { id: workspaceId } });
 
-    res.json({ success: true, message: 'Permissions updated successfully' });
+    console.log('✅ Permissions updated for user', userId);
+    res.json({
+      success: true,
+      message: 'Permissions updated successfully',
+      permissions: permissions,
+    });
   } catch (error) {
     console.error('❌ Set permissions error:', error);
-    res.status(500).json({ success: false, message: 'Error updating permissions' });
+    res
+      .status(500)
+      .json({ success: false, message: 'Error updating permissions' });
   }
 };
 
 
+const getPermissions = async (req, res) => {
+  try {
+    const { workspaceId, userId } = req.params;
+    const workspace = await Workspace.findByPk(workspaceId);
+
+    if (!workspace) {
+      return res.status(404).json({ success: false, message: 'Workspace not found' });
+    }
+
+    const authorizedUsers = workspace.authorized_users || [];
+    const userEntry = authorizedUsers.find(u => u.id === userId);
+
+    if (!userEntry) {
+      return res.status(404).json({ success: false, message: 'User not found in workspace' });
+    }
+
+    // Return their permissions or default empty permissions
+  
+    res.json({ success: true, permissions: userEntry.permissions });
+    return userEntry?.permissions || {
+      canCreateRooms: false,
+      canDeleteRooms: false,
+      canEditWorkspace: false
+    };
+  } catch (error) {
+    console.error('Error fetching user permissions:', error);
+    res.status(500).json({ success: false, message: 'Error fetching user permissions' });
+     return {
+      canCreateRooms: false,
+      canDeleteRooms: false,
+      canEditWorkspace: false
+    };
+  }
+};
 
 module.exports = {
   getWorkspaces,
@@ -491,5 +552,6 @@ module.exports = {
   leaveWorkspace,
   removeUserFromWorkspace,
   updateWorkspace,
-  setPermissions
+  setPermissions,
+  getPermissions
 };

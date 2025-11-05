@@ -3,6 +3,7 @@ import RemoveUserButton from './RemoveUserButton';
 import { Button } from "@heroui/react";
 import { useState } from "react";
 import { Endpoints } from "@/utils/endpoints";
+import { isOwnUser } from "stream-chat";
 
 
 const statusColors = {
@@ -46,17 +47,44 @@ export default function MembersList({ members, workspaceId, workspaceName, onMem
   const [canEditWorkspace, setCanEditWorkspace] = useState(false);
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
 
-const handleEditPermissions = (member: Member) => {
-  setEditingMember(member);
-  setCanCreateRooms(member.permissions?.canCreateRooms || false);
-  setCanDeleteRooms(member.permissions?.canDeleteRooms || false);
-  setCanEditWorkspace(member.permissions?.canEditWorkspace || false);
-  setShowPermissionsModal(true);
+  // member: the Member object
+  // workspaceId: the workspace the member belongs to
+const getUserPermissions = async (workspaceId: string, memberId: string) => {
+  try {
+    const token = localStorage.getItem("bridge_token");
+    const response = await fetch(`${Endpoints.WORKSPACES}/${workspaceId}/permissions/${memberId}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    });
+    const data = await response.json();
+    if (data.success) {
+      console.log("Permissions fetched successfully");
+      return data.permissions;
+    } else {
+      alert(data.message || "Failed to fetch permissions");
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Error fetching permissions");
+  }
 };
 
 
+const handleEditPermissions = (member: Member) => {
+  getUserPermissions(workspaceId!, member.id).then((permissions) => {
+    if (permissions) {
+      setCanCreateRooms(permissions.canCreateRooms || false);
+      setCanDeleteRooms(permissions.canDeleteRooms || false);
+      setCanEditWorkspace(permissions.canEditWorkspace || false);
+    }
+    setEditingMember(member);
+    setShowPermissionsModal(true);
+  });
+};
+
 const saveUserPermissions = async (userId: string, permissions: { canCreateRooms: boolean, canDeleteRooms: boolean, canEditWorkspace: boolean }) => {
   try {
+
     const token = localStorage.getItem("bridge_token");
     const response = await fetch(`${Endpoints.WORKSPACES}/${workspaceId}/permissions`, {
       method: "PUT",
@@ -65,7 +93,7 @@ const saveUserPermissions = async (userId: string, permissions: { canCreateRooms
     });
     const data = await response.json();
     if (data.success) {
-      console.log("Permissions updated successfully");
+      console.log("Permissions updated successfully", data.permissions);
     } else {
       alert(data.message || "Failed to update permissions");
     }
@@ -74,7 +102,6 @@ const saveUserPermissions = async (userId: string, permissions: { canCreateRooms
     alert("Error updating permissions");
   }
 };
-
 
 
 
