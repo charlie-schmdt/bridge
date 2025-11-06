@@ -87,10 +87,11 @@ export const WorkspaceLayout = () => {
         const room_response = await fetch(
           `${Endpoints.WORKSPACE}/${workspaceId}/rooms`,
           {
-            headers: { Authorization: `Bearer ${token}` },
+            headers: { 'Authorization': `Bearer ${token}` },
           }
         );
 
+        console.log(room_response)
         if (!response.ok) {
           throw new Error(`Failed to fetch workspace data: ${response.status}`);
         }
