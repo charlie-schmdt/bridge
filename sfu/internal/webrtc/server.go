@@ -3,6 +3,7 @@ package webrtc
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"sfu/internal/sfu"
 	"sfu/internal/signaling"
@@ -101,6 +102,12 @@ func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
 				fmt.Println("Error: failed to handle candidate: ", err)
 			}
 
+		case signaling.SignalMessageTypePLI:
+			// Send PLI to all other publishers
+			// Request Key Frames from other callers
+			log.Printf("Received PLI request from client %s", msg.ClientID)
+			sess.router.RequestKeyFrames(msg.ClientID)
+
 		default:
 			// TODO: handle other message types
 		}
@@ -115,7 +122,17 @@ func createSession(writer Writer, router sfu.Router) *session {
 }
 
 func (s *session) handleJoin(writer Writer, id string) (*webrtc.PeerConnection, error) {
-	pc, err := webrtc.NewPeerConnection(webrtc.Configuration{})
+	config := webrtc.Configuration{
+		ICEServers: []webrtc.ICEServer{
+			{
+				URLs: []string{"stun:stun.l.google.com:19302"},
+			},
+			{
+				URLs: []string{"stun:global.stun.twilio.com:3478"},
+			},
+		},
+	}
+	pc, err := webrtc.NewPeerConnection(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create PeerConnection: %w", err)
 	}

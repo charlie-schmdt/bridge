@@ -179,7 +179,27 @@ export default function VideoFeed({streamChatClient, streamChatChannel}) {
             console.log("Got remote track: ", event);
             if (remoteVideoRef.current) {
                 remoteVideoRef.current.srcObject = event.streams[0];
-                remoteVideoRef.current.play()
+                remoteVideoRef.current.play().then(_ => {
+                    // Automatic media track playback started successfully
+                    // Send a PLI request to the other users to get a key frame
+                    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+                        const msg = {
+                            type: "pli",
+                            clientId: clientId.current,
+                        }
+                        console.log("Sending PLI request to SFU")
+                        wsRef.current.send(JSON.stringify(msg));
+                    }
+                })
+                .catch(error => {
+                    // Playback was prevented or interrupted
+                    if (error.name === 'AbortError') {
+                        console.warn('Video play() interrupted or prevented', error)
+                    }
+                    else {
+                        console.error('Video playback failed:', error);
+                    }
+                });
             }
         }
 

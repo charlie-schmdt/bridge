@@ -20,6 +20,7 @@ const (
 	SignalMessageTypeCandidate   SignalMessageType = "candidate"
 	SignalMessageTypeSubscribe   SignalMessageType = "subscribe"
 	SignalMessageTypeUnsubscribe SignalMessageType = "unsubscribe"
+	SignalMessageTypePLI         SignalMessageType = "pli"
 )
 
 type SdpOffer struct {

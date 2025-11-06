@@ -2,6 +2,7 @@ package sfu
 
 import (
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/pion/webrtc/v3"
@@ -13,6 +14,7 @@ type Router interface {
 	ForwardVideoTrack(id string, track *webrtc.TrackRemote) error
 	ForwardAudioTrack(id string, track *webrtc.TrackRemote) error
 	GetPeerConnection(id string) *webrtc.PeerConnection
+	RequestKeyFrames(id string) error
 }
 
 type defaultRouter struct {
@@ -86,7 +88,7 @@ func (r *defaultRouter) RemovePeerConnection(id string, closeSubscriber func(id 
 }
 
 func (r *defaultRouter) ForwardAudioTrack(id string, remote *webrtc.TrackRemote) error {
-	_, exists := r.connections[id]
+	rpc, exists := r.connections[id]
 	if !exists {
 		return fmt.Errorf("PeerConnection with id %s does not exist", id)
 	}
@@ -99,7 +101,7 @@ func (r *defaultRouter) ForwardAudioTrack(id string, remote *webrtc.TrackRemote)
 		broadcaster = r.broadcasters[id]
 		broadcaster.SetAudioSource(remote)
 	} else {
-		broadcaster = InitBroadcaster(nil, remote)
+		broadcaster = InitBroadcaster(rpc, nil, remote)
 		r.broadcasters[id] = broadcaster
 	}
 
@@ -114,7 +116,8 @@ func (r *defaultRouter) ForwardAudioTrack(id string, remote *webrtc.TrackRemote)
 }
 
 func (r *defaultRouter) ForwardVideoTrack(id string, remote *webrtc.TrackRemote) error {
-	_, exists := r.connections[id]
+	//forwardedPc, exists := r.connections[id]
+	rpc, exists := r.connections[id]
 	if !exists {
 		return fmt.Errorf("PeerConnection with id %s does not exist", id)
 	}
@@ -127,7 +130,7 @@ func (r *defaultRouter) ForwardVideoTrack(id string, remote *webrtc.TrackRemote)
 		broadcaster = r.broadcasters[id]
 		broadcaster.SetVideoSource(remote)
 	} else {
-		broadcaster = InitBroadcaster(remote, nil)
+		broadcaster = InitBroadcaster(rpc, remote, nil)
 		r.broadcasters[id] = broadcaster
 	}
 
@@ -135,6 +138,23 @@ func (r *defaultRouter) ForwardVideoTrack(id string, remote *webrtc.TrackRemote)
 	for rid, pc := range r.connections {
 		if rid != id {
 			broadcaster.AddVideoSink(rid, pc)
+		}
+	}
+
+	//forwardedBroadcaster := r.broadcasters[id]
+	//if forwardedBroadcaster == nil {
+	//	return fmt.Errorf("Broadcaster for PeerConnection with id %s does not exist", id)
+	//}
+	//forwardedBroadcaster.SendPublisherPli()
+
+	return nil
+}
+
+func (r *defaultRouter) RequestKeyFrames(id string) error {
+	log.Printf("Requesting keyframes for id %s", id)
+	for rid, rbd := range r.broadcasters {
+		if rid != id {
+			rbd.SendPublisherPli()
 		}
 	}
 	return nil

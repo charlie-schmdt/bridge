@@ -1,20 +1,19 @@
-const BACKEND = "localhost:3000";
+const DOMAIN = "node-652795254011.us-east1.run.app";
+const PROTO = "https://"
+const BACKEND = PROTO + DOMAIN
 
-const HTTP_BACKEND = "http://" + BACKEND;
-
-export const WebSocketURL = `ws://${BACKEND}/ws`;
+export const WebSocketURL = `ws://${DOMAIN}/ws`;
 export const Endpoints = {
-  USERS: HTTP_BACKEND + "/api/users",
-  SETTINGS: HTTP_BACKEND + "/api/settings",
-  WORKSPACE: HTTP_BACKEND + "/api/workspace",
-  WORKSPACE_JOIN: HTTP_BACKEND + "/api/workspace/join",
-  WORKSPACES: HTTP_BACKEND + "/api/workspaces",
-  WORKSPACES_USER: HTTP_BACKEND + "/api/workspaces/user",
-  WORKSPACES_PUBLIC: HTTP_BACKEND + "/api/workspaces/public",
-  ROOMS: HTTP_BACKEND + "/api/rooms",
-  AUTH_DELETE: HTTP_BACKEND + "/api/auth/delete-account",
-  AUTH_OAUTH: HTTP_BACKEND + "/api/auth/oauth",
-  AUTH_LOGIN: HTTP_BACKEND + "/api/auth/login",
-  AUTH_REGISTER: HTTP_BACKEND + "/api/auth/register",
-  AUTH_ACCOUNT: HTTP_BACKEND + "/api/auth/account"
+  USERS: BACKEND + "/api/users",
+  SETTINGS: BACKEND + "/api/settings",
+  WORKSPACE: BACKEND + "/api/workspace",
+  WORKSPACE_JOIN: BACKEND + "/api/workspace/join",
+  WORKSPACES: BACKEND + "/api/workspaces",
+  WORKSPACES_USER: BACKEND + "/api/workspaces/user",
+  WORKSPACES_PUBLIC: BACKEND + "/api/workspaces/public",
+  AUTH_DELETE: BACKEND + "/api/auth/delete-account",
+  AUTH_OAUTH: BACKEND + "/api/auth/oauth",
+  AUTH_LOGIN: BACKEND + "/api/auth/login",
+  AUTH_REGISTER: BACKEND + "/api/auth/register",
+  AUTH_ACCOUNT: BACKEND + "/api/auth/account"
 };

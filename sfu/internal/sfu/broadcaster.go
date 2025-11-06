@@ -5,10 +5,12 @@ import (
 	"log"
 	"sync"
 
+	"github.com/pion/rtcp"
 	"github.com/pion/webrtc/v3"
 )
 
 type Broadcaster interface {
+	SendPublisherPli()
 	AddVideoSink(id string, pc *webrtc.PeerConnection)
 	AddAudioSink(id string, pc *webrtc.PeerConnection)
 	RemoveSinks(id string)
@@ -18,6 +20,7 @@ type Broadcaster interface {
 }
 
 type defaultBroadcaster struct {
+	pc         *webrtc.PeerConnection
 	videoSrc   *webrtc.TrackRemote
 	videoSinks map[string]*webrtc.TrackLocalStaticRTP
 	audioSrc   *webrtc.TrackRemote
@@ -31,8 +34,9 @@ type defaultBroadcaster struct {
 	amu sync.RWMutex
 }
 
-func InitBroadcaster(videoSrc *webrtc.TrackRemote, audioSrc *webrtc.TrackRemote) Broadcaster {
+func InitBroadcaster(pc *webrtc.PeerConnection, videoSrc *webrtc.TrackRemote, audioSrc *webrtc.TrackRemote) Broadcaster {
 	b := &defaultBroadcaster{
+		pc:         pc,
 		videoSrc:   videoSrc,
 		videoSinks: map[string]*webrtc.TrackLocalStaticRTP{},
 		audioSrc:   audioSrc,
@@ -46,6 +50,38 @@ func InitBroadcaster(videoSrc *webrtc.TrackRemote, audioSrc *webrtc.TrackRemote)
 	go b.startVideo()
 	go b.startAudio()
 	return b
+}
+
+func (b *defaultBroadcaster) SendPublisherPli() {
+	if b.pc == nil || b.videoSrc == nil {
+		log.Printf("Cannot send PLI: publisher PC or video source is nil")
+		return
+	}
+
+	// pc MUST match the id of the broadcaster (sending PLI for this videoSrc through pc)
+	pli := &rtcp.PictureLossIndication{
+		MediaSSRC: uint32(b.videoSrc.SSRC()),
+	}
+
+	log.Printf("Sending PLI to publisher for MediaSSRC %d", pli.MediaSSRC)
+	if err := b.pc.WriteRTCP([]rtcp.Packet{pli}); err != nil {
+		log.Printf("Failed to write PLI: %v", err)
+	}
+}
+
+func (b *defaultBroadcaster) readSubscriberRTCP(rtpSender *webrtc.RTPSender) {
+	for {
+		packets, _, err := rtpSender.ReadRTCP()
+		if err != nil {
+			return // Connection closed?
+		}
+		for _, pkt := range packets {
+			if _, ok := pkt.(*rtcp.PictureLossIndication); ok {
+				log.Println("Received PLI from subscriber")
+				b.SendPublisherPli()
+			}
+		}
+	}
 }
 
 func (b *defaultBroadcaster) SetVideoSource(videoSrc *webrtc.TrackRemote) {
@@ -73,7 +109,7 @@ func (b *defaultBroadcaster) AddVideoSink(id string, pc *webrtc.PeerConnection) 
 	//	}
 	//}
 	//sender.ReplaceTrack(localTrack)
-	_, err = pc.AddTrack(localTrack)
+	rtpSender, err := pc.AddTrack(localTrack)
 	fmt.Println("Track added for id: ", id)
 	if err != nil {
 		fmt.Printf("failed to add track to PeerConnection: %s", err)
@@ -83,6 +119,7 @@ func (b *defaultBroadcaster) AddVideoSink(id string, pc *webrtc.PeerConnection) 
 	b.vmu.Lock()
 	b.videoSinks[id] = localTrack
 	b.vmu.Unlock()
+	go b.readSubscriberRTCP(rtpSender)
 }
 
 func (b *defaultBroadcaster) AddAudioSink(id string, pc *webrtc.PeerConnection) {
