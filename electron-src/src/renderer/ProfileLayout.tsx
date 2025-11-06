@@ -46,7 +46,7 @@ export function ProfileLayout() {
       const otherId = (params as any).userId || new URLSearchParams(location.search || window.location.search).get('userId');
       if (otherId) {
         setViewingOther(true);
-        const res = await fetch(`http://localhost:3000/api/users/${otherId}`);
+        const res = await fetch(`${Endpoints.USERS}/${otherId}`);
         if (res.ok) {
           const data = await res.json();
           if (data.success) {

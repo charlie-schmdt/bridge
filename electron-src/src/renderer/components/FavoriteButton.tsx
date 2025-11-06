@@ -3,6 +3,7 @@ import { Button } from '@heroui/react';
 import { Star } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { PressEvent } from '@react-types/shared';
+import { Endpoints } from '@/utils/endpoints';
 
 interface FavoriteButtonProps {
   workspaceId: string;
@@ -29,7 +30,7 @@ const FavoriteButton: React.FC<FavoriteButtonProps> = ({
     try {
       const token = localStorage.getItem('bridge_token');
       
-      const response = await fetch(`http://localhost:3000/api/workspace/${workspaceId}/favorite`, {
+      const response = await fetch(`${Endpoints.WORKSPACE}/${workspaceId}/favorite`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -1,7 +1,6 @@
 const DOMAIN = "node-652795254011.us-east1.run.app";
 const PROTO = "https://"
-const BACKEND = "http://localhost:3000"
-// const BACKEND = PROTO + DOMAIN <- Will reintroduce this when we get access to backend
+const BACKEND = PROTO + DOMAIN
 
 
 export const WebSocketURL = `ws://${DOMAIN}/ws`;
