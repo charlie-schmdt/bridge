@@ -48,7 +48,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (token && userData) {
       try {
         const parsed = JSON.parse(userData);
-  console.log('AuthContext: rehydrated user from localStorage', parsed);
+          console.log('AuthContext: rehydrated user from localStorage', parsed);
         setUser(parsed);
       } catch (error) {
         console.error('Error parsing stored user data:', error);

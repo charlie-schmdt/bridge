@@ -8,6 +8,7 @@ import { SettingsLayout } from './SettingsLayout';
 import ProfileLayout from './ProfileLayout';
 import OnboardingLayout from './OnboardingLayout';
 import { VideoLayout } from './VideoLayout';
+import { AudioSandbox } from './AudioSandbox';
 import { WorkspaceLayout } from './WorkspaceLayout';
 import LogInLayout from './LogInLayout';
 import  RoomLayout  from './RoomLayout';
@@ -15,6 +16,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import FAQLayout from "./FAQLayout";
 import AuthCallback from './AuthCallback';
+import { AudioContextProvider } from './contexts/AudioContext';
 
 
 const router = createHashRouter([
@@ -71,6 +73,11 @@ const router = createHashRouter([
       }
       ,
       {
+        path: 'audiosandbox',
+        element: <AudioSandbox />
+      }
+      ,
+      {
         path: 'workspace/:workspaceId',
         element: <WorkspaceLayout />
       },
@@ -85,7 +92,9 @@ const router = createHashRouter([
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <AuthProvider>
-      <RouterProvider router={router} />
+      <AudioContextProvider>
+        <RouterProvider router={router} />
+      </AudioContextProvider>
     </AuthProvider>
   </React.StrictMode>
 );
