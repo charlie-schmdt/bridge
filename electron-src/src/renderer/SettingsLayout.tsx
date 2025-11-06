@@ -12,6 +12,7 @@ import Header from "./components/Header";
 import { useAuth } from "./contexts/AuthContext";
 import NotificationBanner from "./components/NotificationBanner";
 import { buildDiceBearUrl } from "../utils/buildDiceBearURL";
+import { Endpoints } from "@/utils/endpoints";
 
 export function SettingsLayout() {
   const { user, logout, updateUser } = useAuth();
@@ -40,7 +41,7 @@ export function SettingsLayout() {
       }
       const user = JSON.parse(userData);
       console.log('User ID:', user.id);
-      const response = await fetch(`http://localhost:3000/api/settings?userId=${user.id}`, {
+      const response = await fetch(`${Endpoints.SETTINGS}?userId=${user.id}`, {
         headers: {
           'Content-Type': 'application/json'
         }
@@ -71,7 +72,7 @@ const updateSettings = async (section: string, data: any) => {
       return;
     }
     const user = JSON.parse(userData);
-    const response =  await fetch('http://localhost:3000/api/settings', {
+    const response =  await fetch(Endpoints.SETTINGS, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -161,7 +162,7 @@ useEffect(() => {
       
       const requestBody = isOAuthUser ? {} : { password: deletePassword };
       
-      const response = await fetch('http://localhost:3000/api/auth/delete-account', {
+      const response = await fetch(Endpoints.AUTH_DELETE, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

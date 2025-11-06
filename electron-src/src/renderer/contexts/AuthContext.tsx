@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
+import { Endpoints } from '@/utils/endpoints';
 
 // Add OAuth handler to window
 declare global {
@@ -79,7 +80,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             console.log('✅ Google user info:', googleUser);
             
             // Send to your backend
-            const response = await fetch('http://localhost:3000/api/auth/oauth', {
+            const response = await fetch(Endpoints.AUTH_OAUTH, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -148,7 +149,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         // Send to your backend
         console.log('🔄 Sending user data to backend...');
-        const response = await fetch('http://localhost:3000/api/auth/oauth', {
+        const response = await fetch(Endpoints.AUTH_OAUTH, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -211,7 +212,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const loginManual = async (email: string, password: string) => {
-    const response = await fetch('http://localhost:3000/api/auth/login', {
+    const response = await fetch(Endpoints.AUTH_LOGIN, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -251,7 +252,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const register = async (email: string, password: string, name: string) => {
-    const response = await fetch('http://localhost:3000/api/auth/register', {
+    const response = await fetch(Endpoints.AUTH_REGISTER, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -286,7 +287,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       throw new Error('No authentication token found');
     }
 
-    const response = await fetch('http://localhost:3000/api/auth/account', {
+    const response = await fetch(Endpoints.AUTH_ACCOUNT, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
