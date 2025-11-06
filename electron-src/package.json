@@ -38,6 +38,7 @@
     "framer-motion": "^12.23.24",
     "init": "^0.1.2",
     "lucide-react": "^0.544.0",
+    "p5": "^2.0.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-icons": "^5.5.0",
