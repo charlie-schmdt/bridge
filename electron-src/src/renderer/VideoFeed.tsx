@@ -181,6 +181,15 @@ export default function VideoFeed({streamChatClient, streamChatChannel}) {
                 remoteVideoRef.current.srcObject = event.streams[0];
                 remoteVideoRef.current.play().then(_ => {
                     // Automatic media track playback started successfully
+                    // Send a PLI request to the other users to get a key frame
+                    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+                        const msg = {
+                            type: "pli",
+                            clientId: clientId.current,
+                        }
+                        console.log("Sending PLI request to SFU")
+                        wsRef.current.send(JSON.stringify(msg));
+                    }
                 })
                 .catch(error => {
                     // Playback was prevented or interrupted

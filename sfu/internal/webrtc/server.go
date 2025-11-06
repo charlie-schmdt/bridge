@@ -3,6 +3,7 @@ package webrtc
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"sfu/internal/sfu"
 	"sfu/internal/signaling"
@@ -100,6 +101,12 @@ func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
 			if err != nil {
 				fmt.Println("Error: failed to handle candidate: ", err)
 			}
+
+		case signaling.SignalMessageTypePLI:
+			// Send PLI to all other publishers
+			// Request Key Frames from other callers
+			log.Printf("Received PLI request from client %s", msg.ClientID)
+			sess.router.RequestKeyFrames(msg.ClientID)
 
 		default:
 			// TODO: handle other message types

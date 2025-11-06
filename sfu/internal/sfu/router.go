@@ -14,6 +14,7 @@ type Router interface {
 	ForwardVideoTrack(id string, track *webrtc.TrackRemote) error
 	ForwardAudioTrack(id string, track *webrtc.TrackRemote) error
 	GetPeerConnection(id string) *webrtc.PeerConnection
+	RequestKeyFrames(id string) error
 }
 
 type defaultRouter struct {
@@ -50,13 +51,6 @@ func (r *defaultRouter) AddPeerConnection(id string, pc *webrtc.PeerConnection) 
 			if rid != id {
 				broadcaster.AddVideoSink(id, pc)
 				broadcaster.AddAudioSink(id, pc)
-				// send a PLI to the existing broadcaster's publisher
-				publisherPc := r.connections[rid]
-				if publisherPc == nil {
-					log.Printf("Failed to send PLI, no PeerConnection exists for broadcaster with id %s", rid)
-					continue
-				}
-				broadcaster.SendPublisherPli(publisherPc)
 			}
 		}
 	}
@@ -94,7 +88,7 @@ func (r *defaultRouter) RemovePeerConnection(id string, closeSubscriber func(id 
 }
 
 func (r *defaultRouter) ForwardAudioTrack(id string, remote *webrtc.TrackRemote) error {
-	_, exists := r.connections[id]
+	rpc, exists := r.connections[id]
 	if !exists {
 		return fmt.Errorf("PeerConnection with id %s does not exist", id)
 	}
@@ -107,7 +101,7 @@ func (r *defaultRouter) ForwardAudioTrack(id string, remote *webrtc.TrackRemote)
 		broadcaster = r.broadcasters[id]
 		broadcaster.SetAudioSource(remote)
 	} else {
-		broadcaster = InitBroadcaster(nil, remote)
+		broadcaster = InitBroadcaster(rpc, nil, remote)
 		r.broadcasters[id] = broadcaster
 	}
 
@@ -122,7 +116,8 @@ func (r *defaultRouter) ForwardAudioTrack(id string, remote *webrtc.TrackRemote)
 }
 
 func (r *defaultRouter) ForwardVideoTrack(id string, remote *webrtc.TrackRemote) error {
-	forwardedPc, exists := r.connections[id]
+	//forwardedPc, exists := r.connections[id]
+	rpc, exists := r.connections[id]
 	if !exists {
 		return fmt.Errorf("PeerConnection with id %s does not exist", id)
 	}
@@ -135,7 +130,7 @@ func (r *defaultRouter) ForwardVideoTrack(id string, remote *webrtc.TrackRemote)
 		broadcaster = r.broadcasters[id]
 		broadcaster.SetVideoSource(remote)
 	} else {
-		broadcaster = InitBroadcaster(remote, nil)
+		broadcaster = InitBroadcaster(rpc, remote, nil)
 		r.broadcasters[id] = broadcaster
 	}
 
@@ -146,11 +141,21 @@ func (r *defaultRouter) ForwardVideoTrack(id string, remote *webrtc.TrackRemote)
 		}
 	}
 
-	forwardedBroadcaster := r.broadcasters[id]
-	if forwardedBroadcaster == nil {
-		return fmt.Errorf("Broadcaster for PeerConnection with id %s does not exist", id)
-	}
-	forwardedBroadcaster.SendPublisherPli(forwardedPc)
+	//forwardedBroadcaster := r.broadcasters[id]
+	//if forwardedBroadcaster == nil {
+	//	return fmt.Errorf("Broadcaster for PeerConnection with id %s does not exist", id)
+	//}
+	//forwardedBroadcaster.SendPublisherPli()
 
+	return nil
+}
+
+func (r *defaultRouter) RequestKeyFrames(id string) error {
+	log.Printf("Requesting keyframes for id %s", id)
+	for rid, rbd := range r.broadcasters {
+		if rid != id {
+			rbd.SendPublisherPli()
+		}
+	}
 	return nil
 }
