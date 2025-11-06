@@ -596,44 +596,6 @@ const deleteAccount = async (req, res) => {
   }
 };
 
-// Set onboarding completion flag for the authenticated user
-const setOnboarding = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { completed } = req.body;
-
-    // req.user is set by authenticateToken middleware
-    const user = req.user;
-
-    if (!user) {
-      return res.status(401).json({ success: false, message: 'Unauthorized' });
-    }
-
-    // Ensure the token owner matches the id in the URL
-    if (String(user.id) !== String(id)) {
-      return res.status(403).json({ success: false, message: 'Forbidden' });
-    }
-
-    await user.update({ onboarding_completed: !!completed });
-
-    const userData = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      picture: user.picture,
-      provider: user.provider,
-      isVerified: user.isVerified,
-      onboarding_completed: user.onboarding_completed,
-      createdAt: user.createdAt
-    };
-
-    res.json({ success: true, message: 'Onboarding updated', data: { user: userData } });
-  } catch (error) {
-    console.error('Set onboarding error:', error);
-    res.status(500).json({ success: false, message: 'Error updating onboarding' });
-  }
-};
-
 module.exports = {
   createUser,
   loginUser,
@@ -642,9 +604,6 @@ module.exports = {
   updateSettings,
   oauthLogin,
   setOnboarding,
-<<<<<<< HEAD
-=======
   getUserById,
->>>>>>> b208fc7 (viewing other user profiles)
   deleteAccount
 };

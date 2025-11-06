@@ -1,4 +1,4 @@
-const BACKEND = "localhost:8080";
+const BACKEND = "localhost:3000";
 
 const HTTP_BACKEND = "http://" + BACKEND;
 
