@@ -430,6 +430,101 @@ const loginUser = async (req, res) => {
   }
 };
 
+// Set onboarding completion flag for the authenticated user
+const setOnboarding = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { completed } = req.body;
+
+    // req.user is set by authenticateToken middleware
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    // Ensure the token owner matches the id in the URL
+    if (String(user.id) !== String(id)) {
+      return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+
+    await user.update({ onboarding_completed: !!completed });
+
+    const userData = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      picture: user.picture,
+      provider: user.provider,
+      isVerified: user.isVerified,
+      onboarding_completed: user.onboarding_completed,
+      createdAt: user.createdAt
+    };
+
+    res.json({ success: true, message: 'Onboarding updated', data: { user: userData } });
+  } catch (error) {
+    console.error('Set onboarding error:', error);
+    res.status(500).json({ success: false, message: 'Error updating onboarding' });
+  }
+};
+
+// Public: get a user's public profile by id
+const getUserById = async (req, res) => {
+  try {
+  const { id } = req.params;
+  console.log('getUserById: requested id =', id);
+    const authHeader = req.headers['authorization'];
+    let requesterId = null;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        requesterId = decoded.userId;
+      } catch (e) {
+        // ignore token errors; treat as anonymous
+        requesterId = null;
+      }
+    }
+
+    let target = await User.findByPk(id);
+    if (!target) {
+      // fallback: try a findOne by id cast to string (some DBs/ORMS have subtle typing differences)
+      console.log('getUserById: primary lookup failed, attempting fallback findOne by id string');
+      target = await User.findOne({ where: { id: String(id) } });
+    }
+
+    if (!target) {
+      console.log('getUserById: user not found for id=', id);
+      return res.status(404).json({ success: false, message: `User not found for id ${id}` });
+    }
+    console.log('getUserById: found user id=', target.id);
+
+    const isOwner = requesterId && String(requesterId) === String(target.id);
+    const visibility = target.profileVisibility || 'team';
+
+    // Build response with limited fields based on visibility
+    const response = {
+      id: target.id,
+      name: target.name,
+      picture: target.picture,
+      bio: target.bio,
+      timezone: target.timezone,
+      createdAt: target.createdAt,
+      profileVisibility: visibility,
+      onboarding_completed: !!target.onboarding_completed
+    };
+
+    if (visibility !== 'private' || isOwner) {
+      response.email = target.email;
+    }
+
+    res.json({ success: true, data: response });
+  } catch (error) {
+    console.error('Get user by id error:', error);
+    res.status(500).json({ success: false, message: 'Error fetching user' });
+  }
+};
+
 const logoutUser = async (req, res) => {
   try {
     // In a simple JWT setup, we don't need to do much server-side
@@ -501,44 +596,6 @@ const deleteAccount = async (req, res) => {
   }
 };
 
-// Set onboarding completion flag for the authenticated user
-const setOnboarding = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { completed } = req.body;
-
-    // req.user is set by authenticateToken middleware
-    const user = req.user;
-
-    if (!user) {
-      return res.status(401).json({ success: false, message: 'Unauthorized' });
-    }
-
-    // Ensure the token owner matches the id in the URL
-    if (String(user.id) !== String(id)) {
-      return res.status(403).json({ success: false, message: 'Forbidden' });
-    }
-
-    await user.update({ onboarding_completed: !!completed });
-
-    const userData = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      picture: user.picture,
-      provider: user.provider,
-      isVerified: user.isVerified,
-      onboarding_completed: user.onboarding_completed,
-      createdAt: user.createdAt
-    };
-
-    res.json({ success: true, message: 'Onboarding updated', data: { user: userData } });
-  } catch (error) {
-    console.error('Set onboarding error:', error);
-    res.status(500).json({ success: false, message: 'Error updating onboarding' });
-  }
-};
-
 module.exports = {
   createUser,
   loginUser,
@@ -547,5 +604,6 @@ module.exports = {
   updateSettings,
   oauthLogin,
   setOnboarding,
+  getUserById,
   deleteAccount
 };

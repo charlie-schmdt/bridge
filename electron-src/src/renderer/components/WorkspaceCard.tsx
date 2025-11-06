@@ -2,18 +2,21 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MdClass } from "react-icons/md";
 import { useAuth } from "../contexts/AuthContext";
-import { CheckCircle, Plus, Users } from "lucide-react";
+import { CheckCircle, Plus, Users, Lock } from "lucide-react";
 import { Endpoints } from "@/utils/endpoints";
+import FavoriteButton from './FavoriteButton'
 
 interface WorkspaceCardProps {
-  id: number; // Add workspace ID
+  id: number; 
   title: string;
   description: string;
   nextMeeting?: string;
   members: number;
-  authorizedUsers?: string[]; // Add authorized users list
-  isPrivate?: boolean; // Add privacy status
+  authorizedUsers?: string[]; 
+  isPrivate?: boolean; 
+  isFavorite?: boolean; 
   onJoinSuccess?: () => void; // Callback for when join is successful
+  onFavoriteToggle?: (workspaceId: string, isFavorite: boolean) => void; 
 }
 
 export default function WorkspaceCard({ 
@@ -24,7 +27,9 @@ export default function WorkspaceCard({
   members,
   authorizedUsers = [],
   isPrivate = false,
-  onJoinSuccess
+  isFavorite = false,
+  onJoinSuccess,
+  onFavoriteToggle
 }: WorkspaceCardProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -90,27 +95,48 @@ export default function WorkspaceCard({
     navigate(`/workspace/${id}`);
   };
 
-  return (
+return (
     <div className="w-full min-w-0 min-h-[15rem] bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-200 p-4 flex flex-col justify-between border border-gray-100">
       
-      {/* Header with icon and privacy indicator */}
-      <div className="flex items-center justify-between mb-2">
+      {/* Header with icon, privacy indicator, and favorite button */}
+      <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2">
           <MdClass className="text-blue-600" size={28} />
           {isPrivate && (
-            <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
-              Private
-            </span>
+            <div className="flex items-center gap-1">
+              <Lock size={14} className="text-yellow-600" />
+              <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
+                Private
+              </span>
+            </div>
           )}
         </div>
         
-        {isJoined && (
-          <CheckCircle className="text-green-500" size={20} />
-        )}
+        <div className="flex items-center gap-2">
+          {/* Only show favorite button if user is a member */}
+          {isJoined && (
+            <FavoriteButton
+              workspaceId={id.toString()}
+              isFavorite={isFavorite}
+              onFavoriteToggle={onFavoriteToggle}
+            />
+          )}
+          
+          {isJoined && (
+            <CheckCircle className="text-green-500" size={20} />
+          )}
+        </div>
       </div>
 
-      {/* Title */}
-      <h3 className="font-semibold text-lg text-gray-900 mb-2">{title}</h3>
+      {/* Title with favorite indicator */}
+      <div className="flex items-center gap-2 mb-2">
+        <h3 className="font-semibold text-lg text-gray-900 flex-1">{title}</h3>
+        {isFavorite && (
+          <span className="text-xs bg-yellow-50 text-yellow-700 px-2 py-1 rounded-full border border-yellow-200">
+            ⭐ Favorite
+          </span>
+        )}
+      </div>
       
       {/* Description */}
       <p className="text-sm text-gray-600 mb-4 flex-grow">{description}</p>

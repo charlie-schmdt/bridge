@@ -80,7 +80,7 @@ export const LeaveWorkspaceButton: React.FC<LeaveWorkspaceButtonProps> = ({
 
   if (showConfirmation) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4 mt-6 px-4">
         <div className="flex items-center gap-2 mb-3">
           <AlertCircle className="text-red-500" size={20} />
           <h4 className="font-medium text-red-900">Leave Workspace</h4>

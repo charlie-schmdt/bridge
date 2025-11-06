@@ -9,22 +9,44 @@ const statusColors = {
 export interface RoomCardProps {
   title: string;
   description: string;
+  categories?: string[];
   status: "active" | "scheduled" | "offline";
   nextMeeting: string;
+  editMode?: boolean;
 }
 
-export function RoomCard({ title, description, status, nextMeeting }: RoomCardProps) {
+export function RoomCard({ title, description, categories, status, nextMeeting, editMode }: RoomCardProps) {
   const navigate = useNavigate();
+  const handleDeleteRoom = () => {
+    // Implement room deletion logic here
+    console.log(`Deleting room: ${title}`);
+  };
 
   return (
     <div className="w-full min-w-0 min-h-[15rem] bg-white rounded-xl shadow p-4 flex flex-col justify-between">
       <div className="flex justify-between items-center">
         <h3 className="font-semibold">{title}</h3>
+        
         <span className={`text-sm font-medium ${statusColors[status]}`}>
           {status.charAt(0).toUpperCase() + status.slice(1)}
         </span>
+        {editMode && (
+          <button className="text-sm font-bold text-red-500 hover:underline cursor:pointer" onClick={() => handleDeleteRoom()}>
+            Delete
+          </button>
+        )}
       </div>
       <p className="text-sm text-gray-500">{description}</p>
+
+      {categories && categories.length > 0 && (
+        <div className="mt-2">
+          {categories.map((category, index) => (
+            <span key={index} className="inline-block bg-gray-200 text-gray-700 text-xs font-medium mr-2 px-2.5 py-0.5 rounded">
+              {category}
+            </span>
+          ))}
+        </div>
+      )}
 
       {status === "active" && (
         <button 

@@ -22,6 +22,7 @@ interface Workspace {
   authorizedUsers: string[];
   ownerId: string;
   createdAt: string;
+  isFavorite: boolean;
 }
 
 export const homeLoader = async () => {
@@ -39,6 +40,28 @@ export const HomeLayout = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState("All");
+
+const handleFavoriteToggle = (workspaceId: string, isFavorite: boolean) => {
+  setUserWorkspaces(prevWorkspaces => {
+    const updated = prevWorkspaces.map(ws => 
+      ws.id.toString() === workspaceId ? { ...ws, isFavorite } : ws // ← FIX
+    );
+    
+    // Re-sort: favorites first
+    return updated.sort((a, b) => {
+      if (a.isFavorite && !b.isFavorite) return -1;
+      if (!a.isFavorite && b.isFavorite) return 1;
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    });
+  });
+
+  setPublicWorkspaces(prevWorkspaces => {
+    return prevWorkspaces.map(ws => 
+      ws.id.toString() === workspaceId ? { ...ws, isFavorite } : ws // ← FIX
+    );
+  });
+};
+
 
   // Fetch user's workspaces (where they're a member)
   useEffect(() => {
@@ -61,8 +84,9 @@ export const HomeLayout = () => {
         if (!response.ok) {
           throw new Error('Failed to fetch user workspaces');
         }
-
+        
         const data = await response.json();
+        console.log(data);
         setUserWorkspaces(data);
         console.log('✅ Fetched user workspaces:', data.length);
       } catch (err) {
@@ -80,9 +104,11 @@ export const HomeLayout = () => {
   useEffect(() => {
     const fetchPublicWorkspaces = async () => {
       try {
+        const token = localStorage.getItem('bridge_token');
         const response = await fetch(Endpoints.WORKSPACES_PUBLIC, {
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
           }
         });
 
@@ -272,6 +298,8 @@ export const HomeLayout = () => {
                   members={workspace.authorizedUsers?.length || 0}
                   authorizedUsers={workspace.authorizedUsers}
                   isPrivate={workspace.isPrivate}
+                  isFavorite={workspace.isFavorite}
+                  onFavoriteToggle={handleFavoriteToggle}
                   nextMeeting="Tomorrow at 2 PM"
                   onJoinSuccess={refreshWorkspaces}
                 />
@@ -322,6 +350,8 @@ export const HomeLayout = () => {
                   isPrivate={workspace.isPrivate}
                   nextMeeting="Tomorrow at 2 PM"
                   onJoinSuccess={refreshWorkspaces}
+                  isFavorite={workspace.isFavorite}
+                  onFavoriteToggle={handleFavoriteToggle}
                 />
               ))
             ) : (
