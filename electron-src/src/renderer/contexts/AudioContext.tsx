@@ -10,6 +10,7 @@ const WebAudioContext = createContext<{
   echoCancellation: boolean | null;
   noiseSuppression: boolean | null;
   analyserNode: AnalyserNode | null;
+  senderMicSensitivity: number | null;
   setMicInput: (deviceId: string, context:AudioContext) => Promise<MediaStreamAudioSourceNode | undefined>;
   setSenderInputDevice: (deviceId: string | null) => void;
   setSenderOutputDevice: (deviceId: string | null) => void;
@@ -28,12 +29,12 @@ export const useAudioContext = () => {
 export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [micInput, setMicInputState] = useState<MediaStreamAudioSourceNode | null>(null);
-  const [senderInputDevice, setSenderInputDevice] = useState<string | null>(null);
-  const [senderOutputDevice, setSenderOutputDevice] = useState<string | null>(null);
+  const [senderInputDevice, setSenderInputDevice] = useState<string | null>('default');
+  const [senderOutputDevice, setSenderOutputDevice] = useState<string | null>('default');
   const [volumeSensitivityGainNode, setVolumeSensitivityGainNode] = useState<GainNode | null>(null);
   const [gainStage, setGainStage] = useState<number | null>(1.0);
   const [analyserNode, setAnalyserNode] = useState<AnalyserNode | null>(null);
-  const [senderMicSensitivity, setSenderMicSensitivity] = useState<number | null>(null);  // Store the selected file
+  const [senderMicSensitivity, setSenderMicSensitivity] = useState<number | null>(0.5);  // Store the selected file
   const [echoCancellation, setEchoCancellation] = useState<boolean | null>(false);  // Store the selected file
   const [noiseSuppression, setNoiseSuppression] = useState<boolean | null>(false);  // Store the selected file
 
@@ -159,6 +160,7 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
       echoCancellation,
       noiseSuppression,
       analyserNode,
+      senderMicSensitivity,
       setMicInput,
       setSenderInputDevice,
       setSenderOutputDevice,
