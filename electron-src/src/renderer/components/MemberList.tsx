@@ -52,13 +52,22 @@ export default function MembersList({ members, workspaceId, workspaceName, onMem
   const isCurrentUserOwner = !!currentUserOwner;
 
   const handleMouseEnter = (e: React.MouseEvent, member: Member) => {
+    // Only show popover if not hovering over buttons
+    const target = e.target as HTMLElement;
+    const isButton = target.closest('button') || target.closest('[role="button"]');
+    
+    if (isButton) {
+      // Don't show popover when hovering over buttons
+      return;
+    }
+
     // entering member: cancel any pending close
     if (closeTimeoutRef.current) {
       clearTimeout(closeTimeoutRef.current);
       closeTimeoutRef.current = null;
     }
-    const target = e.currentTarget as HTMLElement;
-    const rect = target.getBoundingClientRect();
+    const currentTarget = e.currentTarget as HTMLElement;
+    const rect = currentTarget.getBoundingClientRect();
     setAnchorRect(rect);
     setHoveredMember(member);
   };
@@ -80,7 +89,15 @@ export default function MembersList({ members, workspaceId, workspaceName, onMem
     }
   };
 
-  const handleMouseLeave = () => startCloseTimer();
+  const handleMouseLeave = (e: React.MouseEvent) => {
+    // Don't close if moving to buttons
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    const isMovingToButton = relatedTarget?.closest('button') || relatedTarget?.closest('[role="button"]');
+    
+    if (!isMovingToButton) {
+      startCloseTimer();
+    }
+  };
 
   // Get user permissions from backend
   const getUserPermissions = async (workspaceId: string, memberId: string) => {
@@ -104,6 +121,10 @@ export default function MembersList({ members, workspaceId, workspaceName, onMem
   };
 
   const handleEditPermissions = (member: Member) => {
+    // Close popover when editing permissions
+    setHoveredMember(null);
+    setAnchorRect(null);
+    
     getUserPermissions(workspaceId!, member.id).then((permissions) => {
       if (permissions) {
         setCanCreateRooms(permissions.canCreateRooms || false);
@@ -148,23 +169,32 @@ export default function MembersList({ members, workspaceId, workspaceName, onMem
         {members.map((member, i) => (
           <li 
             key={member.id || i} 
-            className="text-gray-800 flex items-center justify-between" 
+            className="text-gray-800 flex items-center justify-between group" 
             onMouseEnter={(e) => handleMouseEnter(e, member)} 
             onMouseLeave={handleMouseLeave}
           >
-            <div className="flex items-center gap-2">
+            {/* Left side - Member info (hoverable area) */}
+            <div className="flex items-center gap-2 flex-1 min-w-0">
               <img 
                 src={member.picture || ''} 
                 alt={member.name} 
                 className="w-8 h-8 rounded-full object-cover bg-neutral-100" 
               />
-              <div className="flex flex-col">
-                <span className="text-sm font-medium">{member.name}</span>
+              <div className="flex flex-col min-w-0 flex-1">
+                <span className="text-sm font-medium truncate">{member.name}</span>
                 <span className="text-xs text-neutral-500">{member.role || 'Member'}</span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            {/* Right side - Buttons (non-hoverable area for popover) */}
+            <div 
+              className="flex items-center gap-2 ml-2"
+              onMouseEnter={() => {
+                // Clear popover when hovering over buttons
+                setHoveredMember(null);
+                setAnchorRect(null);
+              }}
+            >
               {workspaceId && isEditing && (
                 <>
                   <RemoveUserButton

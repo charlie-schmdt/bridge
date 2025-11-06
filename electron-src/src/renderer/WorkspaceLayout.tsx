@@ -83,7 +83,8 @@ export const WorkspaceLayout = () => {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
-        });
+        }
+        );
         const room_response = await fetch(
           `${Endpoints.WORKSPACE}/${workspaceId}/rooms`,
           {
