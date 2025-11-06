@@ -5,8 +5,8 @@
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
-    "build": "rsbuild build --env-mode loc",
-    "build:local": "rsbuild build --env-mode loc",
+    "build": "rsbuild build",
+    "build:local": "rsbuild build",
     "build:prod": "rsbuild build --env-mode prod",
     "bar": "npm run build && npm run start",
     "test": "echo \"Error: no test specified\" && exit 1"
