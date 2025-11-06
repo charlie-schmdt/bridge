@@ -76,15 +76,12 @@ export const WorkspaceLayout = () => {
 
       try {
         console.log(`🔍 Fetching data for workspace ID: ${workspaceId}`);
-
-        const token = localStorage.getItem("bridge_token");
-        const response = await fetch(
-          `${Endpoints.WORKSPACE}/${workspaceId}/members`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
+        
+        const token = localStorage.getItem('bridge_token');
+        const response = await fetch(`${Endpoints.WORKSPACE}/${workspaceId}/members`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
           }
         );
         const room_response = await fetch(

@@ -21,6 +21,12 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Simple request logger to help debug routing issues
+app.use((req, res, next) => {
+  console.log(`[API REQUEST] ${req.method} ${req.originalUrl}`);
+  next();
+});
+
 // Test database connection
 testConnection();
 
@@ -71,7 +77,7 @@ app.use('*', (req, res) => {
 
 const server = http.createServer(app);
 const wss = new ws.WebSocketServer({ server, path: '/ws' });
-sfuClient.initSfuConnection();
+// sfuClient.initSfuConnection();
 signalingSocket.initSignalingSocket(wss);
 
 // Start server

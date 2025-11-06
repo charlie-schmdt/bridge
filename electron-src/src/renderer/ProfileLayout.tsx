@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation, useParams } from 'react-router-dom';
 import {
   Card, CardHeader, CardBody,
   Input, Textarea, Button,
@@ -14,6 +15,8 @@ import { Endpoints } from "@/utils/endpoints";
 
 export function ProfileLayout() {
   const { user, logout, updateUser } = useAuth();
+  const location = useLocation();
+  const params = useParams();
 
   const [profile, setProfile] = useState({
     name: "",
@@ -22,6 +25,7 @@ export function ProfileLayout() {
     timezone: "UTC-8",
     picture: "" as string | null,
   });
+  const [viewingOther, setViewingOther] = useState(false);
 
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [pendingAvatarURL, setPendingAvatarURL] = useState<string | null>(null);
@@ -38,7 +42,38 @@ export function ProfileLayout() {
 
   const getSettings = async () => {
     try {
-      const userData = localStorage.getItem('bridge_user');
+      // If viewing another user's profile via route param or query param, fetch that user
+      const otherId = (params as any).userId || new URLSearchParams(location.search || window.location.search).get('userId');
+      if (otherId) {
+        setViewingOther(true);
+        const res = await fetch(`http://localhost:3000/api/users/${otherId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            const u = data.data;
+            setProfile({ name: u.name || '', email: u.email || '', bio: u.bio || '', timezone: u.timezone || 'UTC-8', picture: u.picture || null });
+          }
+          return;
+        }
+
+        // If backend lookup failed (404), try using navigation state passed from the members list
+        try {
+          const maybeMember = (location.state as any)?.member;
+          if (maybeMember) {
+            setProfile({ name: maybeMember.name || '', email: maybeMember.email || '', bio: maybeMember.bio || '', timezone: maybeMember.timezone || 'UTC-8', picture: maybeMember.picture || null });
+            return;
+          }
+        } catch (e) {
+          console.error('ProfileLayout: failed to read navigation state fallback', e);
+        }
+
+        return;
+      }
+
+  // We're not viewing another user's profile
+  setViewingOther(false);
+
+  const userData = localStorage.getItem('bridge_user');
       if (!userData) return;
       const stored = JSON.parse(userData);
       const res = await fetch(`${Endpoints.SETTINGS}?userId=${stored.id}`, { headers: { 'Content-Type': 'application/json' } });
@@ -78,7 +113,7 @@ export function ProfileLayout() {
     }
   };
 
-  useEffect(() => { getSettings(); }, []);
+  useEffect(() => { getSettings(); }, [location.search, (params as any).userId, location.state]);
 
   return (
     <div className="min-h-screen bg-[#f9fafb]">
@@ -101,8 +136,13 @@ export function ProfileLayout() {
             <div className="flex items-center gap-4">
               <img src={currentAvatarUrl} alt="Profile" width={96} height={96} className="rounded-full shadow-sm ring-2 ring-neutral-200" />
               <div className="flex items-center gap-2">
-                <Button size="sm" className="h-9 px-4 text-sm font-medium shadow-sm rounded-lg bg-white border border-neutral-300" onPress={() => setAvatarOpen(true)}>Change</Button>
-                {pendingAvatarURL && <span className="text-sm text-neutral-500">Selected (not saved)</span>}
+                {!viewingOther && (
+                  <>
+                    <Button size="sm" className="h-9 px-4 text-sm font-medium shadow-sm rounded-lg bg-white border border-neutral-300" onPress={() => setAvatarOpen(true)}>Change</Button>
+                    {pendingAvatarURL && <span className="text-sm text-neutral-500">Selected (not saved)</span>}
+                  </>
+                )}
+                {viewingOther && <div className="text-sm text-neutral-500">Viewing user profile</div>}
               </div>
             </div>
 
@@ -146,21 +186,23 @@ export function ProfileLayout() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label htmlFor="name" className="text-sm font-medium text-neutral-700">Full Name</label>
-                <Input id="name" variant="bordered" value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} />
+                <Input id="name" variant="bordered" value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} disabled={viewingOther} />
               </div>
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm font-medium text-neutral-700">Email</label>
-                <Input id="email" type="email" variant="bordered" value={profile.email} onChange={(e) => setProfile({ ...profile, email: e.target.value })} />
+                <Input id="email" type="email" variant="bordered" value={profile.email} onChange={(e) => setProfile({ ...profile, email: e.target.value })} disabled={viewingOther} />
               </div>
             </div>
 
             <div className="space-y-2">
               <label htmlFor="bio" className="text-sm font-medium text-neutral-700">Bio</label>
-              <Textarea id="bio" variant="bordered" minRows={3} value={profile.bio} onChange={(e) => setProfile({ ...profile, bio: e.target.value })} />
+              <Textarea id="bio" variant="bordered" minRows={3} value={profile.bio} onChange={(e) => setProfile({ ...profile, bio: e.target.value })} disabled={viewingOther} />
             </div>
 
             <div className="flex justify-end w-full">
-              <Button color="primary" size="md" className="h-9 px-4 text-sm font-medium" onClick={() => updateSettings('profile', { name: profile.name, email: profile.email, bio: profile.bio, timezone: profile.timezone, picture: profile.picture })}>Save Profile</Button>
+              {!viewingOther && (
+                <Button color="primary" size="md" className="h-9 px-4 text-sm font-medium" onClick={() => updateSettings('profile', { name: profile.name, email: profile.email, bio: profile.bio, timezone: profile.timezone, picture: profile.picture })}>Save Profile</Button>
+              )}
             </div>
           </CardBody>
         </Card>

@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize'); // Add this import
 const Workspace = require('../models/Workspaces');
 const User = require('../models/User');
+const UserWorkspaceFavorites = require('../models/UserWorkspaceFavorites')
 const { get } = require('../routes');
 
 const generateToken = (userID) => {
@@ -245,7 +246,8 @@ const getWorkspaceMembers = async (req, res) => {
       where: {
         id: uniqueMemberIds
       },
-      attributes: ['id', 'name', 'email', 'picture'] // Only fetch needed fields
+      // Fetch additional public profile fields so the frontend can render member profiles
+      attributes: ['id', 'name', 'email', 'picture', 'bio', 'timezone']
     });
     
     // Format member data
@@ -254,6 +256,8 @@ const getWorkspaceMembers = async (req, res) => {
       name: member.name,
       email: member.email,
       picture: member.picture,
+      bio: member.bio || '',
+      timezone: member.timezone || 'UTC-8',
       isOwner: member.id === workspace.owner_real_id,
       role: member.id === workspace.owner_real_id ? 'Owner' : 'Member'
     }));
@@ -286,23 +290,24 @@ const getUserWorkspaces = async (req, res) => {
     // Fetch all workspaces and filter in JavaScript (simpler and more reliable)
     const allWorkspaces = await Workspace.findAll();
     
+    // Get user's favorites
+    const userFavorites = await UserWorkspaceFavorites.findAll({
+      where: { user_id: userId },
+      attributes: ['workspace_id']
+    });
+    const favoriteIds = userFavorites.map(fav => String(fav.workspace_id));
+    
     // Filter workspaces where user is owner or in auth_users array
     const userWorkspaces = allWorkspaces.filter(workspace => {
       const authUsers = workspace.auth_users || [];
       const isOwner = workspace.owner_real_id === userId;
       const isMember = authUsers.includes(userId);
-      
-      console.log(`Workspace ${workspace.name}:`, {
-        owner: workspace.owner_real_id,
-        authUsers,
-        userId,
-        isOwner,
-        isMember
-      });
-      
       return isOwner || isMember;
     });
 
+    console.log(favoriteIds);
+    console.log(favoriteIds.includes(18))
+    // Format workspaces with favorite status
     const formattedWorkspaces = userWorkspaces.map(workspace => ({
       id: workspace.workspace_id,
       name: workspace.name,
@@ -310,14 +315,21 @@ const getUserWorkspaces = async (req, res) => {
       isPrivate: workspace.private,
       authorizedUsers: workspace.auth_users || [],
       ownerId: workspace.owner_real_id,
-      createdAt: workspace.created_at
+      createdAt: workspace.created_at,
+      isFavorite: favoriteIds.includes(workspace.workspace_id)
     }));
 
-    console.log(`✅ Found ${formattedWorkspaces.length} workspaces for user ${userId}`);
-    console.log('User workspaces:', formattedWorkspaces.map(ws => ws.name));
-    
+    // Sort: favorites first, then by creation date
+    formattedWorkspaces.sort((a, b) => {
+      if (a.isFavorite && !b.isFavorite) return -1; // Favorites first
+      if (!a.isFavorite && b.isFavorite) return 1;
+      return new Date(b.createdAt) - new Date(a.createdAt); // Then by date
+    });
+
+    console.log(`✅ Found ${formattedWorkspaces.length} workspaces for user ${userId} (${favoriteIds.length} favorites)`);
     res.json(formattedWorkspaces);
     
+    console.log(formattedWorkspaces);
   } catch (error) {
     console.error('Error fetching user workspaces:', error);
     res.status(500).json({ 
@@ -405,6 +417,107 @@ const removeUserFromWorkspace = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error removing user from workspace',
+      error: error.message
+    });
+  }
+};
+
+const toggleWorkspaceFavorite = async (req, res) => {
+  try {
+    const { workspaceId } = req.params;
+    const userId = req.user.id;
+    
+    
+    console.log(`User ${userId} toggling favorite for workspace ${workspaceId}`);
+    
+    // Check if workspace exists and user has access
+    const workspace = await Workspace.findByPk(workspaceId);
+    if (!workspace) {
+      return res.status(404).json({
+        success: false,
+        message: 'Workspace not found'
+      });
+    }
+    
+    // Check if user has access to workspace
+    const authUsers = workspace.auth_users || [];
+    const hasAccess = workspace.owner_real_id === userId || authUsers.includes(userId);
+    
+    if (!hasAccess) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied to this workspace'
+      });
+    }
+    
+    // Check if already favorited
+    const existingFavorite = await UserWorkspaceFavorites.findOne({
+      where: {
+        user_id: userId,
+        workspace_id: workspaceId
+      }
+    });
+    
+    if (existingFavorite) {
+      // Remove favorite
+      await existingFavorite.destroy();
+      console.log(`✅ Removed favorite: User ${userId}, Workspace ${workspaceId}`);
+      
+      res.json({
+        success: true,
+        message: 'Workspace removed from favorites',
+        isFavorite: false
+      });
+    } else {
+      // Add favorite
+      await UserWorkspaceFavorites.create({
+        user_id: userId,
+        workspace_id: workspaceId
+      });
+      console.log(`✅ Added favorite: User ${userId}, Workspace ${workspaceId}`);
+      
+      res.json({
+        success: true,
+        message: 'Workspace added to favorites',
+        isFavorite: true
+      });
+    }
+    
+  } catch (error) {
+    console.error('Error toggling workspace favorite:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error toggling workspace favorite',
+      error: error.message
+    });
+  }
+};
+
+const getUserFavoriteWorkspaces = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    const favorites = await UserWorkspaceFavorites.findAll({
+      where: { user_id: userId },
+      include: [{
+        model: Workspace,
+        as: 'workspace'
+      }],
+      order: [['favorited_at', 'ASC']] // Maintain favorite order
+    });
+    
+    const favoriteWorkspaceIds = favorites.map(fav => fav.workspace_id);
+    
+    res.json({
+      success: true,
+      favoriteWorkspaceIds
+    });
+    
+  } catch (error) {
+    console.error('Error fetching favorite workspaces:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching favorite workspaces',
       error: error.message
     });
   }
@@ -524,6 +637,7 @@ const getPermissions = async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found in workspace' });
     }
 
+
     // Return their permissions or default empty permissions
   
     res.json({ success: true, permissions: userEntry.permissions });
@@ -551,6 +665,8 @@ module.exports = {
   getWorkspaceMembers,
   leaveWorkspace,
   removeUserFromWorkspace,
+  toggleWorkspaceFavorite,
+  getUserFavoriteWorkspaces
   updateWorkspace,
   setPermissions,
   getPermissions
