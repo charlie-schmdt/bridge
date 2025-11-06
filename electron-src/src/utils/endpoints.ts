@@ -1,9 +1,6 @@
-const DOMAIN = "node-652795254011.us-east1.run.app";
-const PROTO = "https://"
-const BACKEND = PROTO + DOMAIN
+const BACKEND = process.env.PUBLIC_API_URL;
 
-
-export const WebSocketURL = `ws://${DOMAIN}/ws`;
+export const WebSocketURL = process.env.PUBLIC_WS_URL;
 export const Endpoints = {
   USERS: BACKEND + "/api/users",
   SETTINGS: BACKEND + "/api/settings",
