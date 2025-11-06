@@ -37,3 +37,12 @@ type IceCandidate struct {
 	SdpMLineIndex    int    `json:"sdpMLineIndex"`
 	UsernameFragment string `json:"usernameFragment"`
 }
+
+type Exit struct {
+	PeerName string `json:"peerName"`
+}
+
+type PeerExit struct {
+	PeerID   string `json:"peerId"`
+	PeerName string `json:"peerName"`
+}

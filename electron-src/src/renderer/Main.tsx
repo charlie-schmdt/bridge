@@ -17,6 +17,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import FAQLayout from "./FAQLayout";
 import AuthCallback from './AuthCallback';
 import { AudioContextProvider } from './contexts/AudioContext';
+import { ToastProvider } from '@heroui/react';
 
 
 const router = createHashRouter([
@@ -91,6 +92,7 @@ const router = createHashRouter([
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
+    <ToastProvider />
     <AuthProvider>
       <AudioContextProvider>
         <RouterProvider router={router} />

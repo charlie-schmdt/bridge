@@ -64,8 +64,13 @@ func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
 		case signaling.SignalMessageTypeExit:
 			fmt.Println("Message type exit receiver")
 			// Unregister the client
+			var exit signaling.Exit
+			if err := json.Unmarshal(msg.Payload, &exit); err != nil {
+				log.Printf("Failed to unmarshal exit payload: %v", err)
+				continue
+			}
 			// TODO: Handle room-based exits, return error to client??
-			sess.handleExit(msg.ClientID)
+			sess.handleExit(msg.ClientID, exit.PeerName)
 
 		case signaling.SignalMessageTypeOffer:
 			var offer signaling.SdpOffer
@@ -170,13 +175,18 @@ func (s *session) handleJoin(writer Writer, id string) (*webrtc.PeerConnection, 
 	return pc, nil
 }
 
-func (s *session) handleExit(id string) {
+func (s *session) handleExit(id string, name string) {
 
 	// TODO: implement specific close messages, not a generic without specifying who to close
-	closeSubscriber := func(id string) {
+	closeSubscriber := func(peerId string) {
+		payload, err := json.Marshal(signaling.PeerExit{PeerID: peerId, PeerName: name})
+		if err != nil {
+			log.Printf("Error marshaling the PeerExit payload for peer %s", peerId)
+		}
 		s.writer.WriteJSON(signaling.SignalMessage{
 			Type:     signaling.SignalMessageTypePeerExit,
-			ClientID: id,
+			ClientID: peerId,
+			Payload:  payload,
 		})
 	}
 
