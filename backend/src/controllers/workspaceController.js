@@ -666,7 +666,7 @@ module.exports = {
   leaveWorkspace,
   removeUserFromWorkspace,
   toggleWorkspaceFavorite,
-  getUserFavoriteWorkspaces
+  getUserFavoriteWorkspaces,
   updateWorkspace,
   setPermissions,
   getPermissions
