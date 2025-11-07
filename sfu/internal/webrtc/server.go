@@ -61,6 +61,7 @@ func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
 			}
 
 			// Register the PeerConnection with the router
+			log.Println("name: " + join.Name)
 			err = router.AddPeerConnection(msg.ClientID, join.Name, pc)
 			if err != nil {
 				panic(fmt.Sprintf("failed to add PeerConnection to router: %v", err))
@@ -347,7 +348,7 @@ func (s *session) registerConnectionHandlers(id string, pc *webrtc.PeerConnectio
 
 		case webrtc.PeerConnectionStateFailed:
 			// send a peerExit to all peers
-			s.handleExit(id, "unknown")
+			s.handleExit(id, "")
 
 		default:
 			// TODO: handle PeerConnection failure

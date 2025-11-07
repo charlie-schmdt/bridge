@@ -27,6 +27,7 @@ type defaultRouter struct {
 
 func NewRouter() Router {
 	return &defaultRouter{
+		names:        make(map[string]string),
 		connections:  make(map[string]*webrtc.PeerConnection),
 		broadcasters: make(map[string]Broadcaster),
 	}
@@ -65,6 +66,7 @@ func (r *defaultRouter) AddPeerConnection(id string, name string, pc *webrtc.Pee
 		}
 	}
 	r.connections[id] = pc
+	log.Println("Adding name")
 	r.names[id] = name
 	return nil
 }
