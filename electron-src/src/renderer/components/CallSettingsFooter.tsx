@@ -7,6 +7,8 @@ import videopng from "@assets/video.png"
 import video_inactivepng from "@assets/video_inactive.png"
 import { VideoFeedProvider } from "../providers/VideoFeedProvider";
 import { useVideoFeedContext, VideoFeedContext } from "../contexts/VideoFeedContext";
+import { Button, useDisclosure } from "@heroui/react";
+import UserFeaturesModal from "./UserFeaturesModal";
   
 
 
@@ -14,6 +16,8 @@ import { useVideoFeedContext, VideoFeedContext } from "../contexts/VideoFeedCont
 export function CallSettingsFooter({ onOpenChat }) {
   const navigate = useNavigate();
   const VF = useVideoFeedContext();
+  const {isOpen, onOpen, onOpenChange} = useDisclosure();
+
 
   return (
     <footer className="w-full bg-white shadow-sm px-6 py-4 flex justify-between items-center">
@@ -41,11 +45,13 @@ export function CallSettingsFooter({ onOpenChat }) {
 
       {/* user settings */}
       <div className="flex items-center gap-5">
-        <button
+        <Button
           className="text-gray-500 hover:text-blue-600 cursor-pointer"
+          onPress={onOpen}
         >
           User Features Menu
-        </button>
+        </Button>
+        <UserFeaturesModal isOpen={isOpen} onOpen={onOpen} onOpenChange={onOpenChange}/>
       </div>
 
 
