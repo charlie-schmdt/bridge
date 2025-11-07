@@ -261,17 +261,44 @@ const getWorkspaceMembers = async (req, res) => {
       attributes: ['id', 'name', 'email', 'picture', 'bio', 'timezone']
     });
     
-    // Format member data
-    const formattedMembers = members.map(member => ({
-      id: member.id,
-      name: member.name,
-      email: member.email,
-      picture: member.picture,
-      bio: member.bio || '',
-      timezone: member.timezone || 'UTC-8',
-      isOwner: member.id === workspace.owner_real_id,
-      role: member.id === workspace.owner_real_id ? 'Owner' : 'Member'
-    }));
+    // Build lookup for authorized_users entries (role + permissions)
+    const authorized = Array.isArray(workspace.authorized_users) ? workspace.authorized_users : [];
+    const authLookup = {};
+    for (const entry of authorized) {
+      if (entry && entry.id) authLookup[String(entry.id)] = entry;
+    }
+
+    // Role-based permissions mapping
+    const roleToPerms = (role) => {
+      switch ((role || '').toLowerCase()) {
+        case 'owner':
+        case 'admin':
+          return { canCreateRooms: true, canDeleteRooms: true, canEditWorkspace: true };
+        case 'editor':
+          return { canCreateRooms: true, canDeleteRooms: false, canEditWorkspace: true };
+        default:
+          return { canCreateRooms: false, canDeleteRooms: false, canEditWorkspace: false };
+      }
+    };
+
+    // Format member data including role/permissions
+    const formattedMembers = members.map(member => {
+      const isOwner = String(member.id) === String(workspace.owner_real_id);
+      const entry = authLookup[String(member.id)];
+      const role = isOwner ? 'Owner' : (entry && entry.role ? entry.role : 'Member');
+      const permissions = entry && entry.permissions ? entry.permissions : roleToPerms(role);
+      return {
+        id: member.id,
+        name: member.name,
+        email: member.email,
+        picture: member.picture,
+        bio: member.bio || '',
+        timezone: member.timezone || 'UTC-8',
+        isOwner,
+        role,
+        permissions
+      };
+    });
     
     console.log(`✅ Found ${formattedMembers.length} members for workspace ${workspaceId}`);
     
@@ -318,17 +345,40 @@ const getUserWorkspaces = async (req, res) => {
 
     console.log(favoriteIds);
     console.log(favoriteIds.includes(18))
-    // Format workspaces with favorite status
-    const formattedWorkspaces = userWorkspaces.map(workspace => ({
-      id: workspace.workspace_id,
-      name: workspace.name,
-      description: workspace.description,
-      isPrivate: workspace.private,
-      authorizedUsers: workspace.auth_users || [],
-      ownerId: workspace.owner_real_id,
-      createdAt: workspace.created_at,
-      isFavorite: favoriteIds.includes(workspace.workspace_id)
-    }));
+    // Format workspaces with favorite status and current user's permissions
+    const formattedWorkspaces = userWorkspaces.map(workspace => {
+      const authUsers = Array.isArray(workspace.authorized_users) ? workspace.authorized_users : [];
+      // find entry for current user
+      const meEntry = authUsers.find(u => String(u.id) === String(userId));
+      const isOwner = workspace.owner_real_id === userId;
+      const role = isOwner ? 'Owner' : (meEntry && meEntry.role ? meEntry.role : 'Member');
+      // compute permissions
+      const roleToPerms = (r) => {
+        switch ((r || '').toLowerCase()) {
+          case 'owner':
+          case 'admin':
+            return { canCreateRooms: true, canDeleteRooms: true, canEditWorkspace: true };
+          case 'editor':
+            return { canCreateRooms: true, canDeleteRooms: false, canEditWorkspace: true };
+          default:
+            return { canCreateRooms: false, canDeleteRooms: false, canEditWorkspace: false };
+        }
+      };
+      const permissions = meEntry && meEntry.permissions ? meEntry.permissions : roleToPerms(role);
+
+      return {
+        id: workspace.workspace_id,
+        name: workspace.name,
+        description: workspace.description,
+        isPrivate: workspace.private,
+        authorizedUsers: workspace.auth_users || [],
+        ownerId: workspace.owner_real_id,
+        createdAt: workspace.created_at,
+        isFavorite: favoriteIds.includes(workspace.workspace_id),
+        currentUserRole: role,
+        currentUserPermissions: permissions
+      };
+    });
 
     // Sort: favorites first, then by creation date
     formattedWorkspaces.sort((a, b) => {
@@ -545,9 +595,30 @@ const updateWorkspace = async (req, res) => {
     if (!workspace) {
       return res.status(404).json({ success: false, message: 'Workspace not found' });
     }
-    // Only owner can update workspace
-    if (workspace.owner_real_id !== userId) {
-      return res.status(403).json({ success: false, message: 'Unauthorized: Only workspace owner can update workspace' });
+    // Allow owner OR a user with canEditWorkspace permission to update workspace
+    if (String(workspace.owner_real_id) !== String(userId)) {
+      // Not the owner — check authorized_users for permissions
+      const authorized = Array.isArray(workspace.authorized_users) ? workspace.authorized_users : [];
+      const meEntry = authorized.find(u => String(u.id) === String(userId));g
+
+      const roleToPerms = (r) => {
+        switch ((r || '').toLowerCase()) {
+          case 'owner':
+          case 'admin':
+            return { canCreateRooms: true, canDeleteRooms: true, canEditWorkspace: true };
+          case 'editor':
+            return { canCreateRooms: true, canDeleteRooms: false, canEditWorkspace: true };
+          default:
+            return { canCreateRooms: false, canDeleteRooms: false, canEditWorkspace: false };
+        }
+      };
+
+      const role = meEntry && meEntry.role ? meEntry.role : 'Member';
+      const permissions = meEntry && meEntry.permissions ? meEntry.permissions : roleToPerms(role);
+
+      if (!permissions.canEditWorkspace) {
+        return res.status(403).json({ success: false, message: 'Unauthorized: Only workspace owner or users with edit permissions can update workspace' });
+      }
     }
     await workspace.update({
       name: name || workspace.name,
@@ -576,63 +647,67 @@ const updateWorkspace = async (req, res) => {
 
 const setPermissions = async (req, res) => {
   try {
-    const { userId, permissions } = req.body;
+    const { userId, permissions, role } = req.body;
     const { workspaceId } = req.params;
-    const { canCreateRooms, canDeleteRooms, canEditWorkspace } = permissions;
 
     const workspace = await Workspace.findByPk(workspaceId);
     if (!workspace) {
       return res.status(404).json({ success: false, message: 'Workspace not found' });
     }
 
+    // Only workspace owner may change other users' permissions/roles
+    const requesterId = req.user && req.user.id;
+    if (!requesterId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+    if (String(workspace.owner_real_id) !== String(requesterId)) {
+      return res.status(403).json({ success: false, message: 'Forbidden: only workspace owner may update roles/permissions' });
+    }
 
-    // Ensure JSON is parsed
-    const users = Array.isArray(workspace.authorized_users)
-      ? workspace.authorized_users
-      : JSON.parse(workspace.authorized_users || "[]");
+    // Normalize authorized_users to a mutable array
+    const users = Array.isArray(workspace.authorized_users) ? [...workspace.authorized_users] : [];
 
-    // Match by string equality (safe for both numeric and string IDs)
-    const userIndex = users.findIndex(u => String(u.id) === String(userId));
-    
+    // Build newPermissions object safely (if provided)
+    const newPermissions = (permissions && typeof permissions === 'object') ? {
+      canCreateRooms: !!permissions.canCreateRooms,
+      canDeleteRooms: !!permissions.canDeleteRooms,
+      canEditWorkspace: !!permissions.canEditWorkspace
+    } : undefined;
+
+    // Find existing user entry
+    const userIndex = users.findIndex((u) => String(u.id) === String(userId));
+
     if (userIndex !== -1) {
-      users[userIndex].permissions = {
-        canCreateRooms,
-        canDeleteRooms,
-        canEditWorkspace,
+      // Update existing entry
+      users[userIndex] = {
+        ...users[userIndex],
+        ...(role ? { role } : {}),
+        ...(newPermissions ? { permissions: newPermissions } : {})
       };
     } else {
+      // Add new entry
       users.push({
         id: userId,
-        role: 'member',
-        permissions: { canCreateRooms, canDeleteRooms, canEditWorkspace },
+        role: role || 'Member',
+        permissions: newPermissions || { canCreateRooms: false, canDeleteRooms: false, canEditWorkspace: false }
       });
     }
 
+    // Persist changes
+    await workspace.update({ authorized_users: users });
+    await workspace.reload();
 
-    workspace.authorized_users = users;
-    workspace.changed('authorized_users', true);
-    await workspace.save();
-    const fresh = await Workspace.findByPk(workspaceId);
-    console.log("DB value:", fresh.authorized_users);
+    const updatedEntry = (Array.isArray(workspace.authorized_users) ? workspace.authorized_users : []).find(u => String(u.id) === String(userId));
 
-
-    // workspace.set('authorized_users', users);
-    // await workspace.save();
-    // Correct way to persist
-    //await workspace.update({ authorized_users: users });
-
-    console.log('Permissions updated for user', userId);
+    console.log('✅ Permissions/role updated for user', userId, updatedEntry);
     res.json({
       success: true,
       message: 'Permissions updated successfully',
-      permissions,
+      entry: updatedEntry
     });
   } catch (error) {
-    console.error('Set permissions error:', error);
+    console.error('❌ Set permissions error:', error);
     res.status(500).json({ success: false, message: 'Error updating permissions' });
   }
 };
-
 
 
 const getPermissions = async (req, res) => {
@@ -644,25 +719,29 @@ const getPermissions = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Workspace not found' });
     }
 
-    // Ensure JSON is parsed
-    const authorizedUsers = Array.isArray(workspace.authorized_users)
-      ? workspace.authorized_users
-      : JSON.parse(workspace.authorized_users || "[]");
-
-    // Match by string equality (safe for both numeric and string IDs)
+    const authorizedUsers = Array.isArray(workspace.authorized_users) ? workspace.authorized_users : [];
     const userEntry = authorizedUsers.find(u => String(u.id) === String(userId));
 
     if (!userEntry) {
       console.log(`User ${userId} not found in workspace ${workspaceId}`);
     }
 
-    const permissions = userEntry?.permissions || {
-      canCreateRooms: false,
-      canDeleteRooms: false,
-      canEditWorkspace: false
+    const role = userEntry && userEntry.role ? userEntry.role : (String(userId) === String(workspace.owner_real_id) ? 'Owner' : 'Member');
+    const roleToPerms = (r) => {
+      switch ((r || '').toLowerCase()) {
+        case 'owner':
+        case 'admin':
+          return { canCreateRooms: true, canDeleteRooms: true, canEditWorkspace: true };
+        case 'editor':
+          return { canCreateRooms: true, canDeleteRooms: false, canEditWorkspace: true };
+        default:
+          return { canCreateRooms: false, canDeleteRooms: false, canEditWorkspace: false };
+      }
     };
 
-    return res.json({ success: true, permissions });
+    const permissions = userEntry && userEntry.permissions ? userEntry.permissions : roleToPerms(role);
+    res.json({ success: true, role, permissions });
+    return permissions;
   } catch (error) {
     console.error('Error fetching user permissions:', error);
     res.status(500).json({ success: false, message: 'Error fetching user permissions' });

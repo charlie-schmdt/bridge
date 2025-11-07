@@ -19,7 +19,7 @@ export interface RoomCardProps {
   canDeleteRooms?: boolean;
 }
 
-export function RoomCard({ title, description, categories, status, nextMeeting, editMode, canDeleteRooms }: RoomCardProps) {
+export function RoomCard({ id, title, description, categories, status, nextMeeting, editMode }: RoomCardProps) {
   const navigate = useNavigate();
   const handleDeleteRoom = () => {
     // Implement room deletion logic here
