@@ -6,7 +6,7 @@ import { lchown } from 'fs';
 import { ref } from 'process';
 import { WebSocketURL } from '@/utils/endpoints';
 import { useAuth } from './contexts/AuthContext';
-import { addToast } from '@heroui/react';
+import { toast } from 'react-toastify'
 
 // TODO: move this into a separate types directory
 type SignalMessageType = "join" | "exit" | "peerExit" | "offer" | "answer" | "candidate" | "subscribe" | "unsubscribe";
@@ -38,6 +38,10 @@ interface Exit {
 interface PeerExit {
     peerId: string;
     peerName: string;
+}
+
+interface Join {
+    name: string;
 }
 
 type callStatus = "active" | "inactive" | "loading";
@@ -121,7 +125,9 @@ export default function VideoFeed({streamChatClient, streamChatChannel}) {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             stream.getVideoTracks().forEach(t => (t.enabled = VF.isVideoEnabled));
 
+            console.log("Checking if videoref current")
             if (VF.videoRef.current) {
+                console.log("Playing video ref")
                 VF.videoRef.current.srcObject = stream;
                 VF.videoRef.current.play();
             }
@@ -137,11 +143,13 @@ export default function VideoFeed({streamChatClient, streamChatChannel}) {
         setCallStatus("loading");
 
         // Initiate media streams
+        console.log("Initiating media streams")
         const stream = await initMedia();
         if (!stream) {
             return;
         }
         localStreamRef.current = stream;
+        console.log("Set stream to ref")
 
         const ws = wsRef.current;
         if (ws === null) {
@@ -254,8 +262,8 @@ export default function VideoFeed({streamChatClient, streamChatChannel}) {
                         const tracks = (remoteVideoRef.current.srcObject as MediaStream).getTracks();
                         tracks.forEach(track => track.stop());
                         remoteVideoRef.current.srcObject = null;
+                        toast(`${peerExit.peerName} has left the room`)
                     }
-                    addToast({title: `${peerExit.peerName} has left the room`})
                     break;
                 default:
                     console.log("Unknown message type:", msg.type);
@@ -264,9 +272,11 @@ export default function VideoFeed({streamChatClient, streamChatChannel}) {
         }
 
         // Send join message
+        const namePayload: Join = { name: user.name }
         const joinMessage: SignalMessage = {
             type: "join",
             clientId: clientId.current,
+            payload: namePayload
         }
         wsRef.current?.send(JSON.stringify(joinMessage));
     }

@@ -50,13 +50,18 @@ func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
 		switch msg.Type {
 		case signaling.SignalMessageTypeJoin:
 			// Create offer for the client
+			var join signaling.Join
+			if err := json.Unmarshal(msg.Payload, &join); err != nil {
+				log.Printf("Failed to unmarshal join payload: %v", err)
+				continue
+			}
 			pc, err := sess.handleJoin(writer, msg.ClientID)
 			if err != nil {
 				panic(fmt.Sprintf("failed to handle join: %v", err))
 			}
 
 			// Register the PeerConnection with the router
-			err = router.AddPeerConnection(msg.ClientID, pc)
+			err = router.AddPeerConnection(msg.ClientID, join.Name, pc)
 			if err != nil {
 				panic(fmt.Sprintf("failed to add PeerConnection to router: %v", err))
 			}
@@ -82,7 +87,7 @@ func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
 				panic(fmt.Sprintf("failed to handle offer: %v", err))
 			}
 			// Register the PeerConnection with the router
-			err = router.AddPeerConnection(msg.ClientID, pc)
+			err = router.AddPeerConnection(msg.ClientID, "UNKNOWN", pc)
 			if err != nil {
 				panic(fmt.Sprintf("failed to add PeerConnection to router: %v", err))
 			}
@@ -178,6 +183,10 @@ func (s *session) handleJoin(writer Writer, id string) (*webrtc.PeerConnection, 
 func (s *session) handleExit(id string, name string) {
 
 	// TODO: implement specific close messages, not a generic without specifying who to close
+	if name == "" {
+		// No provided name in exit message (or abrupt disconnect), get name from router
+		name = s.router.GetName(id)
+	}
 	closeSubscriber := func(peerId string) {
 		payload, err := json.Marshal(signaling.PeerExit{PeerID: peerId, PeerName: name})
 		if err != nil {
@@ -310,7 +319,8 @@ func (s *session) registerConnectionHandlers(id string, pc *webrtc.PeerConnectio
 
 	// Register the connection state handler
 	pc.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
-		if state == webrtc.PeerConnectionStateConnected {
+		switch state {
+		case webrtc.PeerConnectionStateConnected:
 			fmt.Println("PeerConnection is connected")
 
 			// Set the track handler
@@ -334,7 +344,12 @@ func (s *session) registerConnectionHandlers(id string, pc *webrtc.PeerConnectio
 				}
 
 			})
-		} else {
+
+		case webrtc.PeerConnectionStateFailed:
+			// send a peerExit to all peers
+			s.handleExit(id, "unknown")
+
+		default:
 			// TODO: handle PeerConnection failure
 			fmt.Println("PeerConnection state change: ", state)
 		}

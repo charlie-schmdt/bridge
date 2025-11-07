@@ -79,7 +79,7 @@ app.use('*', (req, res) => {
 
 const server = http.createServer(app);
 const wss = new ws.WebSocketServer({ server, path: '/ws' });
-// sfuClient.initSfuConnection();
+sfuClient.initSfuConnection();
 signalingSocket.initSignalingSocket(wss);
 
 // Start server

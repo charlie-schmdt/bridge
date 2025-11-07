@@ -9,15 +9,17 @@ import (
 )
 
 type Router interface {
-	AddPeerConnection(id string, pc *webrtc.PeerConnection) error
+	AddPeerConnection(id string, name string, pc *webrtc.PeerConnection) error
 	RemovePeerConnection(id string, closeSubscriber func(id string)) error
 	ForwardVideoTrack(id string, track *webrtc.TrackRemote) error
 	ForwardAudioTrack(id string, track *webrtc.TrackRemote) error
 	GetPeerConnection(id string) *webrtc.PeerConnection
+	GetName(id string) string
 	RequestKeyFrames(id string) error
 }
 
 type defaultRouter struct {
+	names        map[string]string
 	connections  map[string]*webrtc.PeerConnection
 	broadcasters map[string]Broadcaster
 	mu           sync.Mutex
@@ -31,14 +33,22 @@ func NewRouter() Router {
 }
 
 func (r *defaultRouter) GetPeerConnection(id string) *webrtc.PeerConnection {
-	pc, exists := r.connections[id]
-	if !exists {
+	pc, ok := r.connections[id]
+	if !ok {
 		return nil
 	}
 	return pc
 }
 
-func (r *defaultRouter) AddPeerConnection(id string, pc *webrtc.PeerConnection) error {
+func (r *defaultRouter) GetName(id string) string {
+	name, ok := r.names[id]
+	if !ok {
+		return ""
+	}
+	return name
+}
+
+func (r *defaultRouter) AddPeerConnection(id string, name string, pc *webrtc.PeerConnection) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if _, exists := r.connections[id]; exists {
@@ -55,6 +65,7 @@ func (r *defaultRouter) AddPeerConnection(id string, pc *webrtc.PeerConnection) 
 		}
 	}
 	r.connections[id] = pc
+	r.names[id] = name
 	return nil
 }
 

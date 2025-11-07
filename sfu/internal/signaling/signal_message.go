@@ -46,3 +46,7 @@ type PeerExit struct {
 	PeerID   string `json:"peerId"`
 	PeerName string `json:"peerName"`
 }
+
+type Join struct {
+	Name string `json:"name"`
+}
