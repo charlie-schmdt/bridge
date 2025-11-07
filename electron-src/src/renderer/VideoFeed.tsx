@@ -92,9 +92,8 @@ export default function VideoFeed({streamChatClient, streamChatChannel, roomId}:
             const pc = pcRef.current;
             if (!pc) return;
 
-            console.log("Message received (call inactive): " + event.data);
             const msg: SignalMessage = JSON.parse(event.data);
-            console.log("msg: ", msg)
+            console.log("msg (call inactive): ", msg)
         }
 
         // Clean up on unmount (exitRoom is idempotent, can be called even if the room is not active)
@@ -240,9 +239,8 @@ export default function VideoFeed({streamChatClient, streamChatChannel, roomId}:
             const pc = pcRef.current;
             if (!pc) return;
 
-            console.log("Message received (call active): " + event.data);
             const msg: SignalMessage = JSON.parse(event.data);
-            console.log("msg: ", msg)
+            console.log("msg (call active): ", msg)
 
             switch (msg.type) {
                 case "offer":
@@ -265,7 +263,6 @@ export default function VideoFeed({streamChatClient, streamChatChannel, roomId}:
                 case "candidate":
                     const candidate = msg.payload as IceCandidate;
                     pc.addIceCandidate(new RTCIceCandidate(candidate));
-                    console.log("New ice candidate: ", candidate)
                     break;
                 case "peerExit":
                     // Close remote stream
@@ -347,16 +344,10 @@ export default function VideoFeed({streamChatClient, streamChatChannel, roomId}:
                 :
             (
                 <div>
-                    { callStatus === "loading" ? (
-                        <Spinner />
-                    )
-                    :
-                    (
                         <div className="flex gap-4 p-4 w-full h-full">
                             <video className="h-full w-1/2 rounded-lg" ref={VF.videoRef} autoPlay muted />
                             <video className="h-full w-1/2 rounded-lg" ref={remoteVideoRef} autoPlay />
                         </div>
-                    )}
                     <Button 
                         onPress={exitRoom}
                         className="text-white bg-red-600 font-medium hover:text-black cursor-pointer px-2"
