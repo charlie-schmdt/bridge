@@ -38,6 +38,7 @@ const Workspace = sequelize.define('Workspace', {
   },
   authorized_users: {
     type: DataTypes.JSONB,
+    defaultValue: [],
     allowNull: true
   }
 }, {

@@ -53,7 +53,7 @@ async function createRoom(req, res) {
       return res.status(404).json({ success: false, message: 'Workspace not found' });
     }
 
-    // ✅ Create the room
+    // Create the room
     const newRoom = await Room.create({
       name,
       description,
@@ -62,11 +62,11 @@ async function createRoom(req, res) {
       created_by: userId,
     });
 
-    // ✅ Update workspace’s room_ids array
+    // Update workspace’s room_ids array
     // 3Safely update room_ids
     let roomIds = workspace.room_ids;
     if (!Array.isArray(roomIds)) {
-      console.warn("⚠️ room_ids was not an array, reinitializing");
+      console.warn("room_ids was not an array, reinitializing");
       roomIds = [];
     }
 
@@ -75,7 +75,7 @@ async function createRoom(req, res) {
 
     return res.status(201).json({ success: true, room: newRoom });
   } catch (error) {
-    console.error('❌ Error creating room:', error);
+    console.error('Error creating room:', error);
     return res.status(500).json({ success: false, message: 'Server error creating room' });
   }
 }
