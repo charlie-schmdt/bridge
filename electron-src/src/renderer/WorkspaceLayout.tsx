@@ -432,8 +432,8 @@ export const WorkspaceLayout = () => {
                     workspaceId={workspaceId}
                     onInviteSuccess={(invited) => {
                       console.log('Invited user:', invited);
-                      // Optionally refresh members list
-                      setMembers((prev) => prev ? [...prev, { id: invited.id, name: invited.name || invited.email, email: invited.email, picture: undefined, isOwner: false, role: 'Member' }] : prev);
+                      // Invitation recorded as pending on the server; do not add to members list.
+                      // Optionally show a toast or refresh pending-invites if you add that UI.
                     }}
                   />
                 )}
