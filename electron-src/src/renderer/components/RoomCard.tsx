@@ -7,6 +7,7 @@ const statusColors = {
 };
 
 export interface RoomCardProps {
+  id: string;
   title: string;
   description: string;
   categories?: string[];
@@ -15,7 +16,7 @@ export interface RoomCardProps {
   editMode?: boolean;
 }
 
-export function RoomCard({ title, description, categories, status, nextMeeting, editMode }: RoomCardProps) {
+export function RoomCard({ id, title, description, categories, status, nextMeeting, editMode }: RoomCardProps) {
   const navigate = useNavigate();
   const handleDeleteRoom = () => {
     // Implement room deletion logic here
@@ -51,7 +52,7 @@ export function RoomCard({ title, description, categories, status, nextMeeting, 
       {status === "active" && (
         <button 
         className="mt-4 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition cursor-pointer"
-        onClick={() => navigate("/TestRoom")}
+        onClick={() => navigate(`/TestRoom/${id}`)}
         >
           Join Room
         </button>
