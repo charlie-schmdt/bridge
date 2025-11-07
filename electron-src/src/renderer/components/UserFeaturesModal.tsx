@@ -31,7 +31,15 @@ export default function UserFeaturesModal({isOpen, onOpen, onOpenChange}: UserFe
                     <>
                         <ModalHeader className="flex flex-col gap-1">Waiting Room</ModalHeader>
                         <ModalBody>
-                            Settings and whatnot
+                             <h3 className="font-semibold mb-4">Users Waiting</h3>
+                            {/*
+                                TODO: entries for participants waiting
+                                button for accept or reject, entry disappear or enter accordingly
+                            */}
+                            <ul className="space-y-2">
+                                
+                                User1
+                            </ul>
 
                         </ModalBody>
                     </>
