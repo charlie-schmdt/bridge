@@ -6,6 +6,7 @@ import MembersList from "./components/MemberList";
 import { RoomCard } from "./components/RoomCard";
 import { RoomCardProps } from "./components/RoomCard";
 import NotificationBanner from "./components/NotificationBanner";
+import { useNotification } from "@/hooks/useNotification";
 import { useParams } from "react-router-dom";
 import LeaveWorkspaceButton from "./components/LeaveWorkspaceButton";
 import { Endpoints } from "@/utils/endpoints";
@@ -54,6 +55,7 @@ export const WorkspaceLayout = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [editMode, setEditMode] = useState(false);
+  const { notification, showNotification } = useNotification();
   const [updatedWorkspaceInfo, setUpdatedWorkspaceInfo] = useState<WorkspaceInfo | null>(null);
 
   const isCurrentUserOwner =
@@ -256,6 +258,7 @@ export const WorkspaceLayout = () => {
       if (data.success) {
         setWorkspaceInfo((prev) => prev ? { ...prev, name: updatedInfo.name, description: updatedInfo.description, members: updatedInfo.members, isPrivate: updatedInfo.isPrivate } : null);
         console.log("✅ Workspace updated successfully:", data.workspace);
+        showNotification("Workspace updated successfully!", "success");
       } else {
         console.error(data.message);
         alert(data.message);
@@ -325,6 +328,15 @@ export const WorkspaceLayout = () => {
       <div className="workspace-app">
         {/* Header */}
         <Header />
+        {notification && (
+          <div className="fixed top-20 right-4 z-[9999]">
+            <NotificationBanner
+              message={notification.message}
+              type={notification.type as "success" | "error" | "warning" | "info" | "created"}
+            />
+          </div>
+        )}
+
 
         {/* Page title - now shows actual workspace name */}
         <div className="mt-6 px-6">
