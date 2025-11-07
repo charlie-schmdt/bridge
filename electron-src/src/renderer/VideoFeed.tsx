@@ -1,5 +1,6 @@
 import { useState, useContext, useEffect, useRef } from 'react';
 import { useVideoFeedContext, VideoFeedContext } from './contexts/VideoFeedContext';
+import {useAudioContext} from "./contexts/AudioContext";
 import { v4 as uuid } from 'uuid';
 import { Spinner, Button } from '@heroui/react';
 import { lchown } from 'fs';
@@ -60,6 +61,7 @@ export default function VideoFeed({streamChatClient, streamChatChannel, roomId}:
     const wsRef = useRef<WebSocket | null>(null);
     const pcRef = useRef<RTCPeerConnection | null>(null);
     const remoteVideoRef = useRef<HTMLVideoElement>(null);
+    const { initializeAudioGraph, tearDownAudioGraph, micAudioStream } = useAudioContext();
 
     const localStreamRef = useRef<MediaStream | null>(null);
 
@@ -86,6 +88,9 @@ export default function VideoFeed({streamChatClient, streamChatChannel, roomId}:
         const ws = new WebSocket(WebSocketURL)
         wsRef.current = ws;
 
+        //start processing audio
+        initializeAudioGraph()
+
         // Simple message handler
         // This will be replaced to handle WebRTC messages once the call is activated
         ws.onmessage = async (event: MessageEvent) => {
@@ -101,6 +106,7 @@ export default function VideoFeed({streamChatClient, streamChatChannel, roomId}:
             exitRoom();
             ws.close();
             wsRef.current = null;
+            tearDownAudioGraph();
         }
     }, []);
 
@@ -114,7 +120,7 @@ export default function VideoFeed({streamChatClient, streamChatChannel, roomId}:
     }, [VF.isVideoEnabled]);
 
     useEffect(() => {
-        const audioTrack = localStreamRef.current?.getAudioTracks()[0];
+        const audioTrack = micAudioStream?.getAudioTracks()[0];
         console.log("Changing audioTrack to: " + VF.isAudioEnabled);
         if (audioTrack) {
             audioTrack.enabled = VF.isAudioEnabled;
@@ -179,7 +185,7 @@ export default function VideoFeed({streamChatClient, streamChatChannel, roomId}:
 
         // Add local tracks
         pc.addTrack(stream.getVideoTracks()[0], stream)
-        pc.addTrack(stream.getAudioTracks()[0], stream)
+        pc.addTrack(micAudioStream.getAudioTracks()[0], micAudioStream)
         
         // Send local ICE candidates through web socket
         pc.onicecandidate = (event: RTCPeerConnectionIceEvent) => {
@@ -328,6 +334,8 @@ export default function VideoFeed({streamChatClient, streamChatChannel, roomId}:
             //streamChatClient.disconnectUser();
 
         }
+
+        tearDownAudioGraph();
 
 
         setCallStatus("inactive");

@@ -10,6 +10,7 @@ import {useAudioContext} from "../contexts/AudioContext";
 import AudioInputOptions from "./AudioInputOptions"
 import AudioOutputOptions from "./AudioOutputOptions"
 import MicSensitivity from "./MicSensitivity";
+import AudioMeter from "./AudioMeter";
 import { useNavigate } from "react-router";
 /*
 
@@ -33,7 +34,16 @@ export default function WaitingRoom({roomID, isOpen, onOpen, onOpenChange}: Wait
         */
        "default"
     )
-    
+    const { initializeAudioGraph, tearDownAudioGraph } = useAudioContext();
+
+    useEffect(() => {
+      initializeAudioGraph()
+
+      return () => {
+        //tearDownAudioGraph();
+      }
+    },[]
+  )
     
     const videoRef = useRef<HTMLVideoElement>();//useRef<HTMLVideoElement>(null)
     const { video, isCameraInitialised, isCameraEnabled, error, toggleCamera } = useCamera(videoRef);
@@ -155,7 +165,7 @@ export default function WaitingRoom({roomID, isOpen, onOpen, onOpenChange}: Wait
                               </div>
 
 
-
+                            <></>
                             <div className="flex flex-col  rounded-xl shadow gap-4">
                               <div className="grid grid-cols-1 grid-rows-2 flex-1 min-w-[300px] mt-2 mb-2">
                                 <div className="p-1 ">
@@ -181,7 +191,10 @@ export default function WaitingRoom({roomID, isOpen, onOpen, onOpenChange}: Wait
                               </div>
                               <div className="p-4 ">
                                 <MicSensitivity/>
-                              </div>     
+                              </div>
+                              <div className="p-4">
+                                <AudioMeter/>
+                                </div>     
                             </div>
                         </ModalBody>
                         <ModalFooter>

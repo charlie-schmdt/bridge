@@ -8,6 +8,7 @@ import {useVideoFeedContext, VideoFeedContext} from "./contexts/VideoFeedContext
 import { VideoFeedType } from "./contexts/VideoFeedContext";
 import React, { useContext, useState, useEffect, useRef } from "react";
 import { VideoFeedProvider } from "./providers/VideoFeedProvider";
+import {useAudioContext} from "./contexts/AudioContext";
 import Chat from "./components/Chat";
 import { StreamChat } from 'stream-chat';
 
@@ -28,6 +29,7 @@ export default function RoomLayout({}: RoomLayoutProps){
   const openChat = () => setIsChatOpen(true);
   const closeChat = () => setIsChatOpen(false);
   const [callStatus, setCallStatus] = useState<callStatus>("loading");
+  const { initializeAudioGraph, tearDownAudioGraph } = useAudioContext();
   
 
   const navigate = useNavigate();
@@ -71,7 +73,10 @@ export default function RoomLayout({}: RoomLayoutProps){
           <header className="w-full bg-white shadow-sm px-6 py-4 flex justify-between items-center">
               <button
                 className="text-white bg-red-600 font-medium hover:text-black cursor-pointer px-2"
-                onClick={() => navigate("/")}
+                onClick={() => {
+                  navigate("/");
+                  tearDownAudioGraph();
+                }}
                 // onClick={() => navigate(`/workspace/${workspaceId}`)}
               >
                 Exit Room
