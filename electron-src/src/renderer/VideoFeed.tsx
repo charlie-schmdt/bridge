@@ -70,6 +70,10 @@ export default function VideoFeed({streamChatClient, streamChatChannel, roomId}:
 
     const clientId = useRef<string | null>(null);
 
+    if (roomId === undefined) {
+        roomId = "testroom"
+    }
+
     console.log("RENDERING VIDEO FOR ROOM " + roomId);
 
     // Initiate the WebSocket connection with the Node server
