@@ -105,7 +105,7 @@ try {
 
 const createWorkspace = async (req, res) => {
     try {
-        const { name, description, private, owner_real_id } = req.body;
+        const { name, description, private, auth_users, authorized_users, owner_real_id } = req.body;
         console.log('Creating workspace with data:', req.body);
         console.log('Owner ID:', owner_real_id);
 
@@ -114,7 +114,8 @@ const createWorkspace = async (req, res) => {
             description,
             private: private,
             owner_real_id: owner_real_id,
-            auth_users: [owner_real_id],
+            auth_users: [owner_real_id, ...auth_users],
+            authorized_users: authorized_users,
             room_ids: []
         });
         

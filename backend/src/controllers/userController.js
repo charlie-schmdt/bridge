@@ -82,6 +82,23 @@ const generateToken = (userId) => {
   return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
 };
 
+const getUsers = async (req, res) => {
+  try {
+    const users = await User.findAll();
+    res.json({
+      success: true,
+      data: users,
+      message: 'Users retrieved successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching users',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
+  }
+};
+
 const getSettings = async (req, res) => {
   try {
     console.log('Get settings request received');
@@ -605,5 +622,6 @@ module.exports = {
   oauthLogin,
   setOnboarding,
   getUserById,
-  deleteAccount
+  deleteAccount,
+  getUsers
 };

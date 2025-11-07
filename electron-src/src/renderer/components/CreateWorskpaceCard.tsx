@@ -3,6 +3,7 @@ import { Input, Switch, Button, Textarea } from "@heroui/react";
 import { PlusCircle, Lock, X } from "lucide-react";
 import NotificationBanner from "./NotificationBanner";
 import { Endpoints } from "@/utils/endpoints";
+import { useEffect } from "react";
 
 // ============================
 // Custom Modal Component
@@ -56,6 +57,7 @@ const ModalFooter = ({ children }) => (
   </div>
 );
 
+
 // ============================
 // Main Component
 // ============================
@@ -68,6 +70,11 @@ export default function CreateWorkspaceCard() {
     isPrivate: true,
   });
   const [error, setError] = useState("");
+
+  const [availableUsers, setAvailableUsers] = useState([]);
+
+  const [selectedUsers, setSelectedUsers] = useState([]);
+
   const handleOpen = () => setIsModalOpen(true);
   const handleClose = () => setIsModalOpen(false);
 
@@ -75,11 +82,44 @@ export default function CreateWorkspaceCard() {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
+  
+  
+  const fetchUsers = async () => {
+      const token = localStorage.getItem('bridge_token');
+      const response = await fetch(`${Endpoints.USERS}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to fetch users:', response.statusText);
+        return;
+      }
+      const data = await response.json();
+      console.log("Fetched users data:", data);
+      if (data.success) {
+        const allUsers = data.data;
+        const storedUser = JSON.parse(localStorage.getItem("bridge_user"));
 
-  // ✅ Fix for the Switch toggle (HeroUI uses `onValueChange`)
+        // ✅ Filter out the creator
+        const availableUsers = allUsers.filter(
+          (u) => u.id !== storedUser.id
+        );
+
+        setAvailableUsers(availableUsers);
+      }
+
+    };
+  // Fix for the Switch toggle (HeroUI uses `onValueChange`)
   const handleTogglePrivate = (checked) => {
     setFormData((prev) => ({ ...prev, isPrivate: checked }));
   };
+
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+
 
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
@@ -101,6 +141,19 @@ export default function CreateWorkspaceCard() {
         return;
       }
 
+      const authorizedUsers = selectedUsers.map((id) => ({ id, role: 'member', 
+        permissions: { 
+          canCreateRooms: false,
+          canDeleteRooms: false,
+          canEditWorkspace: false,
+         } }));
+      authorizedUsers.push({ id: user.id, role: 'owner', 
+        permissions: { 
+          canCreateRooms: true,
+          canDeleteRooms: true,
+          canEditWorkspace: true,
+         } });
+
       const response = await fetch(Endpoints.WORKSPACES, {
         method: 'POST',
         headers: {
@@ -110,6 +163,8 @@ export default function CreateWorkspaceCard() {
           name: formData.name,
           description: formData.description,
           private: formData.isPrivate,
+          auth_users: selectedUsers,
+          authorized_users: authorizedUsers,
           owner_real_id: user.id  // Changed from 'id' to 'owner_real_id' to match controller
         })
       });
@@ -197,8 +252,43 @@ export default function CreateWorkspaceCard() {
           <p className="text-xs text-gray-500 ml-1">
             {formData.isPrivate
               ? "Only invited members can view this workspace."
-              : "This workspace will be visible and joinable by everyone in your organization."}
+              : "This workspace will be visible and joinable by everyone in your organization."
+            }
           </p>
+          {formData.isPrivate && (
+            <div className="mt-3">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select users to authorize:
+              </label>
+              <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-2">
+                {availableUsers.length > 0 ? (
+                  availableUsers.map((user) => (
+                    <label
+                      key={user.id}
+                      className="flex items-center gap-2 py-1 px-2 rounded-md hover:bg-gray-50 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedUsers.includes(user.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedUsers([...selectedUsers, user.id]);
+                          } else {
+                            setSelectedUsers(selectedUsers.filter((id) => id !== user.id));
+                          }
+                        }}
+                        className="rounded text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700">{user.name}</span>
+                    </label>
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-500">No users available.</p>
+                )}
+              </div>
+            </div>
+          )}
+
         </ModalBody>
         <ModalFooter>
           <button className="mt-2 text-black bg-gray-200 px-4 py-2 rounded-lg hover:bg-gray-300 transition cursor-pointer" onClick={handleClose}>

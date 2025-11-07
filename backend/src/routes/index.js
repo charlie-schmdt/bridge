@@ -3,7 +3,7 @@ const router = express.Router();
 
 // Import controllers
 const { getWorkspaces, createWorkspace, joinWorkspace, getUserWorkspaces, getWorkspaceMembers, leaveWorkspace, removeUserFromWorkspace, updateWorkspace, setPermissions, getPermissions, toggleWorkspaceFavorite, getUserFavoriteWorkspaces } = require('../controllers/workspaceController');
-const { createUser, loginUser, getSettings, updateSettings, oauthLogin, deleteAccount, setOnboarding } = require('../controllers/userController');
+const { createUser, loginUser, getSettings, updateSettings, oauthLogin, deleteAccount, setOnboarding, getUsers } = require('../controllers/userController');
 const { getRooms, createRoom } = require('../controllers/roomController');
 // Import middleware
 const { auth, authenticateToken } = require('../middleware/auth');
@@ -30,6 +30,7 @@ router.put('/settings', auth, updateSettings);
 
 // Onboarding route - mark onboarding as completed for a user
 router.put('/users/:id/onboarding', authenticateToken, setOnboarding);
+router.get('/users', authenticateToken, getUsers);
 
 // We can delete this later
 router.get('/health', (req, res) => {
