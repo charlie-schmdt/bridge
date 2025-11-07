@@ -18,6 +18,8 @@ import FAQLayout from "./FAQLayout";
 import AuthCallback from './AuthCallback';
 import { AudioContextProvider } from './contexts/AudioContext';
 import { ToastProvider } from '@heroui/react';
+import WaitingRoom from './components/WaitingRoom';
+import TestWaitingRoomCall from './components/TestWaitingRoomCall';
 
 
 const router = createHashRouter([
@@ -71,6 +73,10 @@ const router = createHashRouter([
       {
         path: 'TestRoom',
         element: <RoomLayout />
+      },
+      {
+        path: 'TestWaitingRoom',
+        element: <TestWaitingRoomCall />
       }
       ,
       {
