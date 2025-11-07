@@ -46,8 +46,13 @@ interface Join {
 
 type callStatus = "active" | "inactive" | "loading";
 
+export interface VideoFeedProps {
+    streamChatClient: any;
+    streamChatChannel: any;
+    roomId: string;
+}
 
-export default function VideoFeed({streamChatClient, streamChatChannel}) {
+export default function VideoFeed({streamChatClient, streamChatChannel, roomId}: VideoFeedProps) {
     const { user } = useAuth()
 
     const VF = useVideoFeedContext();
@@ -65,7 +70,7 @@ export default function VideoFeed({streamChatClient, streamChatChannel}) {
 
     const clientId = useRef<string | null>(null);
 
-    console.log("RENDERING VIDEO");
+    console.log("RENDERING VIDEO FOR ROOM " + roomId);
 
     // Initiate the WebSocket connection with the Node server
     // NOTE: This is NOT the WebRTC stream for video/audio, so it has the same lifetime as the component
@@ -179,6 +184,7 @@ export default function VideoFeed({streamChatClient, streamChatChannel}) {
                 const candidateMessage: SignalMessage = {
                     type: "candidate",
                     clientId: clientId.current,
+                    roomId: roomId,
                     payload: event.candidate,
                 }
                 wsRef.current?.send(JSON.stringify(candidateMessage));
@@ -207,6 +213,7 @@ export default function VideoFeed({streamChatClient, streamChatChannel}) {
                         const msg = {
                             type: "pli",
                             clientId: clientId.current,
+                            roomId: roomId,
                         }
                         console.log("Sending PLI request to SFU")
                         wsRef.current.send(JSON.stringify(msg));
@@ -242,6 +249,7 @@ export default function VideoFeed({streamChatClient, streamChatChannel}) {
                     const answerMessage: SignalMessage = {
                         type: "answer",
                         clientId: clientId.current,
+                        roomId: roomId,
                         payload: pc.localDescription,
                     }
                     wsRef.current?.send(JSON.stringify(answerMessage));
@@ -276,6 +284,7 @@ export default function VideoFeed({streamChatClient, streamChatChannel}) {
         const joinMessage: SignalMessage = {
             type: "join",
             clientId: clientId.current,
+            roomId: roomId,
             payload: namePayload
         }
         wsRef.current?.send(JSON.stringify(joinMessage));
@@ -293,6 +302,7 @@ export default function VideoFeed({streamChatClient, streamChatChannel}) {
             const msg = {
                 type: "exit",
                 clientId: clientId.current,
+                roomId: roomId,
                 payload: payload
             }
             wsRef.current.send(JSON.stringify(msg));

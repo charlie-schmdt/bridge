@@ -2,7 +2,7 @@ import { Card, CardBody } from "@heroui/react";
 import Header from './components/Header';
 import CallSettingsFooter from "./components/CallSettingsFooter";
 import VideoFeed from "./VideoFeed";
-import { useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import back_button from "@assets/back-button.png"
 import {useVideoFeedContext, VideoFeedContext} from "./contexts/VideoFeedContext";
 import { VideoFeedType } from "./contexts/VideoFeedContext";
@@ -31,6 +31,8 @@ export default function RoomLayout({}: RoomLayoutProps){
   
 
   const navigate = useNavigate();
+
+  const { roomId } = useParams();
 
   useEffect(() => {
     async function init() {
@@ -87,6 +89,7 @@ export default function RoomLayout({}: RoomLayoutProps){
               <VideoFeed 
                 streamChatClient={client}
                 streamChatChannel={channel}
+                roomId={roomId}
               />
             </div>
             <CallSettingsFooter onOpenChat={openChat} />

@@ -17,11 +17,11 @@ var upgrader = websocket.Upgrader{
 }
 
 type session struct {
-	writer Writer
-	router sfu.Router
+	writer  Writer
+	routers map[string]sfu.Router
 }
 
-func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
+func HandleSession(w http.ResponseWriter, r *http.Request) {
 	// Upgrade the HTTP connection to a websocket connection
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -33,7 +33,7 @@ func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
 	defer writer.Close()
 
 	// Handle the signaling session
-	sess := createSession(writer, router)
+	sess := createSession(writer)
 	for {
 		var msg signaling.SignalMessage
 		if err = conn.ReadJSON(&msg); err != nil {
@@ -44,25 +44,36 @@ func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
 		if msg.ClientID == "" {
 			panic("Client ID is empty")
 		}
+		if msg.RoomID == "" {
+			panic("Room ID is empty")
+		}
+
+		// Get the router for the room, create one if it doesn't exist
+		roomRouter, exists := sess.routers[msg.RoomID]
+		if !exists {
+			roomRouter = sfu.NewRouter()
+			sess.routers[msg.RoomID] = roomRouter
+		}
 
 		fmt.Println("Received message type:", msg.Type)
 
 		switch msg.Type {
 		case signaling.SignalMessageTypeJoin:
+			log.Printf("Received Join request for room %s", msg.RoomID)
 			// Create offer for the client
 			var join signaling.Join
 			if err := json.Unmarshal(msg.Payload, &join); err != nil {
 				log.Printf("Failed to unmarshal join payload: %v", err)
 				continue
 			}
-			pc, err := sess.handleJoin(writer, msg.ClientID)
+			pc, err := sess.handleJoin(writer, msg.RoomID, msg.ClientID)
 			if err != nil {
 				panic(fmt.Sprintf("failed to handle join: %v", err))
 			}
 
 			// Register the PeerConnection with the router
 			log.Println("name: " + join.Name)
-			err = router.AddPeerConnection(msg.ClientID, join.Name, pc)
+			err = roomRouter.AddPeerConnection(msg.ClientID, join.Name, pc)
 			if err != nil {
 				panic(fmt.Sprintf("failed to add PeerConnection to router: %v", err))
 			}
@@ -76,19 +87,19 @@ func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
 				continue
 			}
 			// TODO: Handle room-based exits, return error to client??
-			sess.handleExit(msg.ClientID, exit.PeerName)
+			sess.handleExit(msg.ClientID, msg.RoomID, exit.PeerName)
 
 		case signaling.SignalMessageTypeOffer:
 			var offer signaling.SdpOffer
 			if err := json.Unmarshal(msg.Payload, &offer); err != nil {
 				panic(fmt.Sprintf("failed to unmarshal offer: %s, %v", msg.Payload, err))
 			}
-			pc, err := sess.handleOffer(writer, msg.ClientID, &offer)
+			pc, err := sess.handleOffer(writer, msg.ClientID, msg.RoomID, &offer)
 			if err != nil {
 				panic(fmt.Sprintf("failed to handle offer: %v", err))
 			}
 			// Register the PeerConnection with the router
-			err = router.AddPeerConnection(msg.ClientID, "UNKNOWN", pc)
+			err = roomRouter.AddPeerConnection(msg.ClientID, "UNKNOWN", pc)
 			if err != nil {
 				panic(fmt.Sprintf("failed to add PeerConnection to router: %v", err))
 			}
@@ -98,7 +109,7 @@ func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
 			if err := json.Unmarshal(msg.Payload, &answer); err != nil {
 				panic(fmt.Sprintf("failed to unmarshal answer: %s, %v", msg.Payload, err))
 			}
-			err := sess.handleAnswer(msg.ClientID, &answer)
+			err := sess.handleAnswer(msg.ClientID, msg.RoomID, &answer)
 			if err != nil {
 				panic(fmt.Sprintf("failed to handle answer: %v", err))
 			}
@@ -108,7 +119,7 @@ func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
 			if err := json.Unmarshal(msg.Payload, &candidate); err != nil {
 				panic(fmt.Sprintf("failed to unmarshal candidate: %s, %v", msg.Payload, err))
 			}
-			err := sess.handleRemoteCandidate(msg.ClientID, &candidate)
+			err := sess.handleRemoteCandidate(msg.ClientID, msg.RoomID, &candidate)
 			if err != nil {
 				fmt.Println("Error: failed to handle candidate: ", err)
 			}
@@ -117,7 +128,7 @@ func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
 			// Send PLI to all other publishers
 			// Request Key Frames from other callers
 			log.Printf("Received PLI request from client %s", msg.ClientID)
-			sess.router.RequestKeyFrames(msg.ClientID)
+			roomRouter.RequestKeyFrames(msg.ClientID)
 
 		default:
 			// TODO: handle other message types
@@ -125,14 +136,14 @@ func HandleSession(w http.ResponseWriter, r *http.Request, router sfu.Router) {
 	}
 }
 
-func createSession(writer Writer, router sfu.Router) *session {
+func createSession(writer Writer) *session {
 	return &session{
-		writer: writer,
-		router: router,
+		writer:  writer,
+		routers: make(map[string]sfu.Router),
 	}
 }
 
-func (s *session) handleJoin(writer Writer, id string) (*webrtc.PeerConnection, error) {
+func (s *session) handleJoin(writer Writer, roomId string, id string) (*webrtc.PeerConnection, error) {
 	config := webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
 			{
@@ -170,7 +181,7 @@ func (s *session) handleJoin(writer Writer, id string) (*webrtc.PeerConnection, 
 	//	return nil, fmt.Errorf("failed to set local description: %w", err)
 	//}
 
-	s.registerConnectionHandlers(id, pc)
+	s.registerConnectionHandlers(id, roomId, pc)
 
 	//payload, _ := json.Marshal(signaling.SdpOffer{SDP: offer.SDP})
 	//writer.WriteJSON(signaling.SignalMessage{
@@ -181,12 +192,12 @@ func (s *session) handleJoin(writer Writer, id string) (*webrtc.PeerConnection, 
 	return pc, nil
 }
 
-func (s *session) handleExit(id string, name string) {
+func (s *session) handleExit(id, roomId, name string) {
 
 	// TODO: implement specific close messages, not a generic without specifying who to close
 	if name == "" {
 		// No provided name in exit message (or abrupt disconnect), get name from router
-		name = s.router.GetName(id)
+		name = s.routers[roomId].GetName(id)
 	}
 	closeSubscriber := func(peerId string) {
 		payload, err := json.Marshal(signaling.PeerExit{PeerID: peerId, PeerName: name})
@@ -200,7 +211,7 @@ func (s *session) handleExit(id string, name string) {
 		})
 	}
 
-	err := s.router.RemovePeerConnection(id, closeSubscriber)
+	err := s.routers[roomId].RemovePeerConnection(id, closeSubscriber)
 	if err != nil {
 		fmt.Printf("Error removing connection %s: %v\n", id, err)
 	} else {
@@ -208,7 +219,7 @@ func (s *session) handleExit(id string, name string) {
 	}
 }
 
-func (s *session) handleOffer(writer Writer, id string, offer *signaling.SdpOffer) (*webrtc.PeerConnection, error) {
+func (s *session) handleOffer(writer Writer, id string, roomId string, offer *signaling.SdpOffer) (*webrtc.PeerConnection, error) {
 	// Create a new PeerConnection
 	config := webrtc.Configuration{}
 	pc, err := webrtc.NewPeerConnection(config)
@@ -244,7 +255,7 @@ func (s *session) handleOffer(writer Writer, id string, offer *signaling.SdpOffe
 		return nil, fmt.Errorf("failed to set local description: %w", err)
 	}
 
-	s.registerConnectionHandlers(id, pc)
+	s.registerConnectionHandlers(id, roomId, pc)
 
 	// Send the answer back to the client
 	payload, _ := json.Marshal(signaling.SdpAnswer{SDP: answer.SDP})
@@ -257,8 +268,8 @@ func (s *session) handleOffer(writer Writer, id string, offer *signaling.SdpOffe
 	return pc, nil
 }
 
-func (s *session) handleAnswer(id string, answer *signaling.SdpAnswer) error {
-	pc := s.router.GetPeerConnection(id)
+func (s *session) handleAnswer(id string, roomId string, answer *signaling.SdpAnswer) error {
+	pc := s.routers[roomId].GetPeerConnection(id)
 	if pc == nil {
 		return fmt.Errorf("PeerConnection with id %s does not exist", id)
 	}
@@ -275,7 +286,7 @@ func (s *session) handleAnswer(id string, answer *signaling.SdpAnswer) error {
 	return nil
 }
 
-func (s *session) registerConnectionHandlers(id string, pc *webrtc.PeerConnection) {
+func (s *session) registerConnectionHandlers(id string, roomId string, pc *webrtc.PeerConnection) {
 	// Register negotiation needed
 	pc.OnNegotiationNeeded(func() {
 		fmt.Println("Negotiation needed for client " + id)
@@ -330,13 +341,13 @@ func (s *session) registerConnectionHandlers(id string, pc *webrtc.PeerConnectio
 
 				if track.Kind() == webrtc.RTPCodecTypeVideo {
 					// Forward video track to all other clients
-					err := s.router.ForwardVideoTrack(id, track)
+					err := s.routers[roomId].ForwardVideoTrack(id, track)
 					if err != nil {
 						panic(fmt.Sprintf("failed to forward video track: %v", err))
 					}
 				} else if track.Kind() == webrtc.RTPCodecTypeAudio {
 					// Forward audio track to all other clients
-					err := s.router.ForwardAudioTrack(id, track)
+					err := s.routers[roomId].ForwardAudioTrack(id, track)
 					if err != nil {
 						panic(fmt.Sprintf("failed to forward audio track: %v", err))
 					}
@@ -348,7 +359,7 @@ func (s *session) registerConnectionHandlers(id string, pc *webrtc.PeerConnectio
 
 		case webrtc.PeerConnectionStateFailed:
 			// send a peerExit to all peers
-			s.handleExit(id, "")
+			s.handleExit(id, roomId, "")
 
 		default:
 			// TODO: handle PeerConnection failure
@@ -378,12 +389,12 @@ func (s *session) handleLocalCandidate(id string, candidate *webrtc.ICECandidate
 	s.writer.WriteJSON(pbCandidate)
 }
 
-func (s *session) handleRemoteCandidate(id string, candidate *signaling.IceCandidate) error {
+func (s *session) handleRemoteCandidate(id string, roomId string, candidate *signaling.IceCandidate) error {
 	// Add the ICE candidate to the PeerConnection
 	iceCandidate := webrtc.ICECandidateInit{
 		Candidate: candidate.Candidate,
 	}
-	clientPC := s.router.GetPeerConnection(id)
+	clientPC := s.routers[roomId].GetPeerConnection(id)
 	if clientPC == nil {
 		return fmt.Errorf("PeerConnection with id %s does not exist", id)
 	}

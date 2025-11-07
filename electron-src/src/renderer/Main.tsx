@@ -71,7 +71,7 @@ const router = createHashRouter([
         element: <VideoLayout />
       },
       {
-        path: 'TestRoom',
+        path: 'TestRoom/:roomId',
         element: <RoomLayout />
       },
       {
