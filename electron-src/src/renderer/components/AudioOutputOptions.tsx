@@ -17,7 +17,7 @@ export default function OutputOptions() {
 
   //State to hold list of audio output devices
   const [audioOutputs, setAudioOutputs] = useState([
-    {key: "default", label: "Default - Macbook Pro Speakers (Built-in)"},
+    {key: "default", label: "Default"},
   ]);
 
   //Function to handle when the output devices selection changes
