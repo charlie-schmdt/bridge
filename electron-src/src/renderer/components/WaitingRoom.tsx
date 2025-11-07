@@ -6,6 +6,10 @@ import micOff from "@assets/microphone_inactive.png";
 import videopng from "@assets/video.png"
 import video_inactivepng from "@assets/video_inactive.png"
 import { useCamera } from "@/hooks/useCamera";
+import {useAudioContext} from "../contexts/AudioContext";
+import AudioInputOptions from "./AudioInputOptions"
+import AudioOutputOptions from "./AudioOutputOptions"
+import MicSensitivity from "./MicSensitivity";
 /*
 
 - session id redirection
@@ -143,6 +147,32 @@ export default function WaitingRoom({isOpen, onOpen, onOpenChange}: WaitingRoomP
 
 
                             </Select>
+                            <div className="flex flex-col  rounded-xl shadow gap-4">
+                              <div className="grid grid-cols-1 grid-rows-2 flex-1 min-w-[300px] mt-2 mb-2">
+                                <div className="p-1 ">
+                                  <label className="mb-1">Input source:</label>
+                                </div>
+                                <div className="p-1 ">
+                                  <AudioInputOptions />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-1 grid-rows-2 flex-1 min-w-[300px] mt-2 mb-2">
+                                <div className="p-1 ">
+                                  <label className="mb-1">Destination:</label>
+                                </div>
+                                <div className="p-1 ">
+                                  <AudioOutputOptions />
+                                </div>  
+                              </div>
+                            </div>
+                            <div className="flex flex-col flex-[2] min-w-[300px] mt-2 mb-2">
+                              <div className="p-4 ">
+                                <label className="mb-2">Mic Sensitivity:</label>
+                              </div>
+                              <div className="p-4 ">
+                                <MicSensitivity/>
+                              </div>     
+                            </div>
                         </ModalBody>
                         <ModalFooter>
 
