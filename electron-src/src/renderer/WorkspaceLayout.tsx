@@ -492,7 +492,7 @@ export const WorkspaceLayout = () => {
                   filteredRooms.map((room) => (
                     <RoomCard
                       key={room.id}
-                      id={room.id}
+                      id={room.name}
                       title={room.name}
                       categories={room.categories || []}
                       description={

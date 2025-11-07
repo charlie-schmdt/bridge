@@ -70,7 +70,7 @@ export default function VideoFeed({streamChatClient, streamChatChannel, roomId}:
 
     const clientId = useRef<string | null>(null);
 
-    console.log("RENDERING VIDEO");
+    console.log("RENDERING VIDEO FOR ROOM " + roomId);
 
     // Initiate the WebSocket connection with the Node server
     // NOTE: This is NOT the WebRTC stream for video/audio, so it has the same lifetime as the component
