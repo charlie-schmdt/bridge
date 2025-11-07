@@ -10,6 +10,7 @@ import {useAudioContext} from "../contexts/AudioContext";
 import AudioInputOptions from "./AudioInputOptions"
 import AudioOutputOptions from "./AudioOutputOptions"
 import MicSensitivity from "./MicSensitivity";
+import { useNavigate } from "react-router";
 /*
 
 - session id redirection
@@ -18,12 +19,14 @@ import MicSensitivity from "./MicSensitivity";
 */
 
 interface WaitingRoomProps{
+    roomID: string;
     onOpen: () => void;
     isOpen: boolean;
     onOpenChange: () => void;
 }
 
-export default function WaitingRoom({isOpen, onOpen, onOpenChange}: WaitingRoomProps){ 
+export default function WaitingRoom({roomID, isOpen, onOpen, onOpenChange}: WaitingRoomProps){ 
+    const navigate = useNavigate();
     const [videoSource, setVideoSource] = useState(
         /*
             TODO: add video source options, default, and populate with user's video sources
@@ -81,30 +84,28 @@ export default function WaitingRoom({isOpen, onOpen, onOpenChange}: WaitingRoomP
                     <>
                         <ModalHeader className="flex flex-col gap-1">Waiting Room</ModalHeader>
                         <ModalBody>
-                             <video
-                                        ref={videoRef}
-                                        autoPlay={true}
-                                        muted={true}
-                                        className={`w-[25%] h-[25%] ${isCameraEnabled ? 'block' : 'hidden'}`}
-                                        />
-                                {/* blue rectangle with name of user or video if enabled*/
-                                    
-
-                                       
-                                       /* <video ref={videoRef} style={{ width: '25%', height: '25%' }} />*/
-                                        
-                                    
+                            <button
+                                className="mt-4 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition cursor-pointer"
+                                onClick={() => navigate(`/TestRoom/${roomID}`)}
+                            >
+                                Admin Test Skip WR
+                            </button>
+                            <div>
+                                {/*
+                                <video
+                                    ref={videoRef}
+                                            autoPlay={true}
+                                            muted={true}
+                                    className={`w-[25%] h-[25%] ${isCameraEnabled ? 'block' : 'hidden'}`}
+                                />
+  
                                     !isCameraEnabled && (
                                         <div className="h-[25%] w-[25%] bg-blue-500"></div>
-                                        //
-                                            //TODO: buttons for video and audio
-                                        //
                                     )
+                                */}
+                            </div>
 
-
-                                }
-
-                                    <div className="flex gap-4">
+                             <div className="flex gap-4">
                                         {/*
                                         <button className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer"
                                             onClick={setIsAudioEnabled(!isAudioEnabled)}>
@@ -115,7 +116,6 @@ export default function WaitingRoom({isOpen, onOpen, onOpenChange}: WaitingRoomP
                                         */}
                                         
                                         <button className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer"
-                                            
                                             onClick={
                                                 toggleCamera
                                                 
@@ -123,30 +123,39 @@ export default function WaitingRoom({isOpen, onOpen, onOpenChange}: WaitingRoomP
                                         >
                                             <img src={isCameraEnabled? videopng : video_inactivepng} alt="App Icon" className="h-auto w-auto max-w-[32px] max-h-[32px]" />          
                                         </button>
-                                    </div>
+                                    </div>       
                                 {/* Meeting details*/}
                                 {/*turn on/off camera and audio*/}
+                            <div className="grid grid-cols-1 grid-rows-2 flex-1 min-w-[300px] mt-2 mb-2">
+                                <div className="p-1 ">
+                                  <label className="mb-1">Video source:</label>
+                                </div>
+                                <div className="p-1 ">
+                                    <Select
+                                        aria-label="Video Sources"
+                                        /*
+                                        selectedKeys={[]}
+                                        onSelectionChange={(keys) =>
+                                            setVideoSource("default")
+                                        }
+                                        */
+                                    variant="bordered"
+                                    className="max-w-md"
+                                        classNames={{
+                                        trigger: "bg-neutral-50 border border-neutral-200 focus:border-primary rounded-lg shadow-sm transition-colors flex justify-between items-center cursor-pointer",
+                                        value: "text-neutral-900",
+                                        popoverContent: "shadow-lg border border-neutral-200 rounded-lg bg-white",
+                                        }}
+                                    >
+                                        <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="default">User Default Video Source</SelectItem>
 
-                            <Select
-                                aria-label="Video Sources"
-                                /*
-                                selectedKeys={[]}
-                                onSelectionChange={(keys) =>
-                                    setVideoSource("default")
-                                }
-                                */
-                               variant="bordered"
-                               className="max-w-md"
-                                classNames={{
-                                trigger: "bg-neutral-50 border border-neutral-200 focus:border-primary rounded-lg shadow-sm transition-colors flex justify-between items-center cursor-pointer",
-                                value: "text-neutral-900",
-                                popoverContent: "shadow-lg border border-neutral-200 rounded-lg bg-white",
-                                }}
-                            >
-                                <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="default">User Default Video Source</SelectItem>
+                                    
+                                    </Select>                                
+                                </div>
+                              </div>
 
 
-                            </Select>
+
                             <div className="flex flex-col  rounded-xl shadow gap-4">
                               <div className="grid grid-cols-1 grid-rows-2 flex-1 min-w-[300px] mt-2 mb-2">
                                 <div className="p-1 ">
@@ -165,6 +174,7 @@ export default function WaitingRoom({isOpen, onOpen, onOpenChange}: WaitingRoomP
                                 </div>  
                               </div>
                             </div>
+
                             <div className="flex flex-col flex-[2] min-w-[300px] mt-2 mb-2">
                               <div className="p-4 ">
                                 <label className="mb-2">Mic Sensitivity:</label>

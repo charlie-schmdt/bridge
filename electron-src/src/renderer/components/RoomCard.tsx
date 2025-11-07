@@ -1,4 +1,6 @@
+import { Button, useDisclosure } from "@heroui/react";
 import { useNavigate } from "react-router-dom";
+import WaitingRoom from "./WaitingRoom";
 
 const statusColors = {
   active: "text-green-600",
@@ -22,6 +24,8 @@ export function RoomCard({ id, title, description, categories, status, nextMeeti
     // Implement room deletion logic here
     console.log(`Deleting room: ${title}`);
   };
+      const {isOpen, onOpen, onOpenChange} = useDisclosure();
+
 
   return (
     <div className="w-full min-w-0 min-h-[15rem] bg-white rounded-xl shadow p-4 flex flex-col justify-between">
@@ -50,12 +54,17 @@ export function RoomCard({ id, title, description, categories, status, nextMeeti
       )}
 
       {status === "active" && (
-        <button 
+        <>
+        <Button 
         className="mt-4 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition cursor-pointer"
-        onClick={() => navigate(`/TestRoom/${id}`)}
+        //onClick={() => navigate(`/TestRoom/${id}`)}
+        onPress={onOpen}
         >
           Join Room
-        </button>
+        </Button>
+
+        <WaitingRoom roomID={id} isOpen={isOpen} onOpen={onOpen} onOpenChange={onOpenChange}/>
+        </>
       )}
       {status === "scheduled" && (
         <button className="mt-4 w-full bg-gray-200 text-gray-700 py-2 rounded-lg">

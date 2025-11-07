@@ -49,7 +49,7 @@ export function CallSettingsFooter({ onOpenChat }) {
           className="text-gray-500 hover:text-blue-600 cursor-pointer"
           onPress={onOpen}
         >
-          User Features Menu
+          Menu
         </Button>
         <UserFeaturesModal isOpen={isOpen} onOpen={onOpen} onOpenChange={onOpenChange}/>
       </div>
