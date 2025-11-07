@@ -214,29 +214,40 @@ export default function VideoFeed({streamChatClient, streamChatChannel, roomId}:
         pc.ontrack = (event: RTCTrackEvent) => {
             console.log("Got remote track: ", event);
             if (remoteVideoRef.current) {
-                remoteVideoRef.current.srcObject = event.streams[0];
-                remoteVideoRef.current.play().then(_ => {
-                    // Automatic media track playback started successfully
-                    // Send a PLI request to the other users to get a key frame
-                    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-                        const msg = {
-                            type: "pli",
-                            clientId: clientId.current,
-                            roomId: roomId,
+                let stream = remoteVideoRef.current.srcObject as MediaStream;
+
+                if (!stream) {
+                    console.log("Creating a new local stream and adding track.");
+                    stream = new MediaStream();
+                    stream.addTrack(event.track);
+                    remoteVideoRef.current.srcObject = stream;
+                    remoteVideoRef.current.play().then(_ => {
+                        // Automatic media track playback started successfully
+                        // Send a PLI request to the other users to get a key frame
+                        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+                            const msg = {
+                                type: "pli",
+                                clientId: clientId.current,
+                                roomId: roomId,
+                            }
+                            console.log("Sending PLI request to SFU")
+                            wsRef.current.send(JSON.stringify(msg));
                         }
-                        console.log("Sending PLI request to SFU")
-                        wsRef.current.send(JSON.stringify(msg));
-                    }
-                })
-                .catch(error => {
-                    // Playback was prevented or interrupted
-                    if (error.name === 'AbortError') {
-                        console.warn('Video play() interrupted or prevented', error)
-                    }
-                    else {
-                        console.error('Video playback failed:', error);
-                    }
-                });
+                    })
+                    .catch(error => {
+                        // Playback was prevented or interrupted
+                        if (error.name === 'AbortError') {
+                            console.warn('Video play() interrupted or prevented', error)
+                        }
+                        else {
+                            console.error('Video playback failed:', error);
+                        }
+                    });
+                }
+                else {
+                    console.log("Stream already exists, adding new track")
+                    stream.addTrack(event.track);
+                }
             }
         }
 
