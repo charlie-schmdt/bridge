@@ -17,6 +17,11 @@ interface WorkspaceMember {
   picture?: string;
   isOwner: boolean;
   role: string;
+  permissions?: {
+    canCreateRooms?: boolean;
+    canDeleteRooms?: boolean;
+    canEditWorkspace?: boolean;
+  };
 }
 
 interface WorkspaceInfo {
@@ -56,11 +61,15 @@ export const WorkspaceLayout = () => {
   const { notification, showNotification } = useNotification();
   const [updatedWorkspaceInfo, setUpdatedWorkspaceInfo] = useState<WorkspaceInfo | null>(null);
 
-  const isCurrentUserOwner =
-    user &&
-    workspaceInfo?.members.find(
-      (member) => member.id === user.id && member.isOwner
-    );
+  // Determine current user's workspace entry/role/permissions from members
+  const currentUserEntry = user ? members.find((m) => m.id === user.id) : null;
+  const isCurrentUserOwner = !!(currentUserEntry && currentUserEntry.isOwner);
+  const currentUserRole = currentUserEntry?.role || (isCurrentUserOwner ? 'Owner' : 'Member');
+  const currentUserPermissions = currentUserEntry?.permissions || {
+    canCreateRooms: false,
+    canDeleteRooms: false,
+    canEditWorkspace: false,
+  };
 
   // Fetch workspace data using the ID from URL
   useEffect(() => {
@@ -321,6 +330,8 @@ export const WorkspaceLayout = () => {
     }
   };
 
+  // Invite feature removed: no invite state or handlers
+
   return (
     <Card className="min-h-screen bg-white">
       <div className="workspace-app">
@@ -348,36 +359,35 @@ export const WorkspaceLayout = () => {
               </>}
               {!editMode && <> {workspaceInfo?.name || "Workspace"} </>}
             </h1>
-            {isCurrentUserOwner && (
+            {(currentUserPermissions.canEditWorkspace || isCurrentUserOwner) && (
               <>
                 <Button className="mt-3 sm:mt-0" color="primary" onPress={() => setEditMode(true)}>Edit Workspace</Button>
               </>
             )}
           </div>
-          {isCurrentUserOwner && <>
-              <span className="ml-2 text-sm text-blue-600 font-medium">(Owner)</span>
-              <p className="mt-6 text-gray-600 text-lg">
-                Manage your team members, calls, and workspace access.
-                {members.length > 0 &&
-                  ` ${members.length} member${members.length !== 1 ? "s" : ""}`}
-              </p>
-              {editMode && (
-                <p className="mt-6 text-gray-600 text-lg">
-                  <input title="Workspace Description"
-                    value={updatedWorkspaceInfo?.description || "Workspace Description"}
-                    onChange={(e) => setUpdatedWorkspaceInfo((prev) => prev ? { ...prev, description: e.target.value } : null)}
-                    className="ring-2 ring-blue-500 focus:outline-none hover:border-gray-400" />
-                </p>
-              )}
-            </>
-          } 
-          {!isCurrentUserOwner && <>
-              <p className="mt-6 text-gray-600 text-lg">
-                {workspaceInfo?.description || "Collaborate with your team in this workspace."}
-                {members.length > 0 &&
-                  ` ${members.length} member${members.length !== 1 ? "s" : ""}`}
-              </p>
-            </>}
+          {isCurrentUserOwner && (
+            <span className="ml-2 text-sm text-blue-600 font-medium">(Owner)</span>
+          )}
+          {(currentUserPermissions.canEditWorkspace || isCurrentUserOwner) && (
+            <p className="mt-6 text-gray-600 text-lg">
+              Manage your workspace metadata.
+              {members.length > 0 && ` ${members.length} member${members.length !== 1 ? "s" : ""}`}
+            </p>
+          )}
+          { (currentUserPermissions.canEditWorkspace || isCurrentUserOwner) && editMode && (
+            <p className="mt-6 text-gray-600 text-lg">
+              <input title="Workspace Description"
+                value={updatedWorkspaceInfo?.description || "Workspace Description"}
+                onChange={(e) => setUpdatedWorkspaceInfo((prev) => prev ? { ...prev, description: e.target.value } : null)}
+                className="ring-2 ring-blue-500 focus:outline-none hover:border-gray-400" />
+            </p>
+          )}
+          {(!currentUserPermissions.canEditWorkspace && !isCurrentUserOwner) && (
+            <p className="mt-6 text-gray-600 text-lg">
+              {workspaceInfo?.description || "Collaborate with your team in this workspace."}
+              {members.length > 0 && ` ${members.length} member${members.length !== 1 ? "s" : ""}`}
+            </p>
+          )}
 
           {/* Filters */}
           <div className="mt-6 flex flex-col sm:flex-row gap-4 sm:gap-6">
@@ -419,12 +429,14 @@ export const WorkspaceLayout = () => {
         {workspaceInfo && workspaceId && (
           <div>
             <div className="flex justify-between items-center mb-4 mt-6 px-6">
-              <Button
-                color="primary"
-                onPress={setShowRoomModal.bind(null, true)}
-              >
-                + Create Room
-              </Button>
+              {currentUserPermissions.canCreateRooms && (
+                <Button
+                  color="primary"
+                  onPress={setShowRoomModal.bind(null, true)}
+                >
+                  + Create Room
+                </Button>
+              )}
               <LeaveWorkspaceButton
                 workspaceId={workspaceId}
                 workspaceName={workspaceInfo.name}
@@ -480,7 +492,14 @@ export const WorkspaceLayout = () => {
                       Cancel
                     </button>
                     <button
-                      onClick={handleCreateRoom}
+                      onClick={() => {
+                        // double-check permissions before creating
+                        if (!currentUserPermissions.canCreateRooms && !isCurrentUserOwner) {
+                          alert('You do not have permission to create rooms in this workspace');
+                          return;
+                        }
+                        handleCreateRoom();
+                      }}
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                     >
                       Create
@@ -514,6 +533,7 @@ export const WorkspaceLayout = () => {
                       }
                       nextMeeting={room.next_meeting || "TBA"}
                       editMode={editMode}
+                      canDeleteRooms={currentUserPermissions.canDeleteRooms || isCurrentUserOwner}
                     />
                   ))
                 ) : (
@@ -529,17 +549,22 @@ export const WorkspaceLayout = () => {
 
           {/* Right: Members list (25%) */}
           <div className="lg:w-1/4 w-full flex justify-end">
-            <MembersList
-              members={members}
-              workspaceId={workspaceId}
-              workspaceName={workspaceInfo?.name}
-              onMemberRemoved={handleMemberRemoved}
-              isEditing={editMode}
-            />
+            <div className="w-full max-w-sm">
+              {/* Invite feature removed */}
+
+              <MembersList
+                members={members}
+                workspaceId={workspaceId}
+                workspaceName={workspaceInfo?.name}
+                onMemberRemoved={handleMemberRemoved}
+                // Only workspace owner may edit members/permissions. `canEditWorkspace` is for editing workspace metadata only.
+                isEditing={isCurrentUserOwner}
+              />
+            </div>
           </div>
         </div>
 
-        {isCurrentUserOwner && editMode && (
+        {(currentUserPermissions.canEditWorkspace || isCurrentUserOwner) && editMode && (
           <div className="flex justify-end px-6 mb-6">
             <Button onPress={() => setEditMode(false)} className="mr-4 text-black-500 bg-gray-200">Cancel</Button>
             <Button color="primary" onPress={() => {

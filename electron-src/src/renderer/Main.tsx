@@ -98,9 +98,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ToastProvider />
     <AuthProvider>
-      <AudioContextProvider>
-        <RouterProvider router={router} />
-      </AudioContextProvider>
+        <AudioContextProvider>
+          <RouterProvider router={router} />
+        </AudioContextProvider>
     </AuthProvider>
   </React.StrictMode>
 );

@@ -16,9 +16,10 @@ export interface RoomCardProps {
   status: "active" | "scheduled" | "offline";
   nextMeeting: string;
   editMode?: boolean;
+  canDeleteRooms?: boolean;
 }
 
-export function RoomCard({ id, title, description, categories, status, nextMeeting, editMode }: RoomCardProps) {
+export function RoomCard({ title, description, categories, status, nextMeeting, editMode, canDeleteRooms }: RoomCardProps) {
   const navigate = useNavigate();
   const handleDeleteRoom = () => {
     // Implement room deletion logic here
@@ -35,7 +36,7 @@ export function RoomCard({ id, title, description, categories, status, nextMeeti
         <span className={`text-sm font-medium ${statusColors[status]}`}>
           {status.charAt(0).toUpperCase() + status.slice(1)}
         </span>
-        {editMode && (
+        {(canDeleteRooms) && (
           <button className="text-sm font-bold text-red-500 hover:underline cursor:pointer" onClick={() => handleDeleteRoom()}>
             Delete
           </button>
