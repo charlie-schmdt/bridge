@@ -1,0 +1,35 @@
+name: Deploy Node to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: "google-github-actions/auth@v2"
+        with:
+          workload_identity_provider: "projects/652795254011/locations/global/workloadIdentityPools/github/providers/bridge"
+          service_account: "github-deployer@bridge-477216.iam.gserviceaccount.com"
+
+      - name: Set up gcloud SDK
+        uses: "google-github-actions/setup-gcloud@v2"
+        with:
+          project_id: "bridge-477216"
+
+      - name: Build and Deploy to Cloud Run
+        run: |
+          gcloud run deploy --image gcr.io/bridge-477216/backend --platform managed --region us-central1 --allow-unauthenticated
