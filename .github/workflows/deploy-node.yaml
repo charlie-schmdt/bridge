@@ -7,6 +7,13 @@ on:
     paths:
       - "backend/**"
 
+env:
+  PROJECT_ID: "bridge-477216"
+  SERVICE_NAME: "node"
+  REGION: "us-east1"
+
+  AR_REPOSITORY: "bridge-docker"
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -27,9 +34,31 @@ jobs:
 
       - name: Set up gcloud SDK
         uses: "google-github-actions/setup-gcloud@v2"
-        with:
-          project_id: "bridge-477216"
 
-      - name: Build and Deploy to Cloud Run
+      # Configure Docker to use gcloud
+      - name: Configure Docker
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+      # Build the docker image
+      - name: Build image
+        id: build
+        run: |-
+          export IMAGE_TAG="${ env.REGION }-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
+          docker build backend --tag "${IMAGE_TAG}"
+          echo "image_name=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+
+      # Push the docker image to the Google Artifact Registry
+      - name: Push Image
+        run: docker push ${{ steps.build.outputs.image_name }}
+
+      # Deploy from Artifact Registry to Cloud Run
+      - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy --image gcr.io/bridge-477216/backend --platform managed --region us-central1 --allow-unauthenticated
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image=${{ steps.build.outputs.image_name }} \
+            --region=${{ env.REGION }} \
+            --platform=managed \
+            --allow-unauthenticated \
+            --env-vars-file=backend/.env.prod \
+            --set-secrets="DATABASE_URL=NODE_DATABASE_URL:latest,JWT_SECRET=NODE_JWT_SECRET:latest,SESSION_SECRET=NODE_SESSION_SECRET:latest" \
+            && gcloud run services update-traffic ${{ env.SERVICE_NAME }} --to-latest
