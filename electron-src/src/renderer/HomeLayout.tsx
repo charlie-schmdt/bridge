@@ -5,7 +5,7 @@ import WorkspaceCard from "./components/WorkspaceCard";
 import NotificationBanner from "./components/NotificationBanner";
 import CreateWorkspaceCard from "./components/CreateWorskpaceCard";
 import Banner from "./components/Banner";
-import { VideoFeedProvider } from "./providers/VideoFeedProvider";
+import { VideoFeedProvider } from "./Rooms/VideoFeedProvider";
 import { useContext, useEffect, useState, useMemo } from "react";
 import { VideoFeedContext } from "./contexts/VideoFeedContext";
 import { Search, Users, Calendar, Plus } from "lucide-react";

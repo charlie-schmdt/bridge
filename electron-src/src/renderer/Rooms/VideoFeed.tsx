@@ -1,12 +1,12 @@
 import { useState, useContext, useEffect, useRef } from 'react';
-import { useVideoFeedContext, VideoFeedContext } from './contexts/VideoFeedContext';
-import {useAudioContext} from "./contexts/AudioContext";
+import { useVideoFeedContext } from './VideoFeedContext';
+import {useAudioContext} from "../contexts/AudioContext";
 import { v4 as uuid } from 'uuid';
 import { Spinner, Button } from '@heroui/react';
 import { lchown } from 'fs';
 import { ref } from 'process';
 import { WebSocketURL } from '@/utils/endpoints';
-import { useAuth } from './contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify'
 
 // TODO: move this into a separate types directory

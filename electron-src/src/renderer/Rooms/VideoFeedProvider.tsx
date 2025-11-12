@@ -1,6 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { VideoFeedContext } from '../contexts/VideoFeedContext';
-import { VideoFeedType } from '../contexts/VideoFeedContext';
+import { VideoFeedContext, VideoFeedType } from './VideoFeedContext';
 
 export const VideoFeedProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const videoRef = useRef<HTMLVideoElement>(null);

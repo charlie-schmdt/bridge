@@ -1,5 +1,4 @@
 import { createContext, useContext } from "react";
-import VideoFeed from "../VideoFeed";
 
 export interface VideoFeedType {
   videoRef: React.RefObject<HTMLVideoElement>;

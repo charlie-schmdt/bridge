@@ -1,16 +1,12 @@
 import { Card, CardBody } from "@heroui/react";
-import Header from './components/Header';
-import CallSettingsFooter from "./components/CallSettingsFooter";
-import VideoFeed from "./VideoFeed";
-import { useParams, useNavigate } from "react-router-dom";
-import back_button from "@assets/back-button.png"
-import {useVideoFeedContext, VideoFeedContext} from "./contexts/VideoFeedContext";
-import { VideoFeedType } from "./contexts/VideoFeedContext";
-import React, { useContext, useState, useEffect, useRef } from "react";
-import { VideoFeedProvider } from "./providers/VideoFeedProvider";
-import {useAudioContext} from "./contexts/AudioContext";
-import Chat from "./components/Chat";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { StreamChat } from 'stream-chat';
+import CallSettingsFooter from "../components/CallSettingsFooter";
+import Chat from "../components/Chat";
+import { useAudioContext } from "../contexts/AudioContext";
+import VideoFeed from "./VideoFeed";
+import { VideoFeedProvider } from "./VideoFeedProvider";
 
 const apiKey = process.env.REACT_APP_STREAM_API_KEY || 'vv3fuvuqs5zw';
 const test_user = {
@@ -64,12 +60,6 @@ export default function RoomLayout({}: RoomLayoutProps){
   return (
     <Card>
       <CardBody>
-          {/*
-          <VideoFeed />
-          <CallerGallery />
-          
-          <Header />
-          */}
           <header className="w-full bg-white shadow-sm px-6 py-4 flex justify-between items-center">
               <button
                 className="text-white bg-red-600 font-medium hover:text-black cursor-pointer px-2"
@@ -105,11 +95,7 @@ export default function RoomLayout({}: RoomLayoutProps){
             client={client}
             channel={channel}
             />
-            
-            
           </VideoFeedProvider>
-
-          
       </CardBody>
     </Card>
   );

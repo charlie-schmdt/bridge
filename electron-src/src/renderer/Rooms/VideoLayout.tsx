@@ -1,6 +1,5 @@
-import Header from './components/Header';
-//import { VideoFeed } from './VideoFeed';
 import { Card, CardBody } from "@heroui/react";
+import Header from '../components/Header';
 
 export const VideoLayout = () => {
     return (

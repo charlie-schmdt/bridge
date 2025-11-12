@@ -5,7 +5,7 @@ import mic from "@assets/microphone_active.png";
 import micOff from "@assets/microphone_inactive.png";
 import videopng from "@assets/video.png"
 import video_inactivepng from "@assets/video_inactive.png"
-import { VideoFeedProvider } from "../providers/VideoFeedProvider";
+import { VideoFeedProvider } from "../Rooms/VideoFeedProvider";
 import { useVideoFeedContext, VideoFeedContext } from "../contexts/VideoFeedContext";
 import { Button, useDisclosure } from "@heroui/react";
 import UserFeaturesModal from "./UserFeaturesModal";

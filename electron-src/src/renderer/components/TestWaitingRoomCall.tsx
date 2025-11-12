@@ -2,7 +2,7 @@ import { Button, Card, CardBody, useDisclosure } from '@heroui/react'
 import React, { useState } from 'react'
 import Header from './Header'
 import WaitingRoom from './WaitingRoom';
-import RoomLayout from '../RoomLayout';
+import RoomLayout from '../Rooms/RoomLayout';
 
 /*
 TODO: empty with header and button to enter waiting room, opens modal, or renders the call

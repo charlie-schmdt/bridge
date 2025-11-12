@@ -1,25 +1,24 @@
+import { AppLayout } from '@/renderer/AppLayout';
+import { ToastProvider } from '@heroui/react';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import "../index.css";
 import { createHashRouter, RouterProvider } from 'react-router-dom';
-import { AppLayout } from '@/renderer/AppLayout';
-import { HomeLayout, homeLoader } from './HomeLayout';
-import { SettingsLayout } from './SettingsLayout';
-import ProfileLayout from './ProfileLayout';
-import OnboardingLayout from './OnboardingLayout';
-import { VideoLayout } from './VideoLayout';
+import "../index.css";
 import { AudioSandbox } from './AudioSandbox';
-import { WorkspaceLayout } from './WorkspaceLayout';
-import LogInLayout from './LogInLayout';
-import  RoomLayout  from './RoomLayout';
-import { AuthProvider } from './contexts/AuthContext';
-import { ProtectedRoute } from './components/ProtectedRoute';
-import FAQLayout from "./FAQLayout";
 import AuthCallback from './AuthCallback';
-import { AudioContextProvider } from './contexts/AudioContext';
-import { ToastProvider } from '@heroui/react';
-import WaitingRoom from './components/WaitingRoom';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import TestWaitingRoomCall from './components/TestWaitingRoomCall';
+import { AudioContextProvider } from './contexts/AudioContext';
+import { AuthProvider } from './contexts/AuthContext';
+import FAQLayout from "./FAQLayout";
+import { HomeLayout, homeLoader } from './HomeLayout';
+import LogInLayout from './LogInLayout';
+import OnboardingLayout from './OnboardingLayout';
+import ProfileLayout from './ProfileLayout';
+import RoomLayout from './Rooms/RoomLayout';
+import { VideoLayout } from './Rooms/VideoLayout';
+import { SettingsLayout } from './SettingsLayout';
+import { WorkspaceLayout } from './WorkspaceLayout';
 
 
 const router = createHashRouter([
