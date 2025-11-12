@@ -45,7 +45,7 @@ jobs:
       - name: Build image
         id: build
         run: |-
-          export IMAGE_TAG="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPOSITORY }}/${{ env.SERVICE_NAME }}@sha:${{ github.sha }}"
+          export IMAGE_TAG="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
           docker build backend --tag "${IMAGE_TAG}"
           echo "image_name=${IMAGE_TAG}" >> $GITHUB_OUTPUT
 
