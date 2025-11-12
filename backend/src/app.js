@@ -75,8 +75,7 @@ app.use('*', (req, res) => {
   });
 });
 
-
-
+// Add websocket handler to the server
 const server = http.createServer(app);
 const wss = new ws.WebSocketServer({ server, path: '/ws' });
 sfuClient.initSfuConnection();
