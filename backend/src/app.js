@@ -81,7 +81,7 @@ const wss = new ws.WebSocketServer({ server, path: '/ws' });
 sfuClient.initSfuConnection();
 signalingSocket.initSignalingSocket(wss);
 
-// Start server
+// Start server and listen on PORT
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
 });
