@@ -1,10 +1,10 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Endpoints } from "@/renderer/utils/endpoints";
+import { CheckCircle, Lock, Plus, Users } from "lucide-react";
+import { useState } from "react";
 import { MdClass } from "react-icons/md";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { CheckCircle, Plus, Users, Lock } from "lucide-react";
-import { Endpoints } from "@/utils/endpoints";
-import FavoriteButton from './FavoriteButton'
+import FavoriteButton from './FavoriteButton';
 
 interface WorkspaceCardProps {
   id: number; 

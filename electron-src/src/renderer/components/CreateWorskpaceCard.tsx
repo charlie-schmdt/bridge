@@ -1,9 +1,8 @@
-import { useState } from "react";
-import { Input, Switch, Button, Textarea } from "@heroui/react";
-import { PlusCircle, Lock, X } from "lucide-react";
+import { Endpoints } from "@/renderer/utils/endpoints";
+import { Switch, Textarea } from "@heroui/react";
+import { Lock, PlusCircle, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import NotificationBanner from "./NotificationBanner";
-import { Endpoints } from "@/utils/endpoints";
-import { useEffect } from "react";
 
 // ============================
 // Custom Modal Component

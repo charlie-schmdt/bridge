@@ -1,16 +1,11 @@
-import { Card, CardBody } from "@heroui/react";
-import { useLoaderData } from "react-router-dom";
+import { Button, Card } from "@heroui/react";
+import { Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import Banner from "./components/Banner";
+import CreateWorkspaceCard from "./components/CreateWorskpaceCard";
 import Header from "./components/Header";
 import WorkspaceCard from "./components/WorkspaceCard";
-import NotificationBanner from "./components/NotificationBanner";
-import CreateWorkspaceCard from "./components/CreateWorskpaceCard";
-import Banner from "./components/Banner";
-import { VideoFeedProvider } from "./Rooms/VideoFeedProvider";
-import { useContext, useEffect, useState, useMemo } from "react";
-import { VideoFeedContext } from "./contexts/VideoFeedContext";
-import { Search, Users, Calendar, Plus } from "lucide-react";
-import { Button } from "@heroui/react";
-import { Endpoints } from "../utils/endpoints"
+import { Endpoints } from "./utils/endpoints";
 
 import { useAuth } from "./contexts/AuthContext";
 

@@ -1,10 +1,10 @@
 // Create: components/LeaveWorkspaceButton.tsx
-import React, { useState } from 'react';
+import { Endpoints } from '@/renderer/utils/endpoints';
 import { Button } from '@heroui/react';
-import { LogOut, AlertCircle } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { AlertCircle, LogOut } from 'lucide-react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Endpoints } from '@/utils/endpoints';
+import { useAuth } from '../contexts/AuthContext';
 
 interface LeaveWorkspaceButtonProps {
   workspaceId: string;

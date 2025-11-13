@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { buildDiceBearUrl } from "../../utils/buildDiceBearUrl";
+import { buildDiceBearUrl } from "../utils/buildDiceBearUrl";
 
 const STYLES = ["thumbs", "lorelei", "adventurer", "botttsNeutral", "identicon"];
 const SEEDS  = ["purdue", "samson", "eagle", "lion", "koala", "titan", "nova", "bolt", "delta"];

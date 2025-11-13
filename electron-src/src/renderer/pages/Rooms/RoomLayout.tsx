@@ -1,33 +1,29 @@
 import { Card, CardBody } from "@heroui/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StreamChat } from 'stream-chat';
-import CallSettingsFooter from "../components/CallSettingsFooter";
-import Chat from "../components/Chat";
-import { useAudioContext } from "../contexts/AudioContext";
-import VideoFeed from "./VideoFeed";
-import { VideoFeedProvider } from "./VideoFeedProvider";
+import Chat from "../../components/Chat";
+import { useAudioContext } from "../../contexts/AudioContext";
+import { RoomFeed } from "./RoomFeed";
+import { RoomMediaProvider } from "./RoomMediaProvider";
+import CallSettingsFooter from "./RoomSettingsFooter";
 
 const apiKey = process.env.REACT_APP_STREAM_API_KEY || 'vv3fuvuqs5zw';
 const test_user = {
   id: 'Test-user',
   name: 'INSERT TEST NAME HERE'
 };
-type callStatus = "active" | "inactive" | "loading";
 
 interface RoomLayoutProps{}
 
-export default function RoomLayout({}: RoomLayoutProps){  
-  const VFref = useRef();
+export const RoomLayout = ({}: RoomLayoutProps) => {
   const [isChatOpen, setIsChatOpen ] = useState(false);
   const [client, setClient] = useState(null);
   const [channel, setChannel] = useState(null);
   const openChat = () => setIsChatOpen(true);
   const closeChat = () => setIsChatOpen(false);
-  const [callStatus, setCallStatus] = useState<callStatus>("loading");
-  const { initializeAudioGraph, tearDownAudioGraph } = useAudioContext();
+  const { tearDownAudioGraph } = useAudioContext();
   
-
   const navigate = useNavigate();
 
   const { roomId } = useParams();
@@ -79,9 +75,9 @@ export default function RoomLayout({}: RoomLayoutProps){
 
           </header>
           
-          <VideoFeedProvider>
+          <RoomMediaProvider>
             <div className="flex-1">
-              <VideoFeed 
+              <RoomFeed 
                 streamChatClient={client}
                 streamChatChannel={channel}
                 roomId={roomId}
@@ -95,7 +91,7 @@ export default function RoomLayout({}: RoomLayoutProps){
             client={client}
             channel={channel}
             />
-          </VideoFeedProvider>
+          </RoomMediaProvider>
       </CardBody>
     </Card>
   );

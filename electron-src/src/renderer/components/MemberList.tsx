@@ -1,9 +1,9 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { useAuth } from "../contexts/AuthContext";
-import RemoveUserButton from './RemoveUserButton';
-import MemberProfilePopover from './MemberProfilePopover';
+import { Endpoints } from "@/renderer/utils/endpoints";
 import { Button } from "@heroui/react";
-import { Endpoints } from "@/utils/endpoints";
+import React, { useEffect, useRef, useState } from 'react';
+import { useAuth } from "../contexts/AuthContext";
+import MemberProfilePopover from './MemberProfilePopover';
+import RemoveUserButton from './RemoveUserButton';
 
 const statusColors = {
   online: "text-green-600",

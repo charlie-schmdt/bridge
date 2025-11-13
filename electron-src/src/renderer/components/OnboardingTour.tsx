@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Endpoints } from '@/renderer/utils/endpoints';
 import { Button } from '@heroui/react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Endpoints } from '@/utils/endpoints';
 
 type Step = {
   id: string;

@@ -14,9 +14,8 @@ import FAQLayout from "./FAQLayout";
 import { HomeLayout, homeLoader } from './HomeLayout';
 import LogInLayout from './LogInLayout';
 import OnboardingLayout from './OnboardingLayout';
-import ProfileLayout from './ProfileLayout';
-import RoomLayout from './Rooms/RoomLayout';
-import { VideoLayout } from './Rooms/VideoLayout';
+import { RoomLayout } from './pages/Rooms/RoomLayout';
+import { ProfileLayout } from './ProfileLayout';
 import { SettingsLayout } from './SettingsLayout';
 import { WorkspaceLayout } from './WorkspaceLayout';
 
@@ -66,8 +65,8 @@ const router = createHashRouter([
         element: <SettingsLayout />,
       },
       {
-        path: 'video',
-        element: <VideoLayout />
+        path: 'room',
+        element: <RoomLayout />
       },
       {
         path: 'TestRoom/:roomId?',
