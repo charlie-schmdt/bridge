@@ -112,14 +112,18 @@ export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeed
     if (remoteStream) {
       if (remoteVideoRef.current.srcObject !== remoteStream) {
         remoteVideoRef.current.srcObject = remoteStream;
-        remoteVideoRef.current.play().catch(error => {
-          if (error.name === 'NotAllowedError') {
-            console.error("Autoplay was prevented. User must interact with the page")
-          }
-          else if (error.name !== 'AbortError') { // AbortError occurs on unmount
-            console.error("Video play() failed:", error);
-          }
-        });
+        remoteVideoRef.current.play()
+          .then(_ => {
+            console.log("Playing remote stream")
+          })
+          .catch(error => {
+            if (error.name === 'NotAllowedError') {
+              console.error("Autoplay was prevented. User must interact with the page")
+            }
+            else if (error.name !== 'AbortError') { // AbortError occurs on unmount
+              console.error("Video play() failed:", error);
+            }
+          });
       }
     }
     else {
@@ -137,16 +141,20 @@ export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeed
     }
 
     if (localStream) {
-      if (localRoomMedia.videoRef.current.srcObject !== remoteStream) {
-        localRoomMedia.videoRef.current.srcObject = remoteStream;
-        localRoomMedia.videoRef.current.play().catch(error => {
-          if (error.name === 'NotAllowedError') {
-            console.error("Autoplay was prevented. User must interact with the page")
-          }
-          else if (error.name !== 'AbortError') { // AbortError occurs on unmount
-            console.error("Video play() failed:", error);
-          }
-        });
+      if (localRoomMedia.videoRef.current.srcObject !== localStream) {
+        localRoomMedia.videoRef.current.srcObject = localStream;
+        localRoomMedia.videoRef.current.play()
+          .then(_ => {
+            console.log("Playing local stream");
+          })
+          .catch(error => {
+            if (error.name === 'NotAllowedError') {
+              console.error("Autoplay was prevented. User must interact with the page")
+            }
+            else if (error.name !== 'AbortError') { // AbortError occurs on unmount
+              console.error("Video play() failed:", error);
+            }
+          });
       }
     }
     else {
