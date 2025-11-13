@@ -1,6 +1,6 @@
+import { RoomLayout } from '@/renderer/pages/Rooms/RoomLayout';
 import { Button, Card, CardBody, useDisclosure } from '@heroui/react';
 import { useState } from 'react';
-import RoomLayout from '../pages/Rooms/RoomLayout';
 import Header from './Header';
 import WaitingRoom from './WaitingRoom';
 
@@ -33,7 +33,7 @@ export function TestWaitingRoomCall() {
                     >
                       Join Room
                 </Button>
-                <WaitingRoom isOpen={isOpen} onOpen={onOpen} onOpenChange={onOpenChange}/>
+                <WaitingRoom roomID={''} isOpen={isOpen} onOpen={onOpen} onOpenChange={onOpenChange}/>
                 {/*
                     TODO:
                     Set call active from waiting room based on criteria
