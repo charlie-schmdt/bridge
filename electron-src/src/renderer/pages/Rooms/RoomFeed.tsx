@@ -23,13 +23,12 @@ export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeed
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
 
-  //const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  //const localStreamRef = useRef<MediaStream | null>(null);
-  
   const roomConnectionManagerRef = useRef<RoomConnectionManager | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   // Synchronous means of checking if room is active or has been exited
   const clientId = useRef<string>(uuid());
+
+  const remoteStreamRef = useRef<MediaStream | null>(null);
 
   const effectiveRoomId = roomId === undefined ? "testroom" : roomId;
 
@@ -42,13 +41,15 @@ export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeed
     const callbacks: RoomConnectionManagerCallbacks = {
       onStatusChange: (status: CallStatus) => setCallStatus(status),
       onRemoteTrack: (track: MediaStreamTrack) => {
-        if (!remoteStream) {
-          // Create new remoteStream to handle the remote tracks
-          console.log("Creating new stream locally and adding remote track");
-          const stream = new MediaStream();
-          stream.addTrack(track);
-          setRemoteStream(stream);
+        if (!remoteStreamRef.current) {
+          // First remote track to arrive, create the stream container
+          console.log("Creating new stream locally");
+          remoteStreamRef.current = new MediaStream();
+          setRemoteStream(remoteStreamRef.current) // Call once to trigger UI
         }
+        // Add the track to the ref object (for first and subsequent tracks)
+        console.log("Adding remote track");
+        remoteStreamRef.current.addTrack(track);
       },
       onRemoteStreamStopped: () => {
         // leave for now
