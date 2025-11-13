@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { Endpoints } from '@/renderer/utils/endpoints';
+import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Endpoints } from '@/utils/endpoints';
 
 // Add OAuth handler to window
 declare global {

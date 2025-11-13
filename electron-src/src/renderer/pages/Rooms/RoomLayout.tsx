@@ -1,37 +1,29 @@
 import { Card, CardBody } from "@heroui/react";
-import Header from './components/Header';
-import CallSettingsFooter from "./components/CallSettingsFooter";
-import VideoFeed from "./VideoFeed";
-import { useParams, useNavigate } from "react-router-dom";
-import back_button from "@assets/back-button.png"
-import {useVideoFeedContext, VideoFeedContext} from "./contexts/VideoFeedContext";
-import { VideoFeedType } from "./contexts/VideoFeedContext";
-import React, { useContext, useState, useEffect, useRef } from "react";
-import { VideoFeedProvider } from "./providers/VideoFeedProvider";
-import {useAudioContext} from "./contexts/AudioContext";
-import Chat from "./components/Chat";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { StreamChat } from 'stream-chat';
+import Chat from "../../components/Chat";
+import { useAudioContext } from "../../contexts/AudioContext";
+import { RoomFeed } from "./RoomFeed";
+import { RoomMediaProvider } from "./RoomMediaProvider";
+import CallSettingsFooter from "./RoomSettingsFooter";
 
 const apiKey = process.env.REACT_APP_STREAM_API_KEY || 'vv3fuvuqs5zw';
 const test_user = {
   id: 'Test-user',
   name: 'INSERT TEST NAME HERE'
 };
-type callStatus = "active" | "inactive" | "loading";
 
 interface RoomLayoutProps{}
 
-export default function RoomLayout({}: RoomLayoutProps){  
-  const VFref = useRef();
+export const RoomLayout = ({}: RoomLayoutProps) => {
   const [isChatOpen, setIsChatOpen ] = useState(false);
   const [client, setClient] = useState(null);
   const [channel, setChannel] = useState(null);
   const openChat = () => setIsChatOpen(true);
   const closeChat = () => setIsChatOpen(false);
-  const [callStatus, setCallStatus] = useState<callStatus>("loading");
-  const { initializeAudioGraph, tearDownAudioGraph } = useAudioContext();
+  const { tearDownAudioGraph } = useAudioContext();
   
-
   const navigate = useNavigate();
 
   const { roomId } = useParams();
@@ -64,12 +56,6 @@ export default function RoomLayout({}: RoomLayoutProps){
   return (
     <Card>
       <CardBody>
-          {/*
-          <VideoFeed />
-          <CallerGallery />
-          
-          <Header />
-          */}
           <header className="w-full bg-white shadow-sm px-6 py-4 flex justify-between items-center">
               <button
                 className="text-white bg-red-600 font-medium hover:text-black cursor-pointer px-2"
@@ -89,9 +75,9 @@ export default function RoomLayout({}: RoomLayoutProps){
 
           </header>
           
-          <VideoFeedProvider>
+          <RoomMediaProvider>
             <div className="flex-1">
-              <VideoFeed 
+              <RoomFeed 
                 streamChatClient={client}
                 streamChatChannel={channel}
                 roomId={roomId}
@@ -105,11 +91,7 @@ export default function RoomLayout({}: RoomLayoutProps){
             client={client}
             channel={channel}
             />
-            
-            
-          </VideoFeedProvider>
-
-          
+          </RoomMediaProvider>
       </CardBody>
     </Card>
   );

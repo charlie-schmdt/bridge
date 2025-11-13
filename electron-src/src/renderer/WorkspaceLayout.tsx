@@ -1,16 +1,14 @@
-import { Card } from "@heroui/react";
-import Header from "./components/Header";
-import { useAuth } from "./contexts/AuthContext";
-import { useState, useEffect } from "react";
-import MembersList from "./components/MemberList";
-import { RoomCard } from "./components/RoomCard";
-import { RoomCardProps } from "./components/RoomCard";
-import NotificationBanner from "./components/NotificationBanner";
 import { useNotification } from "@/hooks/useNotification";
+import { Endpoints } from "@/renderer/utils/endpoints";
+import { Button, Card } from "@heroui/react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import Header from "./components/Header";
 import LeaveWorkspaceButton from "./components/LeaveWorkspaceButton";
-import { Endpoints } from "@/utils/endpoints";
-import { Button } from "@heroui/react";
+import MembersList from "./components/MemberList";
+import NotificationBanner from "./components/NotificationBanner";
+import { RoomCard } from "./components/RoomCard";
+import { useAuth } from "./contexts/AuthContext";
 
 interface WorkspaceMember {
   id: string;

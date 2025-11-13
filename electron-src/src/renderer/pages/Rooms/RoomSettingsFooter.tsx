@@ -1,23 +1,16 @@
-import React, { useContext } from "react";
-import { useNavigate } from "react-router-dom";
-import ProfileMenuButton from "./ProfileMenuButton";
 import mic from "@assets/microphone_active.png";
 import micOff from "@assets/microphone_inactive.png";
-import videopng from "@assets/video.png"
-import video_inactivepng from "@assets/video_inactive.png"
-import { VideoFeedProvider } from "../providers/VideoFeedProvider";
-import { useVideoFeedContext, VideoFeedContext } from "../contexts/VideoFeedContext";
+import videopng from "@assets/video.png";
+import video_inactivepng from "@assets/video_inactive.png";
 import { Button, useDisclosure } from "@heroui/react";
-import UserFeaturesModal from "./UserFeaturesModal";
-  
-
-
+import { useNavigate } from "react-router-dom";
+import UserFeaturesModal from "../../components/UserFeaturesModal";
+import { useRoomMediaContext } from "./RoomMediaContext";
 
 export function CallSettingsFooter({ onOpenChat }) {
   const navigate = useNavigate();
-  const VF = useVideoFeedContext();
+  const VF = useRoomMediaContext();
   const {isOpen, onOpen, onOpenChange} = useDisclosure();
-
 
   return (
     <footer className="w-full bg-white shadow-sm px-6 py-4 flex justify-between items-center">

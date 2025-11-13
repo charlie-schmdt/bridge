@@ -1,9 +1,9 @@
 // Create: components/RemoveUserButton.tsx
-import React, { useState } from 'react';
+import { Endpoints } from '@/renderer/utils/endpoints';
 import { Button } from '@heroui/react';
-import { UserMinus, AlertCircle, Trash2 } from 'lucide-react';
+import { AlertCircle, Trash2, UserMinus } from 'lucide-react';
+import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Endpoints } from '@/utils/endpoints';
 
 interface RemoveUserButtonProps {
   workspaceId: string;

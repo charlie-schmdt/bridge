@@ -1,20 +1,21 @@
+import { Endpoints } from "@/renderer/utils/endpoints";
+import {
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  Input, Textarea
+} from "@heroui/react";
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from 'react-router-dom';
-import {
-  Card, CardHeader, CardBody,
-  Input, Textarea, Button,
-  Select, SelectItem
-} from "@heroui/react";
-import { User } from "lucide-react";
 import Banner from "./components/Banner";
 import Header from "./components/Header";
-import { useAuth } from "./contexts/AuthContext";
 import NotificationBanner from "./components/NotificationBanner";
-import { buildDiceBearUrl } from "../utils/buildDiceBearURL";
-import { Endpoints } from "@/utils/endpoints";
+import { useAuth } from "./contexts/AuthContext";
+import { buildDiceBearUrl } from "./utils/buildDiceBearURL";
 
-export function ProfileLayout() {
-  const { user, logout, updateUser } = useAuth();
+export const ProfileLayout = () => {
+  const { updateUser } = useAuth();
   const location = useLocation();
   const params = useParams();
 
@@ -210,5 +211,3 @@ export function ProfileLayout() {
     </div>
   );
 }
-
-export default ProfileLayout;

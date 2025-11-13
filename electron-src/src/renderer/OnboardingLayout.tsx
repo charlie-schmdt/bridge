@@ -1,8 +1,8 @@
+import { Endpoints } from '@/renderer/utils/endpoints';
+import { Button, Card, CardBody, CardHeader } from '@heroui/react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Card, CardBody, CardHeader } from '@heroui/react';
 import { useAuth } from './contexts/AuthContext';
-import { Endpoints } from '@/utils/endpoints';
 
 const OnboardingLayout: React.FC = () => {
   const { user, updateUser } = useAuth();

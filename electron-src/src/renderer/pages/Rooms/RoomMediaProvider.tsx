@@ -1,8 +1,7 @@
 import React, { useRef, useState } from 'react';
-import { VideoFeedContext } from '../contexts/VideoFeedContext';
-import { VideoFeedType } from '../contexts/VideoFeedContext';
+import { RoomMediaContext, RoomMediaType } from './RoomMediaContext';
 
-export const VideoFeedProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const RoomMediaProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [isVideoEnabled, setIsVideoEnabled] = useState(false);
@@ -16,7 +15,7 @@ export const VideoFeedProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   };
 
-  const videoFeed: VideoFeedType = {
+  const roomMedia: RoomMediaType = {
     videoRef,
     isAudioEnabled,
     isVideoEnabled,
@@ -25,8 +24,8 @@ export const VideoFeedProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   return (
-    <VideoFeedContext.Provider value={videoFeed}>
+    <RoomMediaContext.Provider value={roomMedia}>
       {children}
-    </VideoFeedContext.Provider>
+    </RoomMediaContext.Provider>
   );
 };

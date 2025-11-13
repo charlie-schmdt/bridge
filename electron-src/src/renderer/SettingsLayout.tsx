@@ -1,18 +1,20 @@
 // src/pages/SettingsLayout.tsx
-import { useEffect, useState } from "react";
+import { Endpoints } from "@/renderer/utils/endpoints";
 import {
-  Tabs, Tab,
-  Card, CardHeader, CardBody,
-  Input, Textarea, Button,
-  Select, SelectItem, Switch
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  Select, SelectItem,
+  Tab,
+  Tabs
 } from "@heroui/react";
 import { Bell, Lock, Palette } from "lucide-react";
+import { useEffect, useState } from "react";
 import Banner from "./components/Banner";
 import Header from "./components/Header";
-import { useAuth } from "./contexts/AuthContext";
 import NotificationBanner from "./components/NotificationBanner";
-import { buildDiceBearUrl } from "../utils/buildDiceBearURL";
-import { Endpoints } from "@/utils/endpoints";
+import { useAuth } from "./contexts/AuthContext";
 
 export function SettingsLayout() {
   const { user, logout, updateUser } = useAuth();
@@ -410,7 +412,7 @@ interface SettingRowProps {
   onChange: (value: boolean) => void;
 }
 
-import Toggle from "./components/Toggle";   // adjust path if needed
+import Toggle from "./components/Toggle"; // adjust path if needed
 
 const SettingRow = ({ title, description, isSelected, onChange }: SettingRowProps) => {
   return (

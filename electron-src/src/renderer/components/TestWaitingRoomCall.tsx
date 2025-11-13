@@ -1,8 +1,8 @@
-import { Button, Card, CardBody, useDisclosure } from '@heroui/react'
-import React, { useState } from 'react'
-import Header from './Header'
+import { RoomLayout } from '@/renderer/pages/Rooms/RoomLayout';
+import { Button, Card, CardBody, useDisclosure } from '@heroui/react';
+import { useState } from 'react';
+import Header from './Header';
 import WaitingRoom from './WaitingRoom';
-import RoomLayout from '../RoomLayout';
 
 /*
 TODO: empty with header and button to enter waiting room, opens modal, or renders the call
@@ -33,7 +33,7 @@ export function TestWaitingRoomCall() {
                     >
                       Join Room
                 </Button>
-                <WaitingRoom isOpen={isOpen} onOpen={onOpen} onOpenChange={onOpenChange}/>
+                <WaitingRoom roomID={''} isOpen={isOpen} onOpen={onOpen} onOpenChange={onOpenChange}/>
                 {/*
                     TODO:
                     Set call active from waiting room based on criteria

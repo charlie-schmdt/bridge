@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import { Endpoints } from '@/renderer/utils/endpoints';
 import { Button } from '@heroui/react';
-import { Star } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
 import { PressEvent } from '@react-types/shared';
-import { Endpoints } from '@/utils/endpoints';
+import { Star } from 'lucide-react';
+import React, { useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
 interface FavoriteButtonProps {
   workspaceId: string;
