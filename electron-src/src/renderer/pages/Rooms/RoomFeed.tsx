@@ -73,6 +73,7 @@ export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeed
 
     // Return cleanup function to run on unmount
     return () => {
+      exitRoom();
       console.log("Cleaning up connection manager...");
       manager.cleanup(); // This will disconnect and close the WebSocket
       roomConnectionManagerRef.current = null;
@@ -210,6 +211,10 @@ export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeed
       streamChatChannel.truncate();
       //streamChatClient.disconnectUser();
     }
+
+    tearDownAudioGraph()
+
+    setCallStatus("inactive");
   };
 
   return (

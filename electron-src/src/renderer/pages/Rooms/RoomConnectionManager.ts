@@ -202,7 +202,6 @@ export class RoomConnectionManager {
           const peerExit = msg.payload as PeerExit;
           this.callbacks.onPeerExit(peerExit.peerName);
           this.callbacks.onRemoteStreamStopped();
-          this.disconnect();
           break;
       }
     } catch (err) {
