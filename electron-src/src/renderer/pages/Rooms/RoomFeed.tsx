@@ -54,9 +54,16 @@ export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeed
       onRemoteStreamStopped: () => {
         // leave for now
       },
-      onPeerExit: (peerName) => toast(`${peerName} has left the room`),
+      onPeerExit: (peerName) => {
+        // Close remote stream
+        setRemoteStream(null);
+        if (remoteStreamRef.current) {
+          remoteStreamRef.current?.getTracks().forEach(track => track.stop());
+        }
+        toast(`${peerName} has left the room`);
+      },
       onError: (message) => toast.error(message),
-      };
+    };
 
     // Instantiate the connection manager
     const manager = new RoomConnectionManager(
@@ -73,16 +80,17 @@ export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeed
 
     // Return cleanup function to run on unmount
     return () => {
-      exitRoom();
-      console.log("Cleaning up connection manager...");
-      manager.cleanup(); // This will disconnect and close the WebSocket
-      roomConnectionManagerRef.current = null;
+      exitRoom().then(() => {
+        console.log("Cleaning up connection manager...");
+        manager.cleanup(); // This will disconnect and close the WebSocket
+        roomConnectionManagerRef.current = null;
 
-      // Stop local stream
-      localStream?.getTracks().forEach(t => t.stop());
+        // Stop local stream
+        localStream?.getTracks().forEach(t => t.stop());
 
-      // Stop audio graph
-      tearDownAudioGraph();
+        // Stop audio graph
+        tearDownAudioGraph();
+      });
     }
   }, []); // Run only once on mount
 
