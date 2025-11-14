@@ -1,5 +1,5 @@
-import { Outlet, Link } from 'react-router-dom';
-import { HeroUIProvider, Button, Navbar, NavbarBrand, NavbarItem, NavbarContent} from '@heroui/react';
+import { HeroUIProvider } from '@heroui/react';
+import { Outlet } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import OnboardingTour from './components/OnboardingTour';
 
@@ -13,7 +13,7 @@ export const AppLayout = () => {
         {/* global tour overlay mounts here so it can walk across routes */}
         <OnboardingTour />
 
-        <div className="flex-1 overflow-auto p-4">
+        <div className="overflow-auto h-full">
           <Outlet />
         </div>
       </div>

@@ -1,10 +1,8 @@
-import React from 'react';
-import { Chat as StreamChatComponent, Channel, MessageList, MessageInput, Window } from 'stream-chat-react';
-import { StreamChat, Channel as StreamChannel } from 'stream-chat';
+import { Channel as StreamChannel, StreamChat } from 'stream-chat';
+import { Channel, MessageInput, MessageList, Chat as StreamChatComponent, Window } from 'stream-chat-react';
 import 'stream-chat-react/dist/css/v2/index.css';
 
 interface ChatProps {
-    isOpen: boolean;
     onClose: () => void;
     client: StreamChat | null;
     channel: StreamChannel | null;
@@ -12,7 +10,7 @@ interface ChatProps {
 
 
 
-export default function Chat({ isOpen, onClose, client, channel }: ChatProps) {
+export default function Chat({ onClose, client, channel }: ChatProps) {
     //const { user } =  useAuth();
 
     /*
@@ -79,58 +77,41 @@ export default function Chat({ isOpen, onClose, client, channel }: ChatProps) {
 
 
   return (
-    <>
-    {isOpen && (
-     
-      <div className="fixed inset-y-0 right-0 w-80 bg-white shadow-lg z-50 flex flex-col">       
-            <div className="flex items-center justify-between p-4 border-b">
-                <h1 className="text-lg font-semibold">Chat</h1>
+      <div className="w-80 bg-white shadow-lg z-50 flex flex-col h-full">       
+        <div className="flex items-center justify-between p-4 border-b">
+            <h1 className="text-lg font-semibold">Chat</h1>
 
-                <button
-                    type="button"
-                    onClick={onClose}
-                    className="text-gray500 hover:text-gray-700 p-2"
-                    //style={{ pointerEvents: 'auto' }}
-                >
-                    x
-                </button>
-            </div>
+            <button
+                type="button"
+                onClick={onClose}
+                className="text-gray500 hover:text-gray-700 p-2"
+                //style={{ pointerEvents: 'auto' }}
+            >
+                x
+            </button>
+        </div>
 
                 
         <body>
-         <div className="flex-1 overflow-hidden">
+         <div className="flex-1 overflow-hidden h-full">
         
             {client && <StreamChatComponent client={client} theme="messaging light">
-                
                     {channel && <Channel channel={channel}>
-                       
                         <Window>
-                            
-                            
                             <div className="flex flex-col h-full">
                                     <MessageList />
                                 <div className="flex-1">
-
                                     <MessageInput />
                                 </div>
                             </div>
-                            
-                            
                         </Window>
-                         
-                        
                     </Channel>
                     }
             </StreamChatComponent>
             }
          </div>
          </body>
-        
-         
-        
       </div>
-        )}
-        </>
   );
 }
 

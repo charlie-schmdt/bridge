@@ -1,5 +1,5 @@
+import { Button } from '@/renderer/components/ui/Button';
 import { CallStatus } from '@/renderer/types/roomTypes';
-import { Button } from '@heroui/react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { v4 as uuid } from 'uuid';
@@ -55,12 +55,13 @@ export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeed
         // leave for now
       },
       onPeerExit: (peerName) => {
-        // Close remote stream
-        setRemoteStream(null);
+        // Close remote stream if the ref still holds tracks
         if (remoteStreamRef.current) {
           remoteStreamRef.current?.getTracks().forEach(track => track.stop());
+          remoteStreamRef.current = null;
+          setRemoteStream(null);
+          toast(`${peerName} has left the room`);
         }
-        toast(`${peerName} has left the room`);
       },
       onError: (message) => toast.error(message),
     };
@@ -84,9 +85,6 @@ export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeed
         console.log("Cleaning up connection manager...");
         manager.cleanup(); // This will disconnect and close the WebSocket
         roomConnectionManagerRef.current = null;
-
-        // Stop local stream
-        localStream?.getTracks().forEach(t => t.stop());
 
         // Stop audio graph
         tearDownAudioGraph();
@@ -188,6 +186,7 @@ export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeed
   };
 
   const joinRoom = async () => {
+    setCallStatus("loading");
     const manager = roomConnectionManagerRef.current;
     if (!manager || !micAudioStream) {
       toast.error("Connection not ready or microphone not available");
@@ -226,12 +225,9 @@ export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeed
   };
 
   return (
-    <div className="w-full h-full">
+    <div className="flex-1 flex flex-col items-center justify-center">
       { callStatus === "inactive" ? (
-        <Button 
-        className="text-white bg-blue-600 font-medium hover:text-black cursor-pointer px-2"
-          
-        onPress={joinRoom}>Join Call</Button>
+        <Button color="primary" onPress={joinRoom}>Join Call</Button>
       )
         :
       (
@@ -240,12 +236,7 @@ export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeed
             <video className="h-full w-1/2 rounded-lg" ref={localRoomMedia.videoRef} autoPlay muted />
             <video className="h-full w-1/2 rounded-lg" ref={remoteVideoRef} autoPlay />
           </div>
-          <Button 
-            onPress={exitRoom}
-            className="text-white bg-red-600 font-medium hover:text-black cursor-pointer px-2"
-          >
-            Call Out
-          </Button>
+          <Button color="red" onPress={exitRoom}>Call Out</Button>
         </div>
       )}
     </div>
