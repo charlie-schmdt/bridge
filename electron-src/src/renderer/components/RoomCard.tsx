@@ -18,11 +18,7 @@ export interface RoomCardProps {
   editMode?: boolean;
 }
 
-<<<<<<< HEAD
 export function RoomCard({ id, title, description, categories, status, nextMeeting, editMode }: RoomCardProps) {
-=======
-export function RoomCard({ title, description, categories, status, nextMeeting, editMode }: RoomCardProps) {
->>>>>>> 0d6f47b (first implementation of invites)
   const navigate = useNavigate();
   const handleDeleteRoom = () => {
     // Implement room deletion logic here
