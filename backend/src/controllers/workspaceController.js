@@ -578,51 +578,57 @@ const setPermissions = async (req, res) => {
   try {
     const { userId, permissions } = req.body;
     const { workspaceId } = req.params;
-
-    const { canCreateRooms, canDeleteRooms, canEditWorkspace } = permissions || {};
+    const { canCreateRooms, canDeleteRooms, canEditWorkspace } = permissions;
 
     const workspace = await Workspace.findByPk(workspaceId);
     if (!workspace) {
       return res.status(404).json({ success: false, message: 'Workspace not found' });
     }
 
-    // Ensure authorized_users is an array
-    const users = Array.isArray(workspace.authorized_users) ? workspace.authorized_users : [];
 
-    // Find the index of the target user
-    const userIndex = users.findIndex((u) => String(u.id) === String(userId));
+    // Ensure JSON is parsed
+    const users = Array.isArray(workspace.authorized_users)
+      ? workspace.authorized_users
+      : JSON.parse(workspace.authorized_users || "[]");
 
+    // Match by string equality (safe for both numeric and string IDs)
+    const userIndex = users.findIndex(u => String(u.id) === String(userId));
+    
     if (userIndex !== -1) {
-      // Update existing user's permissions
       users[userIndex].permissions = {
-        canCreateRooms: !!canCreateRooms,
-        canDeleteRooms: !!canDeleteRooms,
-        canEditWorkspace: !!canEditWorkspace
+        canCreateRooms,
+        canDeleteRooms,
+        canEditWorkspace,
       };
     } else {
-      // Add new user with default role if not found
       users.push({
         id: userId,
         role: 'member',
-        permissions: {
-          canCreateRooms: !!canCreateRooms,
-          canDeleteRooms: !!canDeleteRooms,
-          canEditWorkspace: !!canEditWorkspace
-        }
+        permissions: { canCreateRooms, canDeleteRooms, canEditWorkspace },
       });
     }
 
-    // Save updated array back to DB
-    await workspace.update({ authorized_users: users }, { where: { id: workspaceId } });
 
-    console.log('✅ Permissions updated for user', userId);
+    workspace.authorized_users = users;
+    workspace.changed('authorized_users', true);
+    await workspace.save();
+    const fresh = await Workspace.findByPk(workspaceId);
+    console.log("DB value:", fresh.authorized_users);
+
+
+    // workspace.set('authorized_users', users);
+    // await workspace.save();
+    // Correct way to persist
+    //await workspace.update({ authorized_users: users });
+
+    console.log('Permissions updated for user', userId);
     res.json({
       success: true,
       message: 'Permissions updated successfully',
-      permissions: { canCreateRooms: !!canCreateRooms, canDeleteRooms: !!canDeleteRooms, canEditWorkspace: !!canEditWorkspace }
+      permissions,
     });
   } catch (error) {
-    console.error('❌ Set permissions error:', error);
+    console.error('Set permissions error:', error);
     res.status(500).json({ success: false, message: 'Error updating permissions' });
   }
 };
@@ -637,16 +643,25 @@ const getPermissions = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Workspace not found' });
     }
 
-    const authorizedUsers = workspace.authorized_users || [];
+    // Ensure JSON is parsed
+    const authorizedUsers = Array.isArray(workspace.authorized_users)
+      ? workspace.authorized_users
+      : JSON.parse(workspace.authorized_users || "[]");
+
+    // Match by string equality (safe for both numeric and string IDs)
     const userEntry = authorizedUsers.find(u => String(u.id) === String(userId));
 
     if (!userEntry) {
       console.log(`User ${userId} not found in workspace ${workspaceId}`);
     }
 
-    // Return their permissions or default empty permissions
-    res.json({ success: true, permissions: userEntry?.permissions });
-    return userEntry?.permissions || { canCreateRooms: false, canDeleteRooms: false, canEditWorkspace: false };
+    const permissions = userEntry?.permissions || {
+      canCreateRooms: false,
+      canDeleteRooms: false,
+      canEditWorkspace: false
+    };
+
+    return res.json({ success: true, permissions });
   } catch (error) {
     console.error('Error fetching user permissions:', error);
     res.status(500).json({ success: false, message: 'Error fetching user permissions' });
