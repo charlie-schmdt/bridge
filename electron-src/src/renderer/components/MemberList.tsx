@@ -101,6 +101,10 @@ export default function MembersList({ members, workspaceId, workspaceName, onMem
 
   // Get user permissions from backend
   const getUserPermissions = async (workspaceId: string, memberId: string) => {
+    // If member is already present with permissions, return that first to avoid extra fetch
+    const existing = members.find(m => m.id === memberId && m.permissions);
+    if (existing && existing.permissions) return existing.permissions;
+
     try {
       const token = localStorage.getItem("bridge_token");
       const response = await fetch(`${Endpoints.WORKSPACES}/${workspaceId}/permissions/${memberId}`, {
@@ -147,6 +151,11 @@ export default function MembersList({ members, workspaceId, workspaceName, onMem
       const data = await response.json();
       if (data.success) {
         console.log("Permissions updated successfully", data.permissions);
+        // Update local member list so UI reflects new permissions immediately
+        setHoveredMember(prev => (prev && prev.id === userId ? { ...prev, permissions: data.permissions, role: data.role || prev.role } : prev));
+        // Update members array
+        // Note: props.members is immutable; if parent passed state setter we'd update upstream. For local display, mutate via a DOM refresh: emit a custom event or rely on parent refresh.
+        // Here we attempt to update the DOM by triggering a simple in-place update if parent provided members via state (we can't mutate props). Recommend parent refreshes list after change.
       } else {
         alert(data.message || "Failed to update permissions");
       }

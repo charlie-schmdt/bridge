@@ -9,6 +9,7 @@ import MembersList from "./components/MemberList";
 import NotificationBanner from "./components/NotificationBanner";
 import { RoomCard } from "./components/RoomCard";
 import { useAuth } from "./contexts/AuthContext";
+import InviteUser from "./components/InviteUser";
 
 interface WorkspaceMember {
   id: string;
@@ -419,12 +420,25 @@ export const WorkspaceLayout = () => {
         {workspaceInfo && workspaceId && (
           <div>
             <div className="flex justify-between items-center mb-4 mt-6 px-6">
-              <Button
-                color="primary"
-                onPress={setShowRoomModal.bind(null, true)}
-              >
-                + Create Room
-              </Button>
+              <div className="flex items-center gap-3">
+                <Button
+                  color="primary"
+                  onPress={setShowRoomModal.bind(null, true)}
+                >
+                  + Create Room
+                </Button>
+                {isCurrentUserOwner && (
+                  <InviteUser
+                    workspaceId={workspaceId}
+                    onInviteSuccess={(invited) => {
+                      console.log('Invited user:', invited);
+                      // Invitation recorded as pending on the server; do not add to members list.
+                      // Optionally show a toast or refresh pending-invites if you add that UI.
+                    }}
+                  />
+                )}
+              </div>
+
               <LeaveWorkspaceButton
                 workspaceId={workspaceId}
                 workspaceName={workspaceInfo.name}

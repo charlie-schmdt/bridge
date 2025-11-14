@@ -30,6 +30,7 @@ export const HomeLayout = () => {
   // State for both user workspaces and public workspaces
   const [userWorkspaces, setUserWorkspaces] = useState<Workspace[]>([]);
   const [publicWorkspaces, setPublicWorkspaces] = useState<Workspace[]>([]);
+  const [joinableWorkspaces, setJoinableWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
   const [userWorkspacesLoading, setUserWorkspacesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -93,6 +94,28 @@ const handleFavoriteToggle = (workspaceId: string, isFavorite: boolean) => {
     };
 
     fetchUserWorkspaces();
+
+    // Fetch joinable (invited) workspaces for this user
+    const fetchJoinable = async () => {
+      if (!user) return;
+      try {
+        const token = localStorage.getItem('bridge_token');
+        const response = await fetch(Endpoints.WORKSPACES_JOINABLE, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch joinable workspaces');
+        const data = await response.json();
+        setJoinableWorkspaces(data.workspaces || []);
+      } catch (err) {
+        console.error('Error fetching joinable workspaces:', err);
+      }
+    };
+
+    fetchJoinable();
   }, [user]); // Re-fetch when user changes (login/logout)
 
   // Fetch public workspaces (for discovery)
@@ -161,6 +184,22 @@ const handleFavoriteToggle = (workspaceId: string, isFavorite: boolean) => {
       }
     } catch (err) {
       console.error('Error refreshing public workspaces:', err);
+    }
+
+    // Refresh joinable workspaces
+    if (user) {
+      try {
+        const token = localStorage.getItem('bridge_token');
+        const res = await fetch(Endpoints.WORKSPACES_JOINABLE, {
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          setJoinableWorkspaces(json.workspaces || []);
+        }
+      } catch (err) {
+        console.error('Error refreshing joinable workspaces:', err);
+      }
     }
   };
 
@@ -314,6 +353,53 @@ const handleFavoriteToggle = (workspaceId: string, isFavorite: boolean) => {
         </section>
 
         {/* Joinable Workspaces Section */}
+        {user && joinableWorkspaces.length > 0 && (
+          <section className="px-6">
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Invited Workspaces</h2>
+              <p className="mt-2 text-gray-600">Workspaces you've been invited to — accept to join them.</p>
+            </div>
+
+            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 mb-8">
+              {joinableWorkspaces.map((ws) => (
+                <div key={ws.id} className="bg-white rounded-xl shadow p-4 border border-gray-100">
+                  <h3 className="font-semibold text-lg">{ws.name}</h3>
+                  <p className="text-sm text-gray-600 mb-3">{ws.description}</p>
+                  <div className="flex gap-2">
+                    <Button
+                      color="primary"
+                      onPress={async () => {
+                        try {
+                          const token = localStorage.getItem('bridge_token');
+                          const resp = await fetch(`${Endpoints.WORKSPACE}/${ws.id}/accept-invite`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+                          });
+                          const data = await resp.json();
+                          if (resp.ok && data.success) {
+                            // Refresh lists
+                            refreshWorkspaces();
+                            // Remove from local joinable list
+                            setJoinableWorkspaces(prev => prev.filter(j => j.id !== ws.id));
+                          } else {
+                            alert(data.message || 'Failed to accept invite');
+                          }
+                        } catch (err) {
+                          console.error('Accept invite error:', err);
+                          alert('Failed to accept invite');
+                        }
+                      }}
+                    >
+                      Accept Invite
+                    </Button>
+                    <Button onPress={() => setJoinableWorkspaces(prev => prev.filter(j => j.id !== ws.id))}>Dismiss</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         <section className="col-span-full w-full px-6">
           <div className="mb-6">
             <h2 className="text-3xl font-bold text-gray-900">

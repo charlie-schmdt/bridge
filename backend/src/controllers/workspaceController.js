@@ -634,7 +634,6 @@ const setPermissions = async (req, res) => {
 };
 
 
-
 const getPermissions = async (req, res) => {
   try {
     const { workspaceId, userId } = req.params;
@@ -669,6 +668,140 @@ const getPermissions = async (req, res) => {
   }
 };
 
+// Invite an existing user to a workspace by email. Only workspace owner can invite.
+const inviteUserToWorkspace = async (req, res) => {
+  try {
+    const { workspaceId } = req.params;
+    const { email } = req.body;
+    const requestingUserId = req.user.id;
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email is required' });
+    }
+
+    const workspace = await Workspace.findByPk(workspaceId);
+    if (!workspace) {
+      return res.status(404).json({ success: false, message: 'Workspace not found' });
+    }
+
+    // Only owner can invite
+    if (workspace.owner_real_id !== requestingUserId) {
+      return res.status(403).json({ success: false, message: 'Only workspace owner can invite members' });
+    }
+
+    // Find user by email
+    const userToInvite = await User.findOne({ where: { email } });
+    if (!userToInvite) {
+      return res.status(404).json({ success: false, message: 'User with that email not found' });
+    }
+
+    const userId = userToInvite.id;
+    const currentAuthUsers = workspace.auth_users || [];
+
+    // If user is already owner or member
+    if (workspace.owner_real_id === userId || currentAuthUsers.includes(userId)) {
+      return res.status(400).json({ success: false, message: 'User is already a member of this workspace' });
+    }
+
+    // Add userId to pending_invites instead of immediately adding to auth_users
+    const currentPending = workspace.pending_invites || [];
+    if (currentPending.includes(userId)) {
+      return res.status(400).json({ success: false, message: 'User has already been invited' });
+    }
+
+    const updatedPending = [...currentPending, userId];
+    await workspace.update({ pending_invites: updatedPending });
+
+    console.log(`✅ User ${userId} (${userToInvite.email}) invited to workspace ${workspaceId} by ${requestingUserId}`);
+
+    res.json({
+      success: true,
+      message: 'User invited to workspace successfully (pending acceptance)',
+      invitedUser: {
+        id: userToInvite.id,
+        name: userToInvite.name,
+        email: userToInvite.email
+      },
+      workspace: {
+        id: workspace.workspace_id,
+        name: workspace.name,
+        pendingInvites: updatedPending
+      }
+    });
+  } catch (error) {
+    console.error('Error inviting user to workspace:', error);
+    res.status(500).json({ success: false, message: 'Error inviting user to workspace', error: error.message });
+  }
+};
+
+// Get workspaces the current user has been invited to (pending invites)
+const getJoinableWorkspaces = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    // Find all workspaces where pending_invites includes this user
+    const allWorkspaces = await Workspace.findAll();
+    const joinable = allWorkspaces.filter(w => Array.isArray(w.pending_invites) && w.pending_invites.includes(userId));
+
+    const formatted = joinable.map(workspace => ({
+      id: workspace.workspace_id,
+      name: workspace.name,
+      description: workspace.description,
+      isPrivate: workspace.private,
+      ownerId: workspace.owner_real_id,
+      invited: true
+    }));
+
+    res.json({ success: true, workspaces: formatted });
+  } catch (error) {
+    console.error('Error fetching joinable workspaces:', error);
+    res.status(500).json({ success: false, message: 'Error fetching joinable workspaces', error: error.message });
+  }
+};
+
+// Accept an invite to a workspace (move from pending_invites -> auth_users)
+const acceptInvite = async (req, res) => {
+  try {
+    const { workspaceId } = req.params;
+    const userId = req.user.id;
+
+    const workspace = await Workspace.findByPk(workspaceId);
+    if (!workspace) {
+      return res.status(404).json({ success: false, message: 'Workspace not found' });
+    }
+
+    const pending = workspace.pending_invites || [];
+    if (!pending.includes(userId)) {
+      return res.status(403).json({ success: false, message: 'No pending invite for this user' });
+    }
+
+    const beforeAuth = Array.isArray(workspace.auth_users) ? [...workspace.auth_users] : [];
+    const newAuthSet = new Set(beforeAuth);
+    newAuthSet.add(userId);
+    const newAuth = Array.from(newAuthSet);
+
+    // Remove from pending invites
+    const updatedPending = pending.filter(id => id !== userId);
+
+    // Explicitly update both columns with a new array (avoid mutating the instance array)
+    await workspace.update({ auth_users: newAuth, pending_invites: updatedPending });
+
+    console.log(`✅ User ${userId} accepted invite to workspace ${workspaceId}`);
+    console.log('auth_users before:', beforeAuth, 'after:', newAuth);
+
+    res.json({
+      success: true,
+      message: 'Invite accepted. You are now a member of the workspace',
+      workspace: {
+        id: workspace.workspace_id,
+        name: workspace.name,
+        authorizedUsers: newAuth
+      }
+    });
+  } catch (error) {
+    console.error('Error accepting invite:', error);
+    res.status(500).json({ success: false, message: 'Error accepting invite', error: error.message });
+  }
+};
 
 module.exports = {
   getWorkspaces,
@@ -682,5 +815,9 @@ module.exports = {
   getUserFavoriteWorkspaces,
   updateWorkspace,
   setPermissions,
+  // invite a user to a workspace by email
+  inviteUserToWorkspace,
+  getJoinableWorkspaces,
+  acceptInvite,
   getPermissions
 };
