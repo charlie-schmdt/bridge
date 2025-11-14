@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import UserFeaturesModal from "../../components/UserFeaturesModal";
 import { useRoomMediaContext } from "./RoomMediaContext";
 
-export function CallSettingsFooter({ onOpenChat }) {
+export function RoomSettingsFooter({ onOpenChat }) {
   const navigate = useNavigate();
   const VF = useRoomMediaContext();
   const {isOpen, onOpen, onOpenChange} = useDisclosure();
@@ -60,5 +60,3 @@ export function CallSettingsFooter({ onOpenChat }) {
     </footer>
   );
 };
-
-export default CallSettingsFooter;

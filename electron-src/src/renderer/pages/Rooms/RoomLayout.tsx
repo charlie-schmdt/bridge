@@ -1,4 +1,4 @@
-import { Card, CardBody } from "@heroui/react";
+import { Button } from '@/renderer/components/ui/Button';
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { StreamChat } from 'stream-chat';
@@ -6,7 +6,7 @@ import Chat from "../../components/Chat";
 import { useAudioContext } from "../../contexts/AudioContext";
 import { RoomFeed } from "./RoomFeed";
 import { RoomMediaProvider } from "./RoomMediaProvider";
-import CallSettingsFooter from "./RoomSettingsFooter";
+import { RoomSettingsFooter } from "./RoomSettingsFooter";
 
 const apiKey = process.env.REACT_APP_STREAM_API_KEY || 'vv3fuvuqs5zw';
 const test_user = {
@@ -54,45 +54,45 @@ export const RoomLayout = ({}: RoomLayoutProps) => {
 
 
   return (
-    <Card>
-      <CardBody>
-          <header className="w-full bg-white shadow-sm px-6 py-4 flex justify-between items-center">
-              <button
-                className="text-white bg-red-600 font-medium hover:text-black cursor-pointer px-2"
-                onClick={() => {
-                  navigate("/");
-                  tearDownAudioGraph();
-                }}
-                // onClick={() => navigate(`/workspace/${workspaceId}`)}
-              >
-                Exit Room
-              </button>
-                
+    <div className="flex flex-1 h-screen bg-white">
+      <div className="flex flex-col flex-1 p-4">
+        <header className="w-full bg-white shadow-sm px-6 py-4 flex justify-between items-center">
+            <Button
+              color="red"
+              onClick={() => {
+                navigate("/");
+                tearDownAudioGraph();
+              }}
+              // onClick={() => navigate(`/workspace/${workspaceId}`)}
+            >
+              Exit Room
+            </Button>
 
-              <div className = "absolute left-1/2 transform -translate-x-1/2">
-                Test Room
-              </div>
 
-          </header>
-          
-          <RoomMediaProvider>
-            <div className="flex-1">
-              <RoomFeed 
-                streamChatClient={client}
-                streamChatChannel={channel}
-                roomId={roomId}
-              />
+            <div className = "absolute left-1/2 transform -translate-x-1/2">
+              Test Room
             </div>
-            <CallSettingsFooter onOpenChat={openChat} />
+
+        </header>
             
-            <Chat 
-            isOpen={isChatOpen} 
-            onClose={closeChat} 
-            client={client}
-            channel={channel}
+        <RoomMediaProvider>
+            <RoomFeed 
+              streamChatClient={client}
+              streamChatChannel={channel}
+              roomId={roomId}
             />
-          </RoomMediaProvider>
-      </CardBody>
-    </Card>
+          <RoomSettingsFooter onOpenChat={openChat} />
+        </RoomMediaProvider>
+      </div>
+      {isChatOpen &&
+        <div className="w-80 flex-col-1 border-l">
+          <Chat 
+          onClose={closeChat} 
+          client={client}
+          channel={channel}
+          />
+        </div>
+      }
+    </div>
   );
 }

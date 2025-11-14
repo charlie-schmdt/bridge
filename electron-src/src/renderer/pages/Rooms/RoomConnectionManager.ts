@@ -65,7 +65,6 @@ export class RoomConnectionManager {
       return;
     }
     
-    this.callbacks.onStatusChange("loading");
     this.exited = false;
 
     try {
