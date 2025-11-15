@@ -54,7 +54,7 @@ export const RoomLayout = ({}: RoomLayoutProps) => {
 
 
   return (
-    <div className="flex flex-1 h-screen bg-white">
+    <div className="flex h-screen bg-white">
       <div className="flex flex-col flex-1 p-4">
         <header className="w-full bg-white shadow-sm px-6 py-4 flex justify-between items-center">
             <Button

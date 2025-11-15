@@ -15,7 +15,7 @@ export function RoomSettingsFooter({ onOpenChat }) {
   return (
     <footer className="w-full bg-white shadow-sm px-6 py-4 flex justify-between items-center">
       {/* Left side: Logo + Nav */}
-      <div className="flex items-center gap-6">
+      <div className="flex flex-1 justify-start items-center gap-6">
         {/**
          * AUDIO & VIDEO CONTROLS 
          */}
@@ -37,7 +37,7 @@ export function RoomSettingsFooter({ onOpenChat }) {
       </div>
 
       {/* user settings */}
-      <div className="flex items-center gap-5">
+      <div className="flex flex-1 justify-center items-center gap-5">
         <Button
           className="text-gray-500 hover:text-blue-600 cursor-pointer"
           onPress={onOpen}
@@ -49,7 +49,7 @@ export function RoomSettingsFooter({ onOpenChat }) {
 
 
       {/* Chat settings */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-1 justify-end items-center gap-4">
         <button
           className="text-gray-500 hover:text-blue-600 cursor-pointer"
           onClick={onOpenChat}
