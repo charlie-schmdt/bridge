@@ -43,6 +43,7 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [senderMicSensitivity, setSenderMicSensitivity] = useState<number | null>(0.5);  // Store the selected file
   const [echoCancellation, setEchoCancellation] = useState<boolean | null>(false);  // Store the selected file
   const [noiseSuppression, setNoiseSuppression] = useState<boolean | null>(false);  // Store the selected file
+  
   //create the functions to initialize the audio graph
   useEffect(() => {
     if (audioContext) {
@@ -78,6 +79,9 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
     console.log("initialize Audio Graph")
     try {
       if (!audioContext) {
+
+        //Sender-side ---------------------------------------------------
+
         console.log("Creating AudioContext");
         // Create a All neccesary graph objects
         const context = new AudioContext();
@@ -110,6 +114,14 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
         setPostProcessingGainNode(postProcessingGainNode)
         setMicAudioStream(micAudioStream.stream)
         console.log("AudioContext created:", context);
+
+        //Reciever-side ---------------------------------------------------
+
+        //set audio input files to null as a default
+        let audioInputFiles = [null, null, null, null, null];
+
+
+
       }
       else {
         console.log("Audio Graph already exists")
