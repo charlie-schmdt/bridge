@@ -67,9 +67,10 @@ export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeed
         setRemoteStreams(prevRemoteStreams => {
           if (prevRemoteStreams.has(peerId)) {
             prevRemoteStreams.get(peerId).getTracks().forEach(track => track.stop());
+            prevRemoteStreams.delete(peerId)
             const newRemoteStreams = new Map(prevRemoteStreams);
-            newRemoteStreams.delete(peerId);
             toast(`${peerName} has left the room`);
+            console.log(newRemoteStreams);
             return newRemoteStreams;
           }
           else {
@@ -222,6 +223,12 @@ export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeed
 
   const exitRoom = async () => {
     roomConnectionManagerRef.current?.disconnect();
+
+    // Stop and clear remote media
+    setRemoteStreams(prevRemoteStreams => {
+      Array.from(prevRemoteStreams.values()).forEach(stream => stream.getTracks().forEach(track => track.stop()));
+      return new Map();
+    });
 
     // Stop and clear local media
     if (localStream) {

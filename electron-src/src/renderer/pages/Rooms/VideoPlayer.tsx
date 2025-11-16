@@ -17,7 +17,7 @@ export const VideoPlayer = ({ stream, isMuted = false }: VideoPlayerProps) => {
   }, [stream])
 
   return (
-    <div className="flex-[1_1_400px] h-full box-border">
+    <div className="flex-1 h-full box-border">
       <video ref={videoRef} autoPlay playsInline className="w-full h-full object-contain rounded-lg" />
     </div>
   );
