@@ -148,7 +148,7 @@ export default function AudioMeter({title, analyzerNode, size}) {
           p.stroke(178, 199, 255);
           p.fill(2, 2, 3);
           p.textSize(16*size);
-          p.text({title}, 30*size, 225*size);
+          p.text(title, 30*size, 225*size);
         };
       };
 

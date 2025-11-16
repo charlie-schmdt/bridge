@@ -132,28 +132,28 @@ export default function Receiver() {
             </div>
             <div className="flex-1">
               <AudioMeter
-                title="File 1"
+                title="File 2"
                 analyzerNode={analyserNode}
                 size={0.5}
               />
             </div>
             <div className="flex-1">
               <AudioMeter
-                title="File 1"
+                title="File 3"
                 analyzerNode={analyserNode}
                 size={0.5}
               />
             </div>
             <div className="flex-1">
               <AudioMeter
-                title="File 1"
+                title="File 4"
                 analyzerNode={analyserNode}
                 size={0.5}
               />
             </div>
             <div className="flex-1">
               <AudioMeter
-                title="File 1"
+                title="File 5"
                 analyzerNode={analyserNode}
                 size={0.5}
               />
