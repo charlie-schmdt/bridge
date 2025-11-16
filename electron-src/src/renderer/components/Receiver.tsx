@@ -116,7 +116,7 @@ function AGCValue({index}) {
 
 export default function Receiver() {
 
-  const { analyserNode } = useAudioContext();
+  const { analyserNode, agcAnalyzerNodes } = useAudioContext();
   return (
     <div>
       <Initialize/>
@@ -150,35 +150,35 @@ export default function Receiver() {
             <div className="flex-1">
               <AudioMeter
                 title="File 1"
-                analyzerNode={analyserNode}
+                analyzerNode={agcAnalyzerNodes[0]}
                 size={0.5}
               />
             </div>
             <div className="flex-1">
               <AudioMeter
                 title="File 2"
-                analyzerNode={analyserNode}
+                analyzerNode={agcAnalyzerNodes[1]}
                 size={0.5}
               />
             </div>
             <div className="flex-1">
               <AudioMeter
                 title="File 3"
-                analyzerNode={analyserNode}
+                analyzerNode={agcAnalyzerNodes[2]}
                 size={0.5}
               />
             </div>
             <div className="flex-1">
               <AudioMeter
                 title="File 4"
-                analyzerNode={analyserNode}
+                analyzerNode={agcAnalyzerNodes[3]}
                 size={0.5}
               />
             </div>
             <div className="flex-1">
               <AudioMeter
                 title="File 5"
-                analyzerNode={analyserNode}
+                analyzerNode={agcAnalyzerNodes[4]}
                 size={0.5}
               />
             </div>

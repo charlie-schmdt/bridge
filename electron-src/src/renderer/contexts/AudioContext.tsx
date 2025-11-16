@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
+//TODO: add guards around everything. if(audioContext)...
 // Helper classes to manage AudioNode input/output ports
 
 // Create the context to manage AudioContext
@@ -12,6 +13,7 @@ const WebAudioContext = createContext<{
   analyserNode: AnalyserNode | null;
   senderMicSensitivity: number | null;
   micAudioStream: MediaStream | null;
+  agcAnalyzerNodes: Array<AnalyserNode | null>;
   setMicInput: (deviceId: string, context:AudioContext) => Promise<MediaStreamAudioSourceNode | undefined>;
   initializeAudioGraph: () => Promise<void>;
   tearDownAudioGraph: () => Promise<void>;
@@ -175,36 +177,37 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
         //initialize preprocessing nodes for AGC
         const agcPreProcessingNodes = [];
         for (let i = 0; i < 5; i++) {
-          const g = audioContext.createGain();
+          const g = context.createGain();
           g.gain.value = 10;     // default volume
           agcPreProcessingNodes.push(g);
         }
+        console.log("AGC PREPREOCCSSING NODES", agcPreProcessingNodes)
 
         //initialize preprocessing nodes for AGC
         const agcAnalyzerNodes = [];
         for (let i = 0; i < 5; i++) {
-          const g = audioContext.createAnalyser();
+          const g = context.createAnalyser();
           agcAnalyzerNodes.push(g);
         }
 
         //initialize preprocessing nodes for AGC
         const agcPostProcessingNodes = [];
         for (let i = 0; i < 5; i++) {
-          const g = audioContext.createGain();
+          const g = context.createGain();
           g.gain.value = 0.1;     // default volume
           agcPostProcessingNodes.push(g);
         }
 
         const agcGainNodes = [];
         for (let i = 0; i < 5; i++) {
-          const g = audioContext.createGain();
+          const g = context.createGain();
           g.gain.value = 1;     // default volume
           agcGainNodes.push(g);
         }
 
         const muteNodes = [];
         for (let i = 0; i < 5; i++) {
-          const g = audioContext.createGain();
+          const g = context.createGain();
           g.gain.value = 1;     // default volume
           muteNodes.push(g);
         }
@@ -275,13 +278,15 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
     try {
       const loadSingleFile = (fileName: string, index: number) => {
         return new Promise<AudioBuffer | null>((resolve) => {
+          console.log("Loading file", fileName)
           const request = new XMLHttpRequest();
-          request.open("GET", `../../audio/${fileName}.mp3`);
+          request.open("GET", `../src/audio/${fileName}.mp3`);
           request.responseType = "arraybuffer";
 
           request.onload = function () {
             // Check NOT FOUND, 404, etc.
             if (request.status !== 200) {
+              console.log("Error on load with status:", request.status)
               return resolve(null);
             }
 
@@ -298,6 +303,7 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
           };
 
           request.onerror = () => {
+            console.log("Error requesting audio buffer")
             resolve(null);
           };
 
@@ -313,6 +319,8 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
       // Wait for all to finish (or throw if ANY fail)
       const audioBuffers = await Promise.all(allPromises);
 
+      console.log("recieved buffers: ", audioBuffers)
+
       // Set state after all files succeed
       setAudioInputBuffers(audioBuffers);
       
@@ -327,35 +335,38 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
   const playAudioFiles = async () => {
   return new Promise<void>(async (resolve, reject) => {
     try {
-      const playSingleFile = (buffer: AudioBuffer, index: number) => {
-        return new Promise<void>((resolve, reject) => {
-          try {
-            if (!buffer) {
-              console.warn(`No buffer loaded at index ${index}`);
-              return;
-            }
-
-            const src = audioContext.createBufferSource();
-            src.buffer = buffer;
-            src.connect(agcPreProcessingNodes[index]); 
-
-            src.onended = () => {
-              console.log(`Track ${index} finished`);
-              resolve()
-            };
-
-            src.start();
-          } catch (error) {
-            reject(error)
+      const allPromises = audioInputBuffers.map((buffer, index) => {
+      return new Promise<void>((resolve, reject) => {
+        try {
+          if (!buffer) {
+            console.warn(`No buffer loaded at index ${index}`);
+            return resolve(); // nothing to play, but don't kill everything
           }
-          
-        });
-      };
 
-      // Load all files in parallel with full error handling
-      const allPromises = audioInputBuffers.map((buffer, index) =>
-        playSingleFile(buffer, index)
-      );
+          const preNode = agcPreProcessingNodes[index];
+          if (!preNode) {
+            console.error(`No AGC pre node at index ${index}`, agcPreProcessingNodes);
+            return reject(new Error(`Missing AGC node at index ${index}`));
+          }
+
+          const src = audioContext.createBufferSource();
+          src.buffer = buffer;
+
+          // connect into your AGC chain
+          src.connect(preNode);
+
+          src.onended = () => {
+            console.log(`Track ${index} finished`);
+            // optional: src.disconnect();
+            resolve();
+          };
+
+          src.start();
+        } catch (error) {
+          reject(error);
+        }
+      });
+    });
 
       // Wait for all to finish (or throw if ANY fail)
       await Promise.all(allPromises);
@@ -440,6 +451,7 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
       analyserNode,
       senderMicSensitivity,
       micAudioStream,
+      agcAnalyzerNodes,
       setMicInput,
       initializeAudioGraph,
       tearDownAudioGraph,
