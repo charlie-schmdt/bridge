@@ -21,7 +21,6 @@ function Initialize() {
   return(<Button
   onPress={initializeAudioGraph}
   >Initialize Audio</Button>)
-  
 }
 
 function Teardown() {

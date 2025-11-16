@@ -20,6 +20,9 @@ const WebAudioContext = createContext<{
   setSenderMicSensitivity: (value: number | null) => void;
   setEchoCancellation: (value: boolean | null) => void;
   setNoiseSuppression: (value: boolean | null) => void;
+  loadAudioFiles: (files: Array<string>) => Promise<void>;
+  playAudioFiles: () => Promise<void>;
+  resetAudioFiles: () => Promise<void>;
 } | null>(null);
 
 // Hook to use AudioContext
@@ -30,6 +33,8 @@ export const useAudioContext = () => {
 
 // AudioContext Provider Component
 export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  //Sender -------------
+
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [micInput, setMicInputState] = useState<MediaStreamAudioSourceNode | null>(null);
   const [senderInputDevice, setSenderInputDevice] = useState<string | null>('default');
@@ -40,9 +45,59 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [analyserNode, setAnalyserNode] = useState<AnalyserNode | null>(null);
   const [postProcessingGainNode, setPostProcessingGainNode] = useState<GainNode | null>(null);
   const [micAudioStream, setMicAudioStream] = useState<MediaStream | null>(null);
-  const [senderMicSensitivity, setSenderMicSensitivity] = useState<number | null>(0.5);  // Store the selected file
-  const [echoCancellation, setEchoCancellation] = useState<boolean | null>(false);  // Store the selected file
-  const [noiseSuppression, setNoiseSuppression] = useState<boolean | null>(false);  // Store the selected file
+  const [senderMicSensitivity, setSenderMicSensitivity] = useState<number | null>(0.5);
+  const [echoCancellation, setEchoCancellation] = useState<boolean | null>(false);
+  const [noiseSuppression, setNoiseSuppression] = useState<boolean | null>(false);
+
+  //Reciever -------------
+
+  const [audioInputBuffers, setAudioInputBuffers] = useState<Array<AudioBuffer> | null>([null, null, null, null, null]);  // Store the selected file
+  const [agcPreProcessingNodes, setAgcPreProcessingNodes] = useState<Array<GainNode> | null>([null, null, null, null, null]);  // Store the selected file
+  const [agcAnalyzerNodes, setAgcAnalyzerNodes] = useState<Array<AnalyserNode> | null>([null, null, null, null, null]);  // Store the selected file
+  const [agcPostProcessingNodes, setAgcPostProcessingNodes] = useState<Array<GainNode> | null>([null, null, null, null, null]);  // Store the selected file
+  const [agcGainNodes, setAgcGainNodes] = useState<Array<GainNode> | null>([null, null, null, null, null]);  // Store the selected file
+  const [muteNodes, setMuteNodes] = useState<Array<GainNode> | null>([null, null, null, null, null]);  // Store the selected file
+  const [mixer, setMixer] = useState<GainNode | null>(null);
+
+
+//Function to set the microphone input source
+  const setMicInput = async (deviceId: string, context:AudioContext) => {
+  return new Promise<MediaStreamAudioSourceNode | null>(async (resolve, reject) => {
+    try {
+      //Get user media with the selected device ID
+      console.log("Setting mic input to device ID:", deviceId);
+      console.log("Echo Cancellation:", echoCancellation);
+      console.log("Noise Suppression:", noiseSuppression);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          deviceId: deviceId ? { exact: deviceId } : undefined,
+          echoCancellation: echoCancellation,
+          noiseSuppression: noiseSuppression,
+        },
+      });
+      //Create MediaStreamSource from the stream
+      console.log("Creating MediaStreamAudioSourceNode from stream");
+      const newSource = context.createMediaStreamSource(stream);
+      resolve(newSource);
+    } catch (err) {
+      reject(err);
+    }
+  });
+  };
+
+   //Effect for mic sensitivity
+  useEffect(() => {
+    if (audioContext === null) return;
+    if (volumeSensitivityGainNode === null) return;
+    if (senderMicSensitivity === null) return;
+
+    console.log("Setting mic sensitivity to:", gainStage * senderMicSensitivity);
+    volumeSensitivityGainNode.gain.value = gainStage * senderMicSensitivity;
+    
+    // Cleanup when the component is unmounted (close AudioContext)
+    return () => {
+    };
+  }, [senderMicSensitivity]);
   
   //create the functions to initialize the audio graph
   useEffect(() => {
@@ -117,10 +172,61 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
 
         //Reciever-side ---------------------------------------------------
 
-        //set audio input files to null as a default
-        let audioInputFiles = [null, null, null, null, null];
+        //initialize preprocessing nodes for AGC
+        const agcPreProcessingNodes = [];
+        for (let i = 0; i < 5; i++) {
+          const g = audioContext.createGain();
+          g.gain.value = 10;     // default volume
+          agcPreProcessingNodes.push(g);
+        }
 
+        //initialize preprocessing nodes for AGC
+        const agcAnalyzerNodes = [];
+        for (let i = 0; i < 5; i++) {
+          const g = audioContext.createAnalyser();
+          agcAnalyzerNodes.push(g);
+        }
 
+        //initialize preprocessing nodes for AGC
+        const agcPostProcessingNodes = [];
+        for (let i = 0; i < 5; i++) {
+          const g = audioContext.createGain();
+          g.gain.value = 0.1;     // default volume
+          agcPostProcessingNodes.push(g);
+        }
+
+        const agcGainNodes = [];
+        for (let i = 0; i < 5; i++) {
+          const g = audioContext.createGain();
+          g.gain.value = 1;     // default volume
+          agcGainNodes.push(g);
+        }
+
+        const muteNodes = [];
+        for (let i = 0; i < 5; i++) {
+          const g = audioContext.createGain();
+          g.gain.value = 1;     // default volume
+          muteNodes.push(g);
+        }
+
+        const mixer = context.createGain();
+
+        for (let i = 0; i < 5; i++) {
+          agcPreProcessingNodes[i].connect(agcAnalyzerNodes[i]);
+          agcAnalyzerNodes[i].connect(agcPostProcessingNodes[i]);
+          agcPostProcessingNodes[i].connect(agcGainNodes[i]);
+          agcGainNodes[i].connect(muteNodes[i]);
+          muteNodes[i].connect(mixer);
+        }
+
+        mixer.connect(context.destination);
+
+        setAgcPreProcessingNodes(agcPreProcessingNodes);
+        setAgcAnalyzerNodes(agcAnalyzerNodes);
+        setAgcPostProcessingNodes(agcPostProcessingNodes);
+        setAgcGainNodes(agcGainNodes);
+        setMuteNodes(muteNodes);
+        setMixer(mixer);
 
       }
       else {
@@ -163,44 +269,164 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
   });
   };
 
-  //Function to set the microphone input source
-  const setMicInput = async (deviceId: string, context:AudioContext) => {
-  return new Promise<MediaStreamAudioSourceNode | null>(async (resolve, reject) => {
+  //Function to load files into loadAudio
+  const loadAudioFiles = async (files: Array<string>) => {
+  return new Promise<void>(async (resolve, reject) => {
     try {
-      //Get user media with the selected device ID
-      console.log("Setting mic input to device ID:", deviceId);
-      console.log("Echo Cancellation:", echoCancellation);
-      console.log("Noise Suppression:", noiseSuppression);
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          deviceId: deviceId ? { exact: deviceId } : undefined,
-          echoCancellation: echoCancellation,
-          noiseSuppression: noiseSuppression,
-        },
-      });
-      //Create MediaStreamSource from the stream
-      console.log("Creating MediaStreamAudioSourceNode from stream");
-      const newSource = context.createMediaStreamSource(stream);
-      resolve(newSource);
+      const loadSingleFile = (fileName: string, index: number) => {
+        return new Promise<AudioBuffer | null>((resolve) => {
+          const request = new XMLHttpRequest();
+          request.open("GET", `../../audio/${fileName}.mp3`);
+          request.responseType = "arraybuffer";
+
+          request.onload = function () {
+            // Check NOT FOUND, 404, etc.
+            if (request.status !== 200) {
+              return resolve(null);
+            }
+
+            audioContext.decodeAudioData(
+              request.response,
+              (audioBuffer) => {
+                console.log("Audio Buffer Received:", audioBuffer);
+                resolve(audioBuffer);
+              },
+              (decodeErr) => {
+                resolve(null);
+              }
+            );
+          };
+
+          request.onerror = () => {
+            resolve(null);
+          };
+
+          request.send();
+        });
+      };
+
+      // Load all files in parallel with full error handling
+      const allPromises = files.map((fileName, index) =>
+        loadSingleFile(fileName, index)
+      );
+
+      // Wait for all to finish (or throw if ANY fail)
+      const audioBuffers = await Promise.all(allPromises);
+
+      // Set state after all files succeed
+      setAudioInputBuffers(audioBuffers);
+      
+      resolve();
     } catch (err) {
       reject(err);
     }
   });
   };
 
-  //Effect for mic sensitivity
-  useEffect(() => {
-    if (audioContext === null) return;
-    if (volumeSensitivityGainNode === null) return;
-    if (senderMicSensitivity === null) return;
+  //Function to load files into loadAudio
+  const playAudioFiles = async () => {
+  return new Promise<void>(async (resolve, reject) => {
+    try {
+      const playSingleFile = (buffer: AudioBuffer, index: number) => {
+        return new Promise<void>((resolve, reject) => {
+          try {
+            if (!buffer) {
+              console.warn(`No buffer loaded at index ${index}`);
+              return;
+            }
 
-    console.log("Setting mic sensitivity to:", gainStage * senderMicSensitivity);
-    volumeSensitivityGainNode.gain.value = gainStage * senderMicSensitivity;
-    
-    // Cleanup when the component is unmounted (close AudioContext)
-    return () => {
-    };
-  }, [senderMicSensitivity]);
+            const src = audioContext.createBufferSource();
+            src.buffer = buffer;
+            src.connect(agcPreProcessingNodes[index]); 
+
+            src.onended = () => {
+              console.log(`Track ${index} finished`);
+              resolve()
+            };
+
+            src.start();
+          } catch (error) {
+            reject(error)
+          }
+          
+        });
+      };
+
+      // Load all files in parallel with full error handling
+      const allPromises = audioInputBuffers.map((buffer, index) =>
+        playSingleFile(buffer, index)
+      );
+
+      // Wait for all to finish (or throw if ANY fail)
+      await Promise.all(allPromises);
+
+      resolve();
+    } catch (err) {
+      reject(err);
+    }
+  });
+  };
+
+  //Function to load files into loadAudio
+  const resetAudioFiles = async () => {
+  return new Promise<void>(async (resolve, reject) => {
+    try {
+      setAudioInputBuffers([null,null,null,null,null])
+      resolve();
+    } catch (err) {
+      reject(err);
+    }
+  });
+  };
+
+/*
+  function startAGCLoop(
+  audioContext: AudioContext,
+  agcAnalyserNodes: AnalyserNode[],
+  agcGainNodes: GainNode[]
+) {
+  function update() {
+    const now = audioContext.currentTime;
+
+    for (let i = 0; i < agcAnalyserNodes.length; i++) {
+      const analyser = agcAnalyserNodes[i];
+      const gainNode = agcGainNodes[i];
+
+      if (!analyser || !gainNode) continue;
+
+      const rms = getRMSFromAnalyser(analyser);
+      if (rms <= 0) continue; // silence / no signal
+
+      const currentDb = 20 * Math.log10(rms);
+
+      let diffDb = TARGET_DB - currentDb;
+      diffDb = Math.max(MIN_GAIN_DB, Math.min(MAX_GAIN_DB, diffDb));
+
+      const currentGain = gainNode.gain.value;
+      const currentGainDb = linearToDb(currentGain);
+      const targetGainDb = currentGainDb + diffDb * 0.1;
+      const targetGainLinear = dbToLinear(targetGainDb);
+
+      gainNode.gain.setTargetAtTime(targetGainLinear, now, TIME_CONSTANT);
+    }
+
+    requestAnimationFrame(update);
+  }
+
+  requestAnimationFrame(update);
+  }
+
+  //Function to process the autio with the AGC running
+  const processWithAGC = async () => {
+  return new Promise<void>(async (resolve, reject) => {
+    try {
+      startAGCLoop()
+      playAudioFiles()
+    } catch (err) {
+      reject(err);
+    }
+  });
+  };*/
 
 
   // Provide the context values to children components
@@ -221,7 +447,10 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
       setSenderOutputDevice,
       setSenderMicSensitivity,
       setEchoCancellation,
-      setNoiseSuppression
+      setNoiseSuppression,
+      loadAudioFiles,
+      playAudioFiles,
+      resetAudioFiles
     }}>
       {children}
     </WebAudioContext.Provider>

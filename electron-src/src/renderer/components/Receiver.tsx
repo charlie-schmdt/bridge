@@ -27,35 +27,59 @@ function Teardown() {
   
 }
 
-function UploadFile({name}) {
+function UploadFile({name, index}) {
   return (
     <div className="flex">
       <Input 
       placeholder={name}
-      id="file"/>
+      id={`file${index}`}/>
     </div>
   )
 }
 
+
+
 function LoadFiles() {
+  const { loadAudioFiles } = useAudioContext();
+  const load = () => {
+    let files = []
+    for (let i = 0 ; i < 5 ; i++) {
+      const fileRef = document.getElementById(`file${i}`) as HTMLInputElement
+      let val = fileRef.value
+      files.push(val)
+    }
+    loadAudioFiles(files)
+  }
+  
   return (
-    <Button>
+    <Button onPress={load}>
       Load Files
     </Button>
   );
 }
 
 function ResetFiles() {
+  const { resetAudioFiles } = useAudioContext();
+  const reset = () => {
+    for (let i = 0 ; i < 5 ; i++) {
+      const fileRef = document.getElementById(`file${i}`) as HTMLInputElement
+      fileRef.value = '';
+    }
+    resetAudioFiles()
+  }
+
   return (
-    <Button>
+    <Button onPress={reset}>
       Reset Files
     </Button>
   );
 }
 
 function PlayUnprocessed() {
+  const { playAudioFiles } = useAudioContext();
+
   return (
-    <Button>
+    <Button onPress={playAudioFiles}>
       Play Unprocessed
     </Button>
   );
@@ -99,11 +123,11 @@ export default function Receiver() {
       <Teardown/>
       <div className="flex flex-row  rounded-xl shadow gap-4">
         <div className="flex-1  min-w-[150px] mt-2 mb-2">
-          <UploadFile name="File 1..."/>
-          <UploadFile name="File 2..."/>
-          <UploadFile name="File 3..."/>
-          <UploadFile name="File 4..."/>
-          <UploadFile name="File 5..."/>
+          <UploadFile name="File 1..." index={0}/>
+          <UploadFile name="File 2..." index={1}/>
+          <UploadFile name="File 3..." index={2}/>
+          <UploadFile name="File 4..." index={3}/>
+          <UploadFile name="File 5..." index={4}/>
         </div>
         <div className="flex-row  min-w-[150px] mt-2 mb-2">
           <div className="flex-1  min-w-[50px] mt-2 mb-2">
