@@ -39,13 +39,15 @@ export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeed
   // Initiate the WebSocket connection with the Node server
   // NOTE: This is NOT the WebRTC stream for video/audio, so it has the same lifetime as the component
   useEffect(() => {
+    console.log("UUID: ", clientId);
     // Define callbacks used by the roomConnectionManager to update state
     const callbacks: RoomConnectionManagerCallbacks = {
       onStatusChange: (status: CallStatus) => setCallStatus(status),
       onRemoteStream: (stream: MediaStream) => {
         // New track received, update remoteStreams accordingly
         setRemoteStreams(prevRemoteStreams => {
-          if (remoteStreams.has(stream.id)) {
+          console.log("got stream id: " + stream.id);
+          if (prevRemoteStreams.has(stream.id)) {
             // Stream already exists, browser instance should automatically add it to the stream
             return prevRemoteStreams;
           }
@@ -63,8 +65,8 @@ export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeed
       onPeerExit: (peerId, peerName) => {
         // Close remote stream if the ref still holds tracks
         setRemoteStreams(prevRemoteStreams => {
-          if (remoteStreams.has(peerId)) {
-            remoteStreams.get(peerId).getTracks().forEach(track => track.stop());
+          if (prevRemoteStreams.has(peerId)) {
+            prevRemoteStreams.get(peerId).getTracks().forEach(track => track.stop());
             const newRemoteStreams = new Map(prevRemoteStreams);
             newRemoteStreams.delete(peerId);
             toast(`${peerName} has left the room`);
