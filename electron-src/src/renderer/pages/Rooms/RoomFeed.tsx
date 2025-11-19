@@ -1,13 +1,14 @@
 import { Button } from '@/renderer/components/ui/Button';
 import { CallStatus } from '@/renderer/types/roomTypes';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { v4 as uuid } from 'uuid';
 import { useAudioContext } from "../../contexts/AudioContext";
 import { useAuth } from '../../contexts/AuthContext';
 import { RoomConnectionManager, RoomConnectionManagerCallbacks } from './RoomConnectionManager';
 import { useRoomMediaContext } from './RoomMediaContext';
-import { VideoPlayer } from './VideoPlayer';
+import { RoomSettingsFooter } from './RoomSettingsFooter';
+import { VideoGrid } from './VideoGrid';
 
 export interface RoomFeedProps {
   streamChatClient: any;
@@ -247,6 +248,19 @@ export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeed
     setCallStatus("inactive");
   };
 
+  const allStreams = useMemo(() => {
+    const streams = [];
+    if (localStream) {
+      // The local video is always muted for the user to avoid feedback
+      streams.push({ stream: localStream, isMuted: true });
+    }
+    Array.from(remoteStreams.values()).forEach(stream => {
+      // Remote streams are not muted
+      streams.push({ stream, isMuted: false });
+    });
+    return streams;
+  }, [localStream, remoteStreams]);
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center min-h-0">
       { callStatus === "inactive" ? (
@@ -255,15 +269,10 @@ export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeed
         :
       (
         <>
-          <div className="flex flex-1 flex-wrap gap-4 p-4 w-full min-h-0">
-            <div className="flex-1 h-full box-border">
-              <video className="w-full h-full object-contain rounded-lg" ref={localRoomMedia.videoRef} autoPlay muted />
-            </div>
-            {Array.from(remoteStreams.values()).map(stream => (
-              <VideoPlayer key={stream.id} stream={stream} />
-            ))}
+          <div className="flex-1 w-full min-h-0">
+            <VideoGrid streams={allStreams} />
           </div>
-          <Button color="red" onPress={exitRoom}>Call Out</Button>
+          <RoomSettingsFooter onLeave={exitRoom} />
         </>
       )}
     </div>

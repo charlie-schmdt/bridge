@@ -2,15 +2,14 @@ import { Channel as StreamChannel, StreamChat } from 'stream-chat';
 import { Channel, MessageInput, MessageList, Chat as StreamChatComponent, Window } from 'stream-chat-react';
 import 'stream-chat-react/dist/css/v2/index.css';
 
-interface ChatProps {
-    onClose: () => void;
+export interface ChatProps {
+    closeChat: () => void;
+    toggleChat: () => void;
     client: StreamChat | null;
     channel: StreamChannel | null;
 }
 
-
-
-export default function Chat({ onClose, client, channel }: ChatProps) {
+export default function Chat({ closeChat, toggleChat, client, channel }: ChatProps) {
     //const { user } =  useAuth();
 
     /*
@@ -83,7 +82,7 @@ export default function Chat({ onClose, client, channel }: ChatProps) {
 
             <button
                 type="button"
-                onClick={onClose}
+                onClick={toggleChat}
                 className="text-gray500 hover:text-gray-700 p-2"
                 //style={{ pointerEvents: 'auto' }}
             >

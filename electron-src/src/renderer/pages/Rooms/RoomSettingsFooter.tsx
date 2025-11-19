@@ -1,14 +1,17 @@
+import { Button as UIButton } from "@/renderer/components/ui/Button";
 import mic from "@assets/microphone_active.png";
 import micOff from "@assets/microphone_inactive.png";
 import videopng from "@assets/video.png";
 import video_inactivepng from "@assets/video_inactive.png";
 import { Button, useDisclosure } from "@heroui/react";
-import { useNavigate } from "react-router-dom";
 import UserFeaturesModal from "../../components/UserFeaturesModal";
 import { useRoomMediaContext } from "./RoomMediaContext";
 
-export function RoomSettingsFooter({ onOpenChat }) {
-  const navigate = useNavigate();
+export interface RoomSettingsFooterProps {
+  onLeave: () => void;
+}
+
+export function RoomSettingsFooter({ onLeave }: RoomSettingsFooterProps) {
   const VF = useRoomMediaContext();
   const {isOpen, onOpen, onOpenChange} = useDisclosure();
 
@@ -47,15 +50,10 @@ export function RoomSettingsFooter({ onOpenChat }) {
         <UserFeaturesModal isOpen={isOpen} onOpen={onOpen} onOpenChange={onOpenChange}/>
       </div>
 
-
-      {/* Chat settings */}
-      <div className="flex flex-1 justify-end items-center gap-4">
-        <button
-          className="text-gray-500 hover:text-blue-600 cursor-pointer"
-          onClick={onOpenChat}
-        >
-          Chat
-        </button>
+      <div className="flex flex-1 justify-end">
+        <UIButton color="red" onPress={onLeave}>
+          Call Out
+        </UIButton>
       </div>
     </footer>
   );
