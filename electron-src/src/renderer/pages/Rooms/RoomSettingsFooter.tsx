@@ -1,21 +1,24 @@
+import { Button as UIButton } from "@/renderer/components/ui/Button";
 import mic from "@assets/microphone_active.png";
 import micOff from "@assets/microphone_inactive.png";
 import videopng from "@assets/video.png";
 import video_inactivepng from "@assets/video_inactive.png";
 import { Button, useDisclosure } from "@heroui/react";
-import { useNavigate } from "react-router-dom";
 import UserFeaturesModal from "../../components/UserFeaturesModal";
 import { useRoomMediaContext } from "./RoomMediaContext";
 
-export function RoomSettingsFooter({ onOpenChat }) {
-  const navigate = useNavigate();
+export interface RoomSettingsFooterProps {
+  onLeave: () => void;
+}
+
+export function RoomSettingsFooter({ onLeave }: RoomSettingsFooterProps) {
   const VF = useRoomMediaContext();
   const {isOpen, onOpen, onOpenChange} = useDisclosure();
 
   return (
     <footer className="w-full bg-white shadow-sm px-6 py-4 flex justify-between items-center">
       {/* Left side: Logo + Nav */}
-      <div className="flex items-center gap-6">
+      <div className="flex flex-1 justify-start items-center gap-6">
         {/**
          * AUDIO & VIDEO CONTROLS 
          */}
@@ -37,7 +40,7 @@ export function RoomSettingsFooter({ onOpenChat }) {
       </div>
 
       {/* user settings */}
-      <div className="flex items-center gap-5">
+      <div className="flex flex-1 justify-center items-center gap-5">
         <Button
           className="text-gray-500 hover:text-blue-600 cursor-pointer"
           onPress={onOpen}
@@ -47,15 +50,10 @@ export function RoomSettingsFooter({ onOpenChat }) {
         <UserFeaturesModal isOpen={isOpen} onOpen={onOpen} onOpenChange={onOpenChange}/>
       </div>
 
-
-      {/* Chat settings */}
-      <div className="flex items-center gap-4">
-        <button
-          className="text-gray-500 hover:text-blue-600 cursor-pointer"
-          onClick={onOpenChat}
-        >
-          Chat
-        </button>
+      <div className="flex flex-1 justify-end">
+        <UIButton color="red" onPress={onLeave}>
+          Call Out
+        </UIButton>
       </div>
     </footer>
   );
