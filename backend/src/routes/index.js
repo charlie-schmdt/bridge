@@ -2,11 +2,15 @@ const express = require('express');
 const router = express.Router();
 
 // Import controllers
-const { getWorkspaces, createWorkspace, joinWorkspace, getUserWorkspaces, getWorkspaceMembers, leaveWorkspace, removeUserFromWorkspace, updateWorkspace, setPermissions, getPermissions, toggleWorkspaceFavorite, getUserFavoriteWorkspaces, inviteUserToWorkspace, getJoinableWorkspaces, acceptInvite } = require('../controllers/workspaceController');
+const { getWorkspaces, createWorkspace, joinWorkspace, getUserWorkspaces, getWorkspaceMembers, leaveWorkspace, 
+  removeUserFromWorkspace, updateWorkspace, setPermissions, getPermissions, toggleWorkspaceFavorite, getUserFavoriteWorkspaces, 
+  inviteUserToWorkspace, getJoinableWorkspaces, acceptInvite, setUserRole } = require('../controllers/workspaceController');
 const { createUser, loginUser, getSettings, updateSettings, oauthLogin, deleteAccount, setOnboarding, getUsers } = require('../controllers/userController');
-const { getRooms, createRoom } = require('../controllers/roomController');
+const { getRooms, createRoom, editRoom, deleteRoom } = require('../controllers/roomController');
+const { submitQuestion } = require('../controllers/questionController');
 // Import middleware
 const { auth, authenticateToken } = require('../middleware/auth');
+
 
 // Basic routes
 router.get('/', (req, res) => {
@@ -65,11 +69,19 @@ router.get('/workspaces/:workspaceId/permissions/:userId', authenticateToken, ge
 router.post('/workspace/:workspaceId/invite', authenticateToken, inviteUserToWorkspace);
 router.get('/workspaces/joinable', authenticateToken, getJoinableWorkspaces);
 router.post('/workspace/:workspaceId/accept-invite', authenticateToken, acceptInvite);
+router.put('/workspace/:workspaceId/member/:userId/role', authenticateToken, setUserRole);
+
 
 // Room routes would go here
 router.get('/workspace/:workspaceId/rooms', authenticateToken, getRooms);
 router.post('/rooms/create', authenticateToken, createRoom);
+router.put('/rooms/edit/:roomId', authenticateToken, editRoom);
+router.delete('/rooms/delete/:roomId', authenticateToken, deleteRoom);
+
 // Protected routes (require authentication)
 router.delete('/auth/delete-account', authenticateToken, deleteAccount);
+
+// FAQ route for submitting questions
+router.post('/faq/question', submitQuestion);
 
 module.exports = router;

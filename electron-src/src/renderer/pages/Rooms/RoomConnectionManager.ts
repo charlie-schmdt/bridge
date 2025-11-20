@@ -4,9 +4,9 @@ import { WebSocketURL } from "@/renderer/utils/endpoints";
 // Define React callbacks for the RoomFeed renderer to provide
 export interface RoomConnectionManagerCallbacks {
   onStatusChange: (status: CallStatus) => void;
-  onRemoteTrack: (track: MediaStreamTrack) => void;
+  onRemoteStream: (stream: MediaStream) => void;
   onRemoteStreamStopped: () => void;
-  onPeerExit: (peerName: string) => void;
+  onPeerExit: (peerId: string, peerName: string) => void;
   onError: (message: string) => void;
 }
 
@@ -164,14 +164,15 @@ export class RoomConnectionManager {
   }
 
   private handleTrack = (event: RTCTrackEvent) => {
-    console.log("Received remote track: ", event);
-    const remoteTrack = event.track;
-    if (remoteTrack) {
-      this.callbacks.onRemoteTrack(remoteTrack);
-
-      // Request a key frame to start decoding video frames
-      this.sendMessage("pli", {})
+    console.log("Received remote track event: ", event);
+    const remoteStream = event.streams[0];
+    if (!remoteStream) {
+      return;
     }
+    this.callbacks.onRemoteStream(remoteStream);
+
+    // Request a key frame to start decoding video frames
+    this.sendMessage("pli", {})
   }
 
   private handleWsMessage = async (event: MessageEvent) => {
@@ -199,7 +200,7 @@ export class RoomConnectionManager {
           break;
         case "peerExit":
           const peerExit = msg.payload as PeerExit;
-          this.callbacks.onPeerExit(peerExit.peerName);
+          this.callbacks.onPeerExit(peerExit.peerId, peerExit.peerName);
           this.callbacks.onRemoteStreamStopped();
           break;
       }

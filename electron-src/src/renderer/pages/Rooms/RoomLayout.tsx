@@ -5,16 +5,23 @@ import Chat from "../../components/Chat";
 import { useAudioContext } from "../../contexts/AudioContext";
 import { RoomFeed } from "./RoomFeed";
 import { RoomMediaProvider } from "./RoomMediaProvider";
-import { RoomSettingsFooter } from "./RoomSettingsFooter";
 
 interface RoomLayoutProps{}
 
 export const RoomLayout = ({}: RoomLayoutProps) => {
   const [isChatOpen, setIsChatOpen ] = useState(false);
+<<<<<<< HEAD
   const openChat = () => setIsChatOpen(true);
   const closeChat = () => setIsChatOpen(false);
+=======
+  const [client, setClient] = useState(null);
+  const [channel, setChannel] = useState(null);
+>>>>>>> 327557cce2b278dd0cd08b09b68d7da00950a6e1
   const { tearDownAudioGraph } = useAudioContext();
-  
+
+  const closeChat = () => setIsChatOpen(false);
+  const toggleChat = () => setIsChatOpen(prevIsChatOpen => !prevIsChatOpen);
+
   const navigate = useNavigate();
 
   const { roomId } = useParams<{ roomId: string }>();
@@ -38,9 +45,10 @@ export const RoomLayout = ({}: RoomLayoutProps) => {
   }
 
   return (
-    <div className="flex flex-1 h-screen bg-white">
+    <div className="flex h-screen bg-white">
       <div className="flex flex-col flex-1 p-4">
-        <header className="w-full bg-white shadow-sm px-6 py-4 flex justify-between items-center">
+        <header className="w-full bg-white shadow-sm px-6 py-4 flex justify-between items-center relative">
+          <div className="flex flex-1 justify-start">
             <Button
               color="red"
               onClick={() => {
@@ -50,26 +58,34 @@ export const RoomLayout = ({}: RoomLayoutProps) => {
             >
               Exit Room
             </Button>
+          </div>
 
-
-            <div className = "absolute left-1/2 transform -translate-x-1/2">
-              Test Room
-            </div>
-
+          <div className="flex flex-1 justify-center">
+            Test Room
+          </div>
+          <div className="flex flex-1 justify-end">
+            <button className="text-gray-500 hover:text-blue-600 cursor-pointer" onClick={toggleChat}>Chat</button>
+          </div>
         </header>
             
         <RoomMediaProvider>
             <RoomFeed 
               roomId={roomId}
             />
-          <RoomSettingsFooter onOpenChat={openChat} />
         </RoomMediaProvider>
       </div>
       {isChatOpen && roomId && (
         <div className="w-80 flex-col-1 border-l">
           <Chat 
+<<<<<<< HEAD
             onClose={closeChat} 
             roomId={roomId}
+=======
+          closeChat={closeChat} 
+          toggleChat={toggleChat} 
+          client={client}
+          channel={channel}
+>>>>>>> 327557cce2b278dd0cd08b09b68d7da00950a6e1
           />
         </div>
       )}

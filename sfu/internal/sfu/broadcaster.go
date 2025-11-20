@@ -20,6 +20,7 @@ type Broadcaster interface {
 }
 
 type defaultBroadcaster struct {
+	id         string
 	pc         *webrtc.PeerConnection
 	videoSrc   *webrtc.TrackRemote
 	videoSinks map[string]*webrtc.TrackLocalStaticRTP
@@ -34,8 +35,9 @@ type defaultBroadcaster struct {
 	amu sync.RWMutex
 }
 
-func InitBroadcaster(pc *webrtc.PeerConnection, videoSrc *webrtc.TrackRemote, audioSrc *webrtc.TrackRemote) Broadcaster {
+func InitBroadcaster(id string, pc *webrtc.PeerConnection, videoSrc *webrtc.TrackRemote, audioSrc *webrtc.TrackRemote) Broadcaster {
 	b := &defaultBroadcaster{
+		id:         id,
 		pc:         pc,
 		videoSrc:   videoSrc,
 		videoSinks: map[string]*webrtc.TrackLocalStaticRTP{},
@@ -97,18 +99,11 @@ func (b *defaultBroadcaster) AddVideoSink(id string, pc *webrtc.PeerConnection) 
 	if b.videoSrc == nil {
 		return
 	}
-	localTrack, err := webrtc.NewTrackLocalStaticRTP(b.videoSrc.Codec().RTPCodecCapability, b.videoSrc.ID(), b.videoSrc.StreamID())
+	// Create new localTrack as a sink for the receiver, use the broadcaster's ClientID as the StreamID
+	localTrack, err := webrtc.NewTrackLocalStaticRTP(b.videoSrc.Codec().RTPCodecCapability, b.videoSrc.ID(), b.id)
 	if err != nil {
 		fmt.Printf("failed to create local track: %s", err)
 	}
-	//var sender *webrtc.RTPSender
-	//for _, transceiver := range pc.GetTransceivers() {
-	//	if transceiver.Direction() == webrtc.RTPTransceiverDirectionSendonly {
-	//		sender = transceiver.Sender()
-	//		break
-	//	}
-	//}
-	//sender.ReplaceTrack(localTrack)
 	rtpSender, err := pc.AddTrack(localTrack)
 	fmt.Println("Track added for id: ", id)
 	if err != nil {
@@ -126,7 +121,7 @@ func (b *defaultBroadcaster) AddAudioSink(id string, pc *webrtc.PeerConnection) 
 	if b.audioSrc == nil {
 		return
 	}
-	localTrack, err := webrtc.NewTrackLocalStaticRTP(b.audioSrc.Codec().RTPCodecCapability, b.audioSrc.ID(), b.audioSrc.StreamID())
+	localTrack, err := webrtc.NewTrackLocalStaticRTP(b.audioSrc.Codec().RTPCodecCapability, b.audioSrc.ID(), b.id)
 	if err != nil {
 		fmt.Printf("failed to create local audio track: %s", err)
 	}
