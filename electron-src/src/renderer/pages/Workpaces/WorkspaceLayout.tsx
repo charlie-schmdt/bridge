@@ -11,6 +11,7 @@ import { RoomCard } from "./RoomCard";
 import { useAuth } from "../../contexts/AuthContext";
 import InviteUser from "./InviteUser";
 import { Meeting } from "@/renderer/utils/meetingUtils";
+import { PlusCircle } from "lucide-react";
 
 interface WorkspaceMember {
   id: string;
@@ -59,6 +60,24 @@ export const WorkspaceLayout = () => {
   const { notification, showNotification } = useNotification();
   const [updatedWorkspaceInfo, setUpdatedWorkspaceInfo] =
     useState<WorkspaceInfo | null>(null);
+
+  const [ isRecurring, setIsRecurring] = useState(false);
+  const [ meetingDate, setMeetingDate] = useState("");
+  const [ meetingTime, setMeetingTime] = useState("");
+  const [ repeatInterval, setRepeatInterval] = useState("weekly");
+
+  const [meetings, setMeetings] = useState([
+    {
+      date: "",
+      time: "",
+      frequency: "daily",
+      daysOfWeek: [],
+    },
+  ]);
+
+  // Days for clicking buttons
+  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
 
   const isCurrentUserOwner =
     user &&
@@ -184,6 +203,7 @@ export const WorkspaceLayout = () => {
           name: roomName,
           description: roomDescription,
           categories: categoryArray,
+          meetings: isRecurring ? meetings : [],
         }),
       });
 
@@ -204,6 +224,34 @@ export const WorkspaceLayout = () => {
       alert("Failed to create room");
     }
   };
+
+  const handleMeetingChange = (index, field, value) => {
+    setMeetings((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const handleDayToggle = (index, day) => {
+    setMeetings((prev) => {
+      const updated = [...prev];
+      const days = updated[index].daysOfWeek || [];
+
+      updated[index].daysOfWeek = days.includes(day)
+        ? days.filter((d) => d !== day)
+        : [...days, day];
+
+      return updated;
+    });
+  };
+
+  const removeMeeting = (index) => {
+    setMeetings((prev) => prev.filter((_, i) => i !== index));
+  };
+
+
+
 
   const uniqueCategories = Array.from(
     new Set(
@@ -476,12 +524,32 @@ export const WorkspaceLayout = () => {
           <div>
             <div className="flex justify-between items-center mb-4 mt-6 px-6">
               <div className="flex items-center gap-3">
-                <Button
+                {/* <Button
                   color="primary"
                   onPress={setShowRoomModal.bind(null, true)}
                 >
                   + Create Room
-                </Button>
+                </Button> */}
+                {/* <div
+                  onClick={setShowRoomModal.bind(null, true)}
+                  className="group border-2 border-dashed border-blue-300 hover:border-blue-500 bg-white 
+                    rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer 
+                    p-6 sm:p-8 w-full flex flex-col items-center text-center space-y-3"
+                  role="button"
+                  tabIndex={0}
+                >
+                  <PlusCircle className="w-10 h-10 text-blue-500 group-hover:text-blue-600 transition duration-200" />
+                  <p className="text-lg font-semibold text-gray-800">Create New Room</p>
+                  <p className="text-sm text-gray-500">
+                    Quickly set up a new meeting room for your team.
+                  </p>
+                  <button
+                    onClick={setShowRoomModal.bind(null, true)}
+                    className="mt-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition cursor-pointer"
+                  >
+                    Get Started
+                  </button>
+                </div> */}
                 {isCurrentUserOwner && (
                   <InviteUser
                     workspaceId={workspaceId}
@@ -541,19 +609,131 @@ export const WorkspaceLayout = () => {
                     placeholder="e.g. Development, Marketing"
                   />
 
+                  {/* ─────────────────────────────────────────── */}
+                  {/* RECURRING MEETING SECTION */}
+                  {/* ─────────────────────────────────────────── */}
+
+                  <h3 className="text-lg font-semibold mt-4 mb-2">Recurring Meeting</h3>
+
+                  {/* ENABLE TOGGLE */}
+                  <div className="flex items-center mb-4">
+                    <input
+                      title="Enable Recurring Meeting"
+                      type="checkbox"
+                      checked={isRecurring}
+                      onChange={() => setIsRecurring(!isRecurring)}
+                      className="mr-2 cursor-pointer"
+                    />
+                    <label className="text-sm text-gray-700">
+                      Set recurring meetings
+                    </label>
+                  </div>
+
+                  {isRecurring && (
+                    <div className="mt-4">
+                      <h4 className="font-medium mb-2">Recurring Meetings</h4>
+
+                      {meetings.map((meeting, idx) => (
+                        <div key={idx} className="rounded-lg bg-white">
+                          {/* Row 1: Date, Time, Frequency */}
+                          <div className="flex gap-2 items-center mb-2 cursor-pointer">
+                            <input
+                              type="date"
+                              value={meeting.date}
+                              onChange={(e) =>
+                                handleMeetingChange(idx, "date", e.target.value)
+                              }
+                              className="border border-gray-300 rounded p-2"
+                              placeholder="YYYY-MM-DD"
+                            />
+
+                            <input
+                              type="time"
+                              value={meeting.time}
+                              onChange={(e) =>
+                                handleMeetingChange(idx, "time", e.target.value)
+                              }
+                              className="border border-gray-300 rounded p-2 cursor-pointer"
+                              placeholder="HH:MM"
+                            />
+
+                            <select
+                              title="Select Frequency"
+                              value={meeting.frequency}
+                              onChange={(e) =>
+                                handleMeetingChange(idx, "frequency", e.target.value as any)
+                              }
+                              className="border border-gray-300 rounded p-2 cursor-pointer"
+                            >
+                              <option value="daily">Daily</option>
+                              <option value="weekly">Weekly</option>
+                              <option value="biweekly">Biweekly</option>
+                              <option value="monthly">Monthly</option>
+                            </select>
+                          </div>
+
+                          {/* Row 2: Select Days (if needed) + Remove */}
+                          <div className="flex items-center gap-3 flex-wrap">
+                            {["weekly", "biweekly"].includes(meeting.frequency) && (
+                              <div className="flex flex-wrap gap-1">
+                                {days.map((d) => (
+                                  <button
+                                    key={d}
+                                    type="button"
+                                    className={`text-xs px-2 py-1 rounded border border-gray-300 cursor-pointer ${
+                                      meeting.daysOfWeek?.includes(d)
+                                        ? "bg-blue-500 text-white"
+                                        : "bg-gray-100"
+                                    }`}
+                                    onClick={() => handleDayToggle(idx, d)}
+                                  >
+                                    {d}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+
+                            <Button
+                              type="button"
+                              className="text-red-500 text-sm hover:underline ml-auto bg-transparent cursor-pointer"
+                              onPress={() => removeMeeting(idx)}
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+
+                      <Button
+                        type="button"
+                        className="mt-2 text-blue-600 hover:underline text-sm bg-transparent cursor-pointer"
+                        onPress={() =>
+                          setMeetings([
+                            ...meetings,
+                            { date: "", time: "", frequency: "daily", daysOfWeek: [] },
+                          ])
+                        }
+                      >
+                        + Add Meeting
+                      </Button>
+                    </div>
+                  )}
+                  {/* ─────────────────────────────────────────── */}
+
                   <div className="flex justify-end space-x-2">
-                    <button
-                      onClick={() => setShowRoomModal(false)}
-                      className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
+                    <Button
+                      onPress={() => setShowRoomModal(false)}
+                      className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 cursor-pointer"
                     >
                       Cancel
-                    </button>
-                    <button
-                      onClick={handleCreateRoom}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    </Button>
+                    <Button
+                      color="primary"
+                      onPress={handleCreateRoom}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer"
                     >
                       Create
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -564,36 +744,46 @@ export const WorkspaceLayout = () => {
         {/* Main content: Room cards + Members list */}
         <div className="flex flex-col lg:flex-row gap-6 mt-6 px-6 mb-4">
           {/* Left: Room cards (75%) */}
-          <div className="lg:w-3/4 w-full">
-            {rooms.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-[minmax(10rem,_1fr)]">
-                {filteredRooms.length > 0 ? (
-                  filteredRooms.map((room) => (
-                    <RoomCard
-                      key={room.room_id}
-                      id={room.room_id}
-                      title={room.name}
-                      categories={room.categories || []}
-                      description={
-                        room.description || "No description provided"
-                      }
-                      status={
-                        (room.status as "active" | "scheduled" | "offline") ||
-                        "offline"
-                      }
-                      meetings={room.meetings || []}
-                      editMode={editMode}
-                    />
-                  ))
-                ) : (
-                  <p className="text-gray-500">No rooms match this category.</p>
-                )}
-              </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-[minmax(10rem,_1fr)]">
+            {filteredRooms.length > 0 ? (
+              filteredRooms.map((room) => (
+                <RoomCard
+                  key={room.room_id}
+                  id={room.room_id}
+                  title={room.name}
+                  categories={room.categories || []}
+                  description={room.description || "No description provided"}
+                  status={(room.status as "active" | "scheduled" | "offline") || "offline"}
+                  meetings={room.meetings || []}
+                  editMode={editMode}
+                />
+              ))
             ) : (
-              <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 text-center text-gray-500">
-                No rooms yet. Create one to get started!
-              </div>
+              <p className="text-gray-500 col-span-full">No rooms match this category.</p>
             )}
+
+            {/* Add the CreateRoomCard at the end of the grid */}
+            {/* <CreateRoomCard /> */}
+            <div
+                  onClick={setShowRoomModal.bind(null, true)}
+                  className="group border-2 border-dashed border-blue-300 hover:border-blue-500 bg-white 
+                    rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer 
+                    p-6 sm:p-8 w-full flex flex-col items-center text-center space-y-3"
+                  role="button"
+                  tabIndex={0}
+                >
+                  <PlusCircle className="w-10 h-10 text-blue-500 group-hover:text-blue-600 transition duration-200" />
+                  <p className="text-lg font-semibold text-gray-800">Create New Room</p>
+                  <p className="text-sm text-gray-500">
+                    Quickly set up a new meeting room for your team.
+                  </p>
+                  <button
+                    onClick={setShowRoomModal.bind(null, true)}
+                    className="mt-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition cursor-pointer"
+                  >
+                    Get Started
+                  </button>
+                </div>
           </div>
 
           {/* Right: Members list (25%) */}
@@ -612,7 +802,7 @@ export const WorkspaceLayout = () => {
           <div className="flex justify-end px-6 mb-6">
             <Button
               onPress={() => setEditMode(false)}
-              className="mr-4 text-black-500 bg-gray-200"
+              className="mr-4 text-black-500 bg-gray-200 cursor-pointer"
             >
               Cancel
             </Button>

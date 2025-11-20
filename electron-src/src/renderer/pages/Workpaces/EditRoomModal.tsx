@@ -214,7 +214,7 @@ export default function EditRoomModal({
           title="Status"
           value={status}
           onChange={(e) => setStatus(e.target.value as Room["status"])}
-          className="w-full border border-gray-300 rounded-md p-2 mb-4"
+          className="w-full border border-gray-300 rounded-md p-2 mb-4 cursor-pointer"
         >
           <option value="active">Active</option>
           <option value="scheduled">Scheduled</option>
@@ -233,7 +233,7 @@ export default function EditRoomModal({
                   onChange={(e) =>
                     handleMeetingChange(idx, "date", e.target.value)
                   }
-                  className="border rounded p-1"
+                  className="border border-gray-300 rounded p-1"
                   title={`Meeting date ${idx + 1}`}
                   placeholder="YYYY-MM-DD"
                 />
@@ -243,7 +243,7 @@ export default function EditRoomModal({
                   onChange={(e) =>
                     handleMeetingChange(idx, "time", e.target.value)
                   }
-                  className="border rounded p-1"
+                  className="border border-gray-300 rounded p-1"
                   title={`Meeting time ${idx + 1}`}
                   placeholder="HH:MM"
                 />
@@ -253,7 +253,7 @@ export default function EditRoomModal({
                   onChange={(e) =>
                     handleMeetingChange(idx, "frequency", e.target.value as any)
                   }
-                  className="border rounded p-1"
+                  className="border border-gray-300 rounded p-1"
                 >
                   <option value="daily">Daily</option>
                   <option value="weekly">Weekly</option>
@@ -264,7 +264,7 @@ export default function EditRoomModal({
 
               {/* Second row: days of week + remove button */}
               <div className="flex gap-2 items-center flex-wrap">
-                {["weekly", "biweekly", "monthly"].includes(
+                {["weekly", "biweekly"].includes(
                   meeting.frequency
                 ) && (
                   <div className="flex gap-1 flex-wrap">
@@ -272,10 +272,10 @@ export default function EditRoomModal({
                       <button
                         key={d}
                         type="button"
-                        className={`text-xs px-2 py-1 rounded border ${
+                        className={`text-xs px-2 py-1 rounded border border-gray-300 cursor-pointer ${
                           meeting.daysOfWeek?.includes(d)
-                            ? "bg-blue-600 text-white"
-                            : "bg-gray-100"
+                            ? "bg-blue-500 text-white"
+                            : "bg-gray-50"
                         }`}
                         onClick={() => handleDayToggle(idx, d)}
                       >
@@ -286,7 +286,7 @@ export default function EditRoomModal({
                 )}
 
                 <Button
-                  className="text-red-500 hover:underline text-sm"
+                  className="text-red-500 text-sm hover:underline ml-auto cursor-pointer bg-transparent"
                   onClick={() => removeMeeting(idx)}
                 >
                   Remove
@@ -296,7 +296,7 @@ export default function EditRoomModal({
           ))}
 
           <Button
-            className="mt-2 text-blue-600 hover:underline text-sm"
+            className="mt-2 text-blue-600 hover:underline text-sm cursor-pointer bg-transparent"
             onClick={() =>
               setMeetings([
                 ...meetings,
@@ -310,21 +310,21 @@ export default function EditRoomModal({
 
         {/* Footer buttons */}
         <div className="flex justify-end space-x-2">
-          <button
-            onClick={() => onOpenChange(false)}
-            className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
+          <Button
+            onPress={() => onOpenChange(false)}
+            className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 cursor-pointer"
           >
             Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 ${
+          </Button>
+          <Button
+            onPress={handleSave}
+            className={`px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer ${
               loading ? "opacity-70 cursor-not-allowed" : ""
             }`}
             disabled={loading}
           >
             Save
-          </button>
+          </Button>
         </div>
       </div>
     </div>
