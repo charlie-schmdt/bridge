@@ -5,6 +5,7 @@ import { MdClass } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import FavoriteButton from "./FavoriteButton";
+import { Button } from "@/renderer/components/ui/Button";
 
 interface WorkspaceCardProps {
   id: number;
@@ -13,6 +14,7 @@ interface WorkspaceCardProps {
   nextMeeting?: string;
   members: number;
   authorizedUsers?: string[];
+  blockedUsers?: string[];
   isPrivate?: boolean;
   isFavorite?: boolean;
   onJoinSuccess?: () => void; // Callback for when join is successful
@@ -26,6 +28,7 @@ export default function WorkspaceCard({
   nextMeeting,
   members,
   authorizedUsers = [],
+  blockedUsers = [],
   isPrivate = false,
   isFavorite = false,
   onJoinSuccess,
@@ -38,6 +41,15 @@ export default function WorkspaceCard({
   const [isJoined, setIsJoined] = useState(
     user ? authorizedUsers.includes(user.id) : false
   );
+  // Determine if user is blocked from this workspace
+  const isBlocked = blockedUsers.includes(String(user.id));
+
+
+  console.log("Blocked users:", blockedUsers);
+  if (isBlocked) {
+    console.log(`User ${user?.id} is blocked from workspace ${id}`);
+  }
+
 
   const handleJoinWorkspace = async () => {
     if (!user) {
@@ -147,15 +159,27 @@ export default function WorkspaceCard({
 
       {/* Action Button */}
       {isJoined ? (
-        <button
-          onClick={handleEnterWorkspace}
-          className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center justify-center gap-2 font-medium"
+        <Button
+          onClick={!isBlocked ? handleEnterWorkspace : undefined}
+          disabled={isBlocked}
+          className={`w-full py-2 rounded-lg flex items-center justify-center gap-2 font-medium 
+            ${isBlocked
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : "bg-green-600 text-white hover:bg-green-700"
+            }`}
         >
-          <CheckCircle size={16} />
-          Enter Workspace
-        </button>
+          {isBlocked ? (
+            "Unable to join at this time"
+          ) : (
+            <>
+              <CheckCircle size={16} />
+              Enter Workspace
+            </>
+          )}
+        </Button>
+
       ) : (
-        <button
+        <Button
           onClick={handleJoinWorkspace}
           disabled={isJoining}
           className={`w-full py-2 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 font-medium ${
@@ -175,7 +199,7 @@ export default function WorkspaceCard({
               Join Workspace
             </>
           )}
-        </button>
+        </Button>
       )}
 
       {/* Footer info */}

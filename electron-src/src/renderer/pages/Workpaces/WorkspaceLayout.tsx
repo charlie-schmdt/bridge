@@ -89,6 +89,7 @@ export const WorkspaceLayout = () => {
             },
           }
         );
+
         const room_response = await fetch(
           `${Endpoints.WORKSPACE}/${workspaceId}/rooms`,
           {

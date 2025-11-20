@@ -4,8 +4,11 @@ import React, { useEffect, useRef, useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import MemberProfilePopover from "../../components/MemberProfilePopover";
 import RemoveUserButton from "./RemoveUserButton";
+import { BlockUserButton } from "./BlockUserButton";
+import EditPermissionsModal from "./EditPermissionsModal";
+import { Settings2 } from "lucide-react";
 
-const statusColors = {
+const roleColors = {
   online: "text-green-600",
   offline: "text-red-600",
   away: "text-yellow-600",
@@ -51,7 +54,16 @@ export default function MembersList({
   const [canCreateRooms, setCanCreateRooms] = useState(false);
   const [canDeleteRooms, setCanDeleteRooms] = useState(false);
   const [canEditWorkspace, setCanEditWorkspace] = useState(false);
+  const [isPermissionsOpen, setIsPermissionsOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+
+  const updateMemberLocalState = (userId: string, newRole: string) => {
+    setHoveredMember((prev) =>
+      prev && prev.id === userId ? { ...prev, role: newRole } : prev
+    );
+  }
 
   // Check if current user is owner
   const currentUserOwner = members.find(
@@ -111,97 +123,105 @@ export default function MembersList({
   };
 
   // Get user permissions from backend
-  const getUserPermissions = async (workspaceId: string, memberId: string) => {
-    // If member is already present with permissions, return that first to avoid extra fetch
-    const existing = members.find((m) => m.id === memberId && m.permissions);
-    if (existing && existing.permissions) return existing.permissions;
+  // const getUserPermissions = async (workspaceId: string, memberId: string) => {
+  //   // If member is already present with permissions, return that first to avoid extra fetch
+  //   const existing = members.find((m) => m.id === memberId && m.permissions);
+  //   if (existing && existing.permissions) return existing.permissions;
 
-    try {
-      const token = localStorage.getItem("bridge_token");
-      const response = await fetch(
-        `${Endpoints.WORKSPACES}/${workspaceId}/permissions/${memberId}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      const data = await response.json();
-      if (data.success) {
-        console.log("Permissions fetched successfully");
-        return data.permissions;
-      } else {
-        alert(data.message || "Failed to fetch permissions");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Error fetching permissions");
-    }
-  };
+  //   try {
+  //     const token = localStorage.getItem("bridge_token");
+  //     const response = await fetch(
+  //       `${Endpoints.WORKSPACES}/${workspaceId}/permissions/${memberId}`,
+  //       {
+  //         method: "GET",
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //           Authorization: `Bearer ${token}`,
+  //         },
+  //       }
+  //     );
+  //     const data = await response.json();
+  //     if (data.success) {
+  //       console.log("Permissions fetched successfully");
+  //       return data.permissions;
+  //     } else {
+  //       alert(data.message || "Failed to fetch permissions");
+  //     }
+  //   } catch (err) {
+  //     console.error(err);
+  //     alert("Error fetching permissions");
+  //   }
+  // };
+
+  // const handleEditPermissions = (member: Member) => {
+  //   // Close popover when editing permissions
+  //   setHoveredMember(null);
+  //   setAnchorRect(null);
+
+  //   getUserPermissions(workspaceId!, member.id).then((permissions) => {
+  //     if (permissions) {
+  //       setCanCreateRooms(permissions.canCreateRooms || false);
+  //       setCanDeleteRooms(permissions.canDeleteRooms || false);
+  //       setCanEditWorkspace(permissions.canEditWorkspace || false);
+  //     }
+  //     setEditingMember(member);
+  //     setShowPermissionsModal(true);
+  //   });
+  // };
 
   const handleEditPermissions = (member: Member) => {
-    // Close popover when editing permissions
-    setHoveredMember(null);
-    setAnchorRect(null);
-
-    getUserPermissions(workspaceId!, member.id).then((permissions) => {
-      if (permissions) {
-        setCanCreateRooms(permissions.canCreateRooms || false);
-        setCanDeleteRooms(permissions.canDeleteRooms || false);
-        setCanEditWorkspace(permissions.canEditWorkspace || false);
-      }
-      setEditingMember(member);
-      setShowPermissionsModal(true);
-    });
+    setSelectedMember(member);
+    setIsPermissionsOpen(true);
   };
 
-  const saveUserPermissions = async (
-    userId: string,
-    permissions: {
-      canCreateRooms: boolean;
-      canDeleteRooms: boolean;
-      canEditWorkspace: boolean;
-    }
-  ) => {
-    try {
-      const token = localStorage.getItem("bridge_token");
-      const response = await fetch(
-        `${Endpoints.WORKSPACES}/${workspaceId}/permissions`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ userId, permissions }),
-        }
-      );
-      const data = await response.json();
-      if (data.success) {
-        console.log("Permissions updated successfully", data.permissions);
-        // Update local member list so UI reflects new permissions immediately
-        setHoveredMember((prev) =>
-          prev && prev.id === userId
-            ? {
-                ...prev,
-                permissions: data.permissions,
-                role: data.role || prev.role,
-              }
-            : prev
-        );
-        // Update members array
-        // Note: props.members is immutable; if parent passed state setter we'd update upstream. For local display, mutate via a DOM refresh: emit a custom event or rely on parent refresh.
-        // Here we attempt to update the DOM by triggering a simple in-place update if parent provided members via state (we can't mutate props). Recommend parent refreshes list after change.
-      } else {
-        alert(data.message || "Failed to update permissions");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Error updating permissions");
-    }
-  };
+
+  
+
+  // const saveUserPermissions = async (
+  //   userId: string,
+  //   permissions: {
+  //     canCreateRooms: boolean;
+  //     canDeleteRooms: boolean;
+  //     canEditWorkspace: boolean;
+  //   }
+  // ) => {
+  //   try {
+  //     const token = localStorage.getItem("bridge_token");
+  //     const response = await fetch(
+  //       `${Endpoints.WORKSPACES}/${workspaceId}/permissions`,
+  //       {
+  //         method: "PUT",
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //           Authorization: `Bearer ${token}`,
+  //         },
+  //         body: JSON.stringify({ userId, permissions }),
+  //       }
+  //     );
+  //     const data = await response.json();
+  //     if (data.success) {
+  //       console.log("Permissions updated successfully", data.permissions);
+  //       // Update local member list so UI reflects new permissions immediately
+  //       setHoveredMember((prev) =>
+  //         prev && prev.id === userId
+  //           ? {
+  //               ...prev,
+  //               permissions: data.permissions,
+  //               role: data.role || prev.role,
+  //             }
+  //           : prev
+  //       );
+  //       // Update members array
+  //       // Note: props.members is immutable; if parent passed state setter we'd update upstream. For local display, mutate via a DOM refresh: emit a custom event or rely on parent refresh.
+  //       // Here we attempt to update the DOM by triggering a simple in-place update if parent provided members via state (we can't mutate props). Recommend parent refreshes list after change.
+  //     } else {
+  //       alert(data.message || "Failed to update permissions");
+  //     }
+  //   } catch (err) {
+  //     console.error(err);
+  //     alert("Error updating permissions");
+  //   }
+  // };
 
   useEffect(() => {
     return () => {
@@ -246,7 +266,7 @@ export default function MembersList({
                 setAnchorRect(null);
               }}
             >
-              {workspaceId && isEditing && (
+              {workspaceId && isEditing && member.id !== user?.id &&(
                 <>
                   <RemoveUserButton
                     workspaceId={workspaceId}
@@ -256,16 +276,33 @@ export default function MembersList({
                     isTargetUserOwner={!!member.isOwner}
                     onRemoveSuccess={onMemberRemoved}
                   />
+                  
                   <Button
                     size="sm"
+                    radius="md"
+                    variant="flat"
                     onPress={() => handleEditPermissions(member)}
-                    className="text-xs px-2 py-1 h-6 bg-blue-50"
+                    className="text-xs bg-white-100 text-blue-700 hover:bg-blue-200 flex items-center gap-1"
                   >
+                    <Settings2 size={14} />
                     Edit
                   </Button>
+
+                  <BlockUserButton
+                    workspaceId={workspaceId}
+                    userId={member.id}
+                    userName={member.name}
+                    isCurrentUserOwner={isCurrentUserOwner}
+                    isTargetUserOwner={member.isOwner}
+                    currentRole={member.role}   // "member" or "blocked"
+                    onRoleChange={(id, role) => {
+                      updateMemberLocalState(id, role);
+                    }}
+                  />
                 </>
+                
               )}
-              {workspaceId && !isEditing && (
+              {/* {workspaceId && !isEditing && (
                 <RemoveUserButton
                   workspaceId={workspaceId}
                   userId={member.id}
@@ -274,14 +311,14 @@ export default function MembersList({
                   isTargetUserOwner={!!member.isOwner}
                   onRemoveSuccess={onMemberRemoved}
                 />
-              )}
+              )} */}
             </div>
           </li>
         ))}
       </ul>
 
       {/* Popover mounted at root of this card */}
-      {hoveredMember && anchorRect && (
+      {/* {hoveredMember && anchorRect && (
         <MemberProfilePopover
           member={hoveredMember}
           anchorRect={anchorRect}
@@ -292,10 +329,10 @@ export default function MembersList({
           onMouseEnter={() => clearCloseTimer()}
           onMouseLeave={() => startCloseTimer()}
         />
-      )}
+      )} */}
 
       {/* Permissions Modal */}
-      {showPermissionsModal && editingMember && (
+      {/* {showPermissionsModal && editingMember && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-lg p-6 w-96">
             <h2 className="text-xl font-semibold mb-4">
@@ -352,7 +389,20 @@ export default function MembersList({
             </div>
           </div>
         </div>
+      
+      )} */}
+      {selectedMember && (
+        <EditPermissionsModal
+          workspaceId={workspaceId!}
+          member={selectedMember}
+          isOpen={isPermissionsOpen}
+          onOpenChange={setIsPermissionsOpen}
+          onSave={(updatedPermissions) => {
+            console.log("Updated:", updatedPermissions);
+          }}
+        />
       )}
+
     </div>
   );
 }

@@ -134,7 +134,7 @@ export default function CreateWorkspaceCard() {
 
       const authorizedUsers = selectedUsers.map((id) => ({
         id,
-        role: "member",
+        role: "Member",
         permissions: {
           canCreateRooms: false,
           canDeleteRooms: false,
@@ -143,7 +143,7 @@ export default function CreateWorkspaceCard() {
       }));
       authorizedUsers.push({
         id: user.id,
-        role: "owner",
+        role: "Owner",
         permissions: {
           canCreateRooms: true,
           canDeleteRooms: true,

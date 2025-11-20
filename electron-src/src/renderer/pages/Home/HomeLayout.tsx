@@ -15,6 +15,7 @@ interface Workspace {
   description: string | null;
   isPrivate: boolean;
   authorizedUsers: string[];
+  blockedUsers: string[];
   ownerId: string;
   createdAt: string;
   isFavorite: boolean;
@@ -342,6 +343,7 @@ export const HomeLayout = () => {
                   description={workspace.description}
                   members={workspace.authorizedUsers?.length || 0}
                   authorizedUsers={workspace.authorizedUsers}
+                  blockedUsers={workspace.blockedUsers}
                   isPrivate={workspace.isPrivate}
                   isFavorite={workspace.isFavorite}
                   onFavoriteToggle={handleFavoriteToggle}
