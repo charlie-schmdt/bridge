@@ -45,6 +45,7 @@ export const WorkspaceLayout = () => {
       categories?: string[];
       status?: string;
       next_meeting?: string;
+      room_id: string;
     }>
   >([]);
   const [isCreateRoomModalOpen, setShowRoomModal] = useState(false);
@@ -135,6 +136,9 @@ export const WorkspaceLayout = () => {
             console.log("✅ Fetched room data:", {
               workspaceId: room_data.workspaceId,
               roomCount: room_data.rooms.length,
+              rooms:  room_data.rooms.filter(
+                (room) => room.workspace_id === data.workspaceId
+              )
             });
           } else {
             throw new Error(room_data.message || "Failed to fetch room data");
@@ -516,7 +520,7 @@ export const WorkspaceLayout = () => {
                   filteredRooms.map((room) => (
                     <RoomCard
                       key={room.id}
-                      id={room.name}
+                      id={room.room_id}
                       title={room.name}
                       categories={room.categories || []}
                       description={
