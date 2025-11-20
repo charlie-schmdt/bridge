@@ -214,6 +214,8 @@ export const WorkspaceLayout = () => {
         setRoomName("");
         setRoomDescription("");
         setRoomCategories("");
+        setIsRecurring(false);
+        setMeetings([]);
         console.log("✅ Room created successfully:", data.room);
       } else {
         console.error(data.message);
