@@ -5,8 +5,10 @@ const router = express.Router();
 const { getWorkspaces, createWorkspace, joinWorkspace, getUserWorkspaces, getWorkspaceMembers, leaveWorkspace, removeUserFromWorkspace, updateWorkspace, setPermissions, getPermissions, toggleWorkspaceFavorite, getUserFavoriteWorkspaces, inviteUserToWorkspace, getJoinableWorkspaces, acceptInvite } = require('../controllers/workspaceController');
 const { createUser, loginUser, getSettings, updateSettings, oauthLogin, deleteAccount, setOnboarding, getUsers } = require('../controllers/userController');
 const { getRooms, createRoom } = require('../controllers/roomController');
+const { submitQuestion } = require('../controllers/questionController');
 // Import middleware
 const { auth, authenticateToken } = require('../middleware/auth');
+
 
 // Basic routes
 router.get('/', (req, res) => {
@@ -71,5 +73,8 @@ router.get('/workspace/:workspaceId/rooms', authenticateToken, getRooms);
 router.post('/rooms/create', authenticateToken, createRoom);
 // Protected routes (require authentication)
 router.delete('/auth/delete-account', authenticateToken, deleteAccount);
+
+// FAQ route for submitting questions
+router.post('/faq/question', submitQuestion);
 
 module.exports = router;
