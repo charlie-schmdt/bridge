@@ -180,7 +180,7 @@ const joinWorkspace = async (req, res) => {
     const updatedAuthUsers = [...currentAuthUsers, userId];
     const updatedPermissions = [...(workspace.authorized_users || []), {
       id: userId,
-      role: 'member',
+      role: 'Member',
       permissions: {
           canCreateRooms: false,
           canDeleteRooms: false,
@@ -260,18 +260,57 @@ const getWorkspaceMembers = async (req, res) => {
       // Fetch additional public profile fields so the frontend can render member profiles
       attributes: ['id', 'name', 'email', 'picture', 'bio', 'timezone']
     });
-    
-    // Format member data
-    const formattedMembers = members.map(member => ({
-      id: member.id,
-      name: member.name,
-      email: member.email,
-      picture: member.picture,
-      bio: member.bio || '',
-      timezone: member.timezone || 'UTC-8',
-      isOwner: member.id === workspace.owner_real_id,
-      role: member.id === workspace.owner_real_id ? 'Owner' : 'Member'
-    }));
+
+    //get permissions and role for each memeber
+
+    // Build a lookup map for fast matching
+    const authorization = Array.isArray(workspace.authorized_users)
+      ? workspace.authorized_users
+      : JSON.parse(workspace.authorized_users || "[]");
+
+    const authMap = new Map(
+      authorization.map((u) => [String(u.id), u])
+    );
+
+    // Build final formatted members using enriched role + permissions
+    const formattedMembers = members.map((member) => {
+      const auth = authMap.get(String(member.id)); // match by id
+
+      const isOwner = member.id === workspace.owner_real_id;
+
+      // Choose role priority:
+      // 1. Owner
+      // 2. Authorized role
+      // 3. Default
+      const finalRole = isOwner
+        ? "Owner"
+        : auth?.role || "Member";
+
+      return {
+        id: member.id,
+        name: member.name,
+        email: member.email,
+        picture: member.picture,
+        bio: member.bio || "",
+        timezone: member.timezone || "UTC-8",
+        isOwner,
+
+        role: finalRole,
+
+        permissions: isOwner
+          ? {                   // Owner has full permissions always
+              canCreateRooms: true,
+              canDeleteRooms: true,
+              canEditWorkspace: true,
+            }
+          : auth?.permissions || {
+              canCreateRooms: false,
+              canDeleteRooms: false,
+              canEditWorkspace: false,
+            },
+      };
+    });
+
     
     console.log(`✅ Found ${formattedMembers.length} members for workspace ${workspaceId}`);
     
@@ -291,6 +330,17 @@ const getWorkspaceMembers = async (req, res) => {
     });
   }
 };
+
+function parseAuthUsers(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
 
 // Get workspaces where user is a member
 const getUserWorkspaces = async (req, res) => {
@@ -312,9 +362,11 @@ const getUserWorkspaces = async (req, res) => {
     const userWorkspaces = allWorkspaces.filter(workspace => {
       const authUsers = workspace.auth_users || [];
       const isOwner = workspace.owner_real_id === userId;
-      const isMember = authUsers.includes(userId);
+      const isMember = authUsers.map(String).includes(String(userId));
       return isOwner || isMember;
     });
+
+
 
     console.log(favoriteIds);
     console.log(favoriteIds.includes(18))
@@ -325,6 +377,9 @@ const getUserWorkspaces = async (req, res) => {
       description: workspace.description,
       isPrivate: workspace.private,
       authorizedUsers: workspace.auth_users || [],
+      blockedUsers: parseAuthUsers(workspace.authorized_users)
+        .filter(u => u.role === "Blocked")
+        .map(u => u.id),
       ownerId: workspace.owner_real_id,
       createdAt: workspace.created_at,
       isFavorite: favoriteIds.includes(workspace.workspace_id)
@@ -803,6 +858,55 @@ const acceptInvite = async (req, res) => {
   }
 };
 
+const setUserRole = async (req, res) => {
+  try {
+    const { role } = req.body;
+    const { workspaceId, userId } = req.params;
+
+    const workspace = await Workspace.findByPk(workspaceId);
+    if (!workspace) {
+      return res.status(404).json({ success: false, message: 'Workspace not found' });
+    }
+
+
+    // Ensure JSON is parsed
+    const users = Array.isArray(workspace.authorized_users)
+      ? workspace.authorized_users
+      : JSON.parse(workspace.authorized_users || "[]");
+
+    // Match by string equality (safe for both numeric and string IDs)
+    const userIndex = users.findIndex(u => String(u.id) === String(userId));
+    
+    if (userIndex !== -1) {
+      users[userIndex].role = role;
+      users[userIndex].permissions = { canCreateRooms: false, canDeleteRooms: false, canEditWorkspace: false };
+    } else {
+      users.push({
+        id: userId,
+        role: role,
+        permissions: { canCreateRooms: false, canDeleteRooms: false, canEditWorkspace: false },
+      });
+    }
+
+
+    workspace.authorized_users = users;
+    workspace.changed('authorized_users', true);
+    await workspace.save();
+    const fresh = await Workspace.findByPk(workspaceId);
+    console.log("DB value:", fresh.authorized_users);
+
+    console.log('Role updated for user', userId);
+    res.json({
+      success: true,
+      message: 'Role updated successfully',
+      role,
+    });
+  } catch (error) {
+    console.error('Set role error:', error);
+    res.status(500).json({ success: false, message: 'Error updating role' });
+  }
+};
+
 module.exports = {
   getWorkspaces,
   createWorkspace,
@@ -819,5 +923,6 @@ module.exports = {
   inviteUserToWorkspace,
   getJoinableWorkspaces,
   acceptInvite,
-  getPermissions
+  getPermissions,
+  setUserRole
 };

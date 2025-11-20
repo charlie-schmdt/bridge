@@ -1,10 +1,14 @@
 import React, { useState } from "react";
 import { Button } from "@heroui/react";
-import { Endpoints } from "../utils/endpoints";
+import { Endpoints } from "../../utils/endpoints";
 
 interface Props {
   workspaceId: string;
-  onInviteSuccess?: (invitedUser: { id: string; name?: string; email: string }) => void;
+  onInviteSuccess?: (invitedUser: {
+    id: string;
+    name?: string;
+    email: string;
+  }) => void;
 }
 
 const InviteUser: React.FC<Props> = ({ workspaceId, onInviteSuccess }) => {
@@ -37,7 +41,13 @@ const InviteUser: React.FC<Props> = ({ workspaceId, onInviteSuccess }) => {
       if (resp.ok && data.success) {
         setSuccess("Invitation sent — user added to workspace.");
         setEmail("");
-        onInviteSuccess?.(data.invitedUser || { id: data.invitedUser?.id, name: data.invitedUser?.name, email });
+        onInviteSuccess?.(
+          data.invitedUser || {
+            id: data.invitedUser?.id,
+            name: data.invitedUser?.name,
+            email,
+          }
+        );
       } else {
         setError(data.message || "Failed to invite user");
       }

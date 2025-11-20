@@ -3,7 +3,7 @@ import { Button } from '@heroui/react';
 import { PressEvent } from '@react-types/shared';
 import { Star } from 'lucide-react';
 import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface FavoriteButtonProps {
   workspaceId: string;
