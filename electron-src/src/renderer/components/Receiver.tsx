@@ -93,11 +93,9 @@ function Process() {
   );
 }
 
-function AGCValue({index}) {
-  //const {loadedAudioFiles, agcValues} = useAudioContext();
-  let agcValues=[0.5,0.5,0.5,0.5,0.5]
+function AGCValue({index, value}) {
   let title=`agcValue${index}`
-  //have it update every time the AGC changes
+  console.log("AGC set", index, value)
 
   return (
     <div className="flex pl-8 gap-4 items-center">
@@ -107,8 +105,9 @@ function AGCValue({index}) {
         min="0"
         max="1"
         step="0.01"
-        defaultValue={agcValues[index]}
+        value={value}
         className="w-full rotate-90 origin-left"
+        readOnly
       />
     </div>
   );
@@ -116,7 +115,7 @@ function AGCValue({index}) {
 
 export default function Receiver() {
 
-  const { analyserNode, remoteTracks, fileNameArray } = useAudioContext();
+  const { analyserNode, remoteTracks, agcAnalyzerNodes, agcValues } = useAudioContext();
   return (
     <div>
       <Initialize/>
@@ -184,11 +183,11 @@ export default function Receiver() {
             </div>
           </div>
           <div className="flex flex-row rounded-xl mb-30">
-            <AGCValue index={0}/>
-            <AGCValue index={1}/>
-            <AGCValue index={2}/>
-            <AGCValue index={3}/>
-            <AGCValue index={4}/>
+            <AGCValue index={0} value={agcValues[0]}/>
+            <AGCValue index={1} value={agcValues[1]}/>
+            <AGCValue index={2} value={agcValues[2]}/>
+            <AGCValue index={3} value={agcValues[3]}/>
+            <AGCValue index={4} value={agcValues[4]}/>
           </div>
         </div>
         <div className="flex-[1] min-w-[300px]">

@@ -35,8 +35,9 @@ const WebAudioContext = createContext<{
   analyserNode: AnalyserNode | null;
   senderMicSensitivity: number | null;
   micAudioStream: MediaStream | null;
-  fileNameArray: Array<string>;
+  agcAnalyzerNodes : Array<AnalyserNode | null>;
   remoteTracks: Map<string, RemoteTrack | null>;
+  agcValues: Array<number>;
   setMicInput: (deviceId: string, context:AudioContext) => Promise<MediaStreamAudioSourceNode | undefined>;
   initializeAudioGraph: () => Promise<void>;
   tearDownAudioGraph: () => Promise<void>;
@@ -75,7 +76,23 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [noiseSuppression, setNoiseSuppression] = useState<boolean | null>(false);
 
   //Testing AGC and Transcript from files
-  const [audioInputBuffers, setAudioInputBuffers] = useState<Array<AudioBuffer> | null>([null, null, null, null, null]);  // Store the selected file
+  const [audioInputBuffers, setAudioInputBuffers] = useState<Array<AudioBuffer> | null>([null, null, null, null, null]);
+  const [agcInputNodes, setAgcInputNodes] = useState<Array<GainNode> | null>([null, null, null, null, null]);
+  const [agcAnalyzerNodes, setAgcAnalyzerNodes] = useState<Array<AnalyserNode> | null>([null, null, null, null, null]);
+  const [agcPostProcessingNodes, setAgcPostProcessingNodes] = useState<Array<GainNode> | null>([null, null, null, null, null]);
+  const [agcGainNodes, setAgcGainNodes] = useState<Array<GainNode> | null>([null, null, null, null, null]);
+  const [agcMuteNodes, setAgcMuteNodes] = useState<Array<GainNode> | null>([null, null, null, null, null]);
+  const [agcValues, setAgcValues] = useState<Array<number> | null>([0.5,0.5,0.5,0.5,0.5]);
+
+  interface RemoteTrack {
+  id: string | null;
+  input: GainNode | null;
+  agcAnalyzerNode: AnalyserNode | null;
+  agcPostProcessingNode: GainNode | null;
+  agcGainNode: GainNode | null;
+  muteNode: GainNode | null;
+  output: GainNode | null;
+}
 
 
   //Reciever in Production-------------
@@ -195,9 +212,45 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
 
         //Reciever-side ---------------------------------------------------
         const mixer = context.createGain();
+        mixer.gain.value = 1;
         mixer.connect(context.destination);
-        setMixer(mixer);
-        
+
+        let inputs = [];
+        let analyzers = [];
+        let posts = [];
+        let gains = [];
+        let mutes = [];
+
+        for (let i = 0; i < 5; i++) {
+          let input = context.createGain()
+          input.gain.value = 10;
+          let analyze = context.createAnalyser();
+          let post = context.createGain();
+          post.gain.value = 0.1;
+          let gain = context.createGain();
+          gain.gain.value = 1;
+          let mute = context.createGain();
+          mute.gain.value = 1;
+
+          input.connect(analyze);
+          analyze.connect(post);
+          post.connect(gain);
+          gain.connect(mute);
+          mute.connect(mixer);
+          
+          inputs.push(input);
+          analyzers.push(analyze);
+          posts.push(post);
+          gains.push(gain);
+          mutes.push(mute);
+        }
+
+        setAgcInputNodes(inputs);
+        setAgcAnalyzerNodes(analyzers);
+        setAgcPostProcessingNodes(posts);
+        setAgcGainNodes(gains);
+        setAgcMuteNodes(mutes);
+        setMixer(mixer);  
       }
       else {
         console.log("Audio Graph already exists")
@@ -333,7 +386,6 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
   const loadAudioFiles = async (files: Array<string>) => {
   return new Promise<void>(async (resolve, reject) => {
     try {
-      setFileNameArray([]);
       const loadSingleFile = (fileName: string, index: number) => {
         return new Promise<AudioBuffer | null>((resolve) => {
           console.log("Loading file", fileName)
@@ -352,8 +404,6 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
               request.response,
               (audioBuffer) => {
                 console.log("Audio Buffer Received:", audioBuffer);
-                const newTrack = newRemoteTrack(fileName);             //add the track object to the global list of tracks
-                addFileNameToArray(fileName);
                 resolve(audioBuffer);
               },
               (decodeErr) => {
@@ -391,6 +441,105 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
   });
   };
 
+  function calculateRMS(dataArray) {
+    let sum = 0;
+    for (let i = 0; i < dataArray.length; i++) {
+      sum += Math.pow(dataArray[i] - 128, 2);
+    }
+    const rms = Math.sqrt(sum / dataArray.length)
+    return rms / 128; // Normalize RMS value between 0 and 1
+  }
+
+
+  function createAGCLoop(
+    audioContext: AudioContext,
+    agcAnalyserNodes: AnalyserNode[],
+    agcGainNodes: GainNode[],
+    setAgcValues: React.Dispatch<React.SetStateAction<number[]>>
+  ) {
+  let rafId: number | null = null;
+  let running = false;
+  const TARGET_DB = -18;
+
+  // Hard limits on how much the AGC can boost/cut
+  const MIN_GAIN_DB = -12;
+  const MAX_GAIN_DB = 18;
+
+  function linearToDb(value: number): number {
+    const min = 1e-8;            // prevent log(0)
+    const safe = Math.max(value, min);
+    return 20 * Math.log10(safe);
+  }
+
+  function dbToLinear(db: number): number {
+    return Math.pow(10, db / 20);
+  }
+
+  function update() {
+    if (!running) return;
+
+    const now = audioContext.currentTime;
+
+    for (let i = 0; i < agcAnalyserNodes.length; i++) {
+      const analyser = agcAnalyserNodes[i];
+      const gainNode = agcGainNodes[i];
+      if (!analyser || !gainNode) continue;
+
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      analyser.getByteTimeDomainData(dataArray);
+      analyser.getByteTimeDomainData(dataArray);
+      const rms = calculateRMS(dataArray)
+      const currentDb = rms > 0 ? 20 * Math.log10(rms) : -100;
+
+
+      const desiredGainDb = Math.max(
+        MIN_GAIN_DB,
+        Math.min(MAX_GAIN_DB, TARGET_DB - currentDb)
+      );
+
+      // 2. Where are we right now (in dB)?
+      const currentGain = gainNode.gain.value || 1; // fallback to 1 if 0
+      const currentGainDb = linearToDb(currentGain);
+
+      // 3. Smoothly move partway toward the desired gain (0.0–1.0)
+      const SMOOTHING = 0.2; // 20% of the way each frame
+      const targetGainDb =
+        currentGainDb + (desiredGainDb - currentGainDb) * SMOOTHING;
+
+      // 4. Convert back to linear
+      const targetGainLinear = dbToLinear(targetGainDb);
+
+      gainNode.gain.setTargetAtTime(targetGainLinear, now, 0.05);
+
+      setAgcValues(prev => {
+        const next = [...prev];
+        next[i] = targetGainLinear;
+        return next;
+      });
+    }
+
+    rafId = requestAnimationFrame(update);
+  }
+
+  function start() {
+    if (!running) {
+      running = true;
+      rafId = requestAnimationFrame(update);
+    }
+  }
+
+  function stop() {
+    running = false;
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+  }
+
+  return { start, stop };
+}
+
   //Function to load files into loadAudio
   const playAudioFiles = async () => {
   return new Promise<void>(async (resolve, reject) => {
@@ -404,11 +553,13 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
             return resolve(); // nothing to play, but don't kill everything
           }
 
-          const inputNode = remoteTracks[fileNameArray[index]].input;
+          const inputNode = agcInputNodes[index];
           if (!inputNode) {
             console.error(`No AGC input at index ${index}`, inputNode);
             return reject(new Error(`Missing AGC node at index ${index}`));
           }
+
+          console.log("playing audio files")
 
           const src = audioContext.createBufferSource();
           src.buffer = buffer;
@@ -418,10 +569,16 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
 
           src.onended = () => {
             console.log(`Track ${index} finished`);
+            agcLoop.stop(); 
             resolve();
           };
 
           src.start();
+
+          //set up the AGC Loop
+          console.log("AGC Loop Started");
+          const agcLoop = createAGCLoop(audioContext, agcAnalyzerNodes, agcGainNodes, setAgcValues);
+          agcLoop.start();        
         } catch (error) {
           reject(error);
         }
@@ -450,55 +607,6 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
   });
   };
 
-/*
-  function startAGCLoop(
-  audioContext: AudioContext,
-  agcAnalyserNodes: AnalyserNode[],
-  agcGainNodes: GainNode[]
-) {
-  function update() {
-    const now = audioContext.currentTime;
-
-    for (let i = 0; i < agcAnalyserNodes.length; i++) {
-      const analyser = agcAnalyserNodes[i];
-      const gainNode = agcGainNodes[i];
-
-      if (!analyser || !gainNode) continue;
-
-      const rms = getRMSFromAnalyser(analyser);
-      if (rms <= 0) continue; // silence / no signal
-
-      const currentDb = 20 * Math.log10(rms);
-
-      let diffDb = TARGET_DB - currentDb;
-      diffDb = Math.max(MIN_GAIN_DB, Math.min(MAX_GAIN_DB, diffDb));
-
-      const currentGain = gainNode.gain.value;
-      const currentGainDb = linearToDb(currentGain);
-      const targetGainDb = currentGainDb + diffDb * 0.1;
-      const targetGainLinear = dbToLinear(targetGainDb);
-
-      gainNode.gain.setTargetAtTime(targetGainLinear, now, TIME_CONSTANT);
-    }
-
-    requestAnimationFrame(update);
-  }
-
-  requestAnimationFrame(update);
-  }
-
-  //Function to process the autio with the AGC running
-  const processWithAGC = async () => {
-  return new Promise<void>(async (resolve, reject) => {
-    try {
-      startAGCLoop()
-      playAudioFiles()
-    } catch (err) {
-      reject(err);
-    }
-  });
-  };*/
-
 
   // Provide the context values to children components
   return (
@@ -511,8 +619,9 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
       analyserNode,
       senderMicSensitivity,
       micAudioStream,
+      agcAnalyzerNodes,
       remoteTracks, 
-      fileNameArray,
+      agcValues,
       setMicInput,
       initializeAudioGraph,
       tearDownAudioGraph,
