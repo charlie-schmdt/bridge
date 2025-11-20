@@ -45,7 +45,7 @@ export default function WorkspaceCard({
   const isBlocked = blockedUsers.includes(String(user.id));
 
 
-  console.log("Blocked users:", blockedUsers);
+  //console.log("Blocked users:", blockedUsers);
   if (isBlocked) {
     console.log(`User ${user?.id} is blocked from workspace ${id}`);
   }

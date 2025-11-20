@@ -39,12 +39,12 @@ export const WorkspaceLayout = () => {
   const [error, setError] = useState<string | null>(null);
   const [rooms, setRooms] = useState<
     Array<{
-      id: string;
+      room_id: string;
       name: string;
       description?: string;
       categories?: string[];
       status?: string;
-      next_meeting?: string;
+      meetings?: string;
     }>
   >([]);
   const [isCreateRoomModalOpen, setShowRoomModal] = useState(false);
@@ -568,8 +568,8 @@ export const WorkspaceLayout = () => {
                 {filteredRooms.length > 0 ? (
                   filteredRooms.map((room) => (
                     <RoomCard
-                      key={room.id}
-                      id={room.name}
+                      key={room.room_id}
+                      id={room.room_id}
                       title={room.name}
                       categories={room.categories || []}
                       description={
@@ -579,7 +579,7 @@ export const WorkspaceLayout = () => {
                         (room.status as "active" | "scheduled" | "offline") ||
                         "offline"
                       }
-                      nextMeeting={room.next_meeting || "TBA"}
+                      meetings={room.meetings || "TBA"}
                       editMode={editMode}
                     />
                   ))
