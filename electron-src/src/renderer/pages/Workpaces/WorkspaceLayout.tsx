@@ -3,13 +3,13 @@ import { Endpoints } from "@/renderer/utils/endpoints";
 import { Button, Card } from "@heroui/react";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import Header from "./components/Header";
-import LeaveWorkspaceButton from "./components/LeaveWorkspaceButton";
-import MembersList from "./components/MemberList";
-import NotificationBanner from "./components/NotificationBanner";
-import { RoomCard } from "./components/RoomCard";
-import { useAuth } from "./contexts/AuthContext";
-import InviteUser from "./components/InviteUser";
+import Header from "../../components/Header";
+import LeaveWorkspaceButton from "../../components/LeaveWorkspaceButton";
+import MembersList from "./MemberList";
+import NotificationBanner from "../../components/NotificationBanner";
+import { RoomCard } from "./RoomCard";
+import { useAuth } from "../../contexts/AuthContext";
+import InviteUser from "./InviteUser";
 
 interface WorkspaceMember {
   id: string;
@@ -55,7 +55,8 @@ export const WorkspaceLayout = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [editMode, setEditMode] = useState(false);
   const { notification, showNotification } = useNotification();
-  const [updatedWorkspaceInfo, setUpdatedWorkspaceInfo] = useState<WorkspaceInfo | null>(null);
+  const [updatedWorkspaceInfo, setUpdatedWorkspaceInfo] =
+    useState<WorkspaceInfo | null>(null);
 
   const isCurrentUserOwner =
     user &&
@@ -77,23 +78,25 @@ export const WorkspaceLayout = () => {
 
       try {
         console.log(`🔍 Fetching data for workspace ID: ${workspaceId}`);
-        
-        const token = localStorage.getItem('bridge_token');
-        const response = await fetch(`${Endpoints.WORKSPACE}/${workspaceId}/members`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+
+        const token = localStorage.getItem("bridge_token");
+        const response = await fetch(
+          `${Endpoints.WORKSPACE}/${workspaceId}/members`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
           }
-        }
         );
         const room_response = await fetch(
           `${Endpoints.WORKSPACE}/${workspaceId}/rooms`,
           {
-            headers: { 'Authorization': `Bearer ${token}` },
+            headers: { Authorization: `Bearer ${token}` },
           }
         );
 
-        console.log(room_response)
+        console.log(room_response);
         if (!response.ok) {
           throw new Error(`Failed to fetch workspace data: ${response.status}`);
         }
@@ -125,7 +128,7 @@ export const WorkspaceLayout = () => {
             name: data.workspaceName,
             memberCount: data.members.length,
           });
-          
+
           if (room_data.success) {
             setRooms(
               room_data.rooms.filter(
@@ -234,28 +237,42 @@ export const WorkspaceLayout = () => {
     return matchesCategory && matchesSearch;
   });
 
-
-  const handleSaveWorkspaceChanges = async (updatedInfo: WorkspaceInfo | null) => {
+  const handleSaveWorkspaceChanges = async (
+    updatedInfo: WorkspaceInfo | null
+  ) => {
     if (!updatedInfo) return;
     try {
       const token = localStorage.getItem("bridge_token");
-      const response = await fetch(`${Endpoints.WORKSPACE}/${workspaceId}/update`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: updatedInfo.name,
-          description: updatedInfo.description,
-          members: updatedInfo.members,
-          isPrivate: updatedInfo.isPrivate,
-          //room_ids: rooms.map(room => room.id),
-        }),
-      });
+      const response = await fetch(
+        `${Endpoints.WORKSPACE}/${workspaceId}/update`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: updatedInfo.name,
+            description: updatedInfo.description,
+            members: updatedInfo.members,
+            isPrivate: updatedInfo.isPrivate,
+            //room_ids: rooms.map(room => room.id),
+          }),
+        }
+      );
       const data = await response.json();
       if (data.success) {
-        setWorkspaceInfo((prev) => prev ? { ...prev, name: updatedInfo.name, description: updatedInfo.description, members: updatedInfo.members, isPrivate: updatedInfo.isPrivate } : null);
+        setWorkspaceInfo((prev) =>
+          prev
+            ? {
+                ...prev,
+                name: updatedInfo.name,
+                description: updatedInfo.description,
+                members: updatedInfo.members,
+                isPrivate: updatedInfo.isPrivate,
+              }
+            : null
+        );
         console.log("✅ Workspace updated successfully:", data.workspace);
         showNotification("Workspace updated successfully!", "success");
       } else {
@@ -331,32 +348,55 @@ export const WorkspaceLayout = () => {
           <div className="fixed top-20 right-4 z-[9999]">
             <NotificationBanner
               message={notification.message}
-              type={notification.type as "success" | "error" | "warning" | "info" | "created"}
+              type={
+                notification.type as
+                  | "success"
+                  | "error"
+                  | "warning"
+                  | "info"
+                  | "created"
+              }
             />
           </div>
         )}
-
 
         {/* Page title - now shows actual workspace name */}
         <div className="mt-6 px-6">
           <div className="flex flex-col sm:flex-row justify-between">
             <h1 className="text-3xl font-bold text-gray-900">
-              {editMode && <>
-                <input title="Workspace Name" 
-                  value={updatedWorkspaceInfo?.name || "Workspace Name"} 
-                  onChange={(e) => setUpdatedWorkspaceInfo((prev) => prev ? { ...prev, name: e.target.value } : null)} 
-                  className="ring-2 ring-blue-500 focus:outline-none hover:border-gray-400 w-full"/>
-              </>}
+              {editMode && (
+                <>
+                  <input
+                    title="Workspace Name"
+                    value={updatedWorkspaceInfo?.name || "Workspace Name"}
+                    onChange={(e) =>
+                      setUpdatedWorkspaceInfo((prev) =>
+                        prev ? { ...prev, name: e.target.value } : null
+                      )
+                    }
+                    className="ring-2 ring-blue-500 focus:outline-none hover:border-gray-400 w-full"
+                  />
+                </>
+              )}
               {!editMode && <> {workspaceInfo?.name || "Workspace"} </>}
             </h1>
             {isCurrentUserOwner && (
               <>
-                <Button className="mt-3 sm:mt-0" color="primary" onPress={() => setEditMode(true)}>Edit Workspace</Button>
+                <Button
+                  className="mt-3 sm:mt-0"
+                  color="primary"
+                  onPress={() => setEditMode(true)}
+                >
+                  Edit Workspace
+                </Button>
               </>
             )}
           </div>
-          {isCurrentUserOwner && <>
-              <span className="ml-2 text-sm text-blue-600 font-medium">(Owner)</span>
+          {isCurrentUserOwner && (
+            <>
+              <span className="ml-2 text-sm text-blue-600 font-medium">
+                (Owner)
+              </span>
               <p className="mt-6 text-gray-600 text-lg">
                 Manage your team members, calls, and workspace access.
                 {members.length > 0 &&
@@ -364,21 +404,33 @@ export const WorkspaceLayout = () => {
               </p>
               {editMode && (
                 <p className="mt-6 text-gray-600 text-lg">
-                  <input title="Workspace Description"
-                    value={updatedWorkspaceInfo?.description || "Workspace Description"}
-                    onChange={(e) => setUpdatedWorkspaceInfo((prev) => prev ? { ...prev, description: e.target.value } : null)}
-                    className="ring-2 ring-blue-500 focus:outline-none hover:border-gray-400" />
+                  <input
+                    title="Workspace Description"
+                    value={
+                      updatedWorkspaceInfo?.description ||
+                      "Workspace Description"
+                    }
+                    onChange={(e) =>
+                      setUpdatedWorkspaceInfo((prev) =>
+                        prev ? { ...prev, description: e.target.value } : null
+                      )
+                    }
+                    className="ring-2 ring-blue-500 focus:outline-none hover:border-gray-400"
+                  />
                 </p>
               )}
             </>
-          } 
-          {!isCurrentUserOwner && <>
+          )}
+          {!isCurrentUserOwner && (
+            <>
               <p className="mt-6 text-gray-600 text-lg">
-                {workspaceInfo?.description || "Collaborate with your team in this workspace."}
+                {workspaceInfo?.description ||
+                  "Collaborate with your team in this workspace."}
                 {members.length > 0 &&
                   ` ${members.length} member${members.length !== 1 ? "s" : ""}`}
               </p>
-            </>}
+            </>
+          )}
 
           {/* Filters */}
           <div className="mt-6 flex flex-col sm:flex-row gap-4 sm:gap-6">
@@ -431,7 +483,7 @@ export const WorkspaceLayout = () => {
                   <InviteUser
                     workspaceId={workspaceId}
                     onInviteSuccess={(invited) => {
-                      console.log('Invited user:', invited);
+                      console.log("Invited user:", invited);
                       // Invitation recorded as pending on the server; do not add to members list.
                       // Optionally show a toast or refresh pending-invites if you add that UI.
                     }}
@@ -555,13 +607,23 @@ export const WorkspaceLayout = () => {
 
         {isCurrentUserOwner && editMode && (
           <div className="flex justify-end px-6 mb-6">
-            <Button onPress={() => setEditMode(false)} className="mr-4 text-black-500 bg-gray-200">Cancel</Button>
-            <Button color="primary" onPress={() => {
-              // Implement save logic here
-              console.log("Saving workspace changes:", updatedWorkspaceInfo);
-              setEditMode(false);
-              handleSaveWorkspaceChanges(updatedWorkspaceInfo);
-            }}>Save Changes</Button>
+            <Button
+              onPress={() => setEditMode(false)}
+              className="mr-4 text-black-500 bg-gray-200"
+            >
+              Cancel
+            </Button>
+            <Button
+              color="primary"
+              onPress={() => {
+                // Implement save logic here
+                console.log("Saving workspace changes:", updatedWorkspaceInfo);
+                setEditMode(false);
+                handleSaveWorkspaceChanges(updatedWorkspaceInfo);
+              }}
+            >
+              Save Changes
+            </Button>
           </div>
         )}
       </div>

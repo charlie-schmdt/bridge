@@ -1,6 +1,6 @@
 import { Button, useDisclosure } from "@heroui/react";
 import { useNavigate } from "react-router-dom";
-import WaitingRoom from "./WaitingRoom";
+import WaitingRoom from "../../components/WaitingRoom";
 
 const statusColors = {
   active: "text-green-600",
@@ -18,25 +18,35 @@ export interface RoomCardProps {
   editMode?: boolean;
 }
 
-export function RoomCard({ id, title, description, categories, status, nextMeeting, editMode }: RoomCardProps) {
+export function RoomCard({
+  id,
+  title,
+  description,
+  categories,
+  status,
+  nextMeeting,
+  editMode,
+}: RoomCardProps) {
   const navigate = useNavigate();
   const handleDeleteRoom = () => {
     // Implement room deletion logic here
     console.log(`Deleting room: ${title}`);
   };
-      const {isOpen, onOpen, onOpenChange} = useDisclosure();
-
+  const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
   return (
     <div className="w-full min-w-0 min-h-[15rem] bg-white rounded-xl shadow p-4 flex flex-col justify-between">
       <div className="flex justify-between items-center">
         <h3 className="font-semibold">{title}</h3>
-        
+
         <span className={`text-sm font-medium ${statusColors[status]}`}>
           {status.charAt(0).toUpperCase() + status.slice(1)}
         </span>
         {editMode && (
-          <button className="text-sm font-bold text-red-500 hover:underline cursor:pointer" onClick={() => handleDeleteRoom()}>
+          <button
+            className="text-sm font-bold text-red-500 hover:underline cursor:pointer"
+            onClick={() => handleDeleteRoom()}
+          >
             Delete
           </button>
         )}
@@ -46,7 +56,10 @@ export function RoomCard({ id, title, description, categories, status, nextMeeti
       {categories && categories.length > 0 && (
         <div className="mt-2">
           {categories.map((category, index) => (
-            <span key={index} className="inline-block bg-gray-200 text-gray-700 text-xs font-medium mr-2 px-2.5 py-0.5 rounded">
+            <span
+              key={index}
+              className="inline-block bg-gray-200 text-gray-700 text-xs font-medium mr-2 px-2.5 py-0.5 rounded"
+            >
               {category}
             </span>
           ))}
@@ -55,15 +68,20 @@ export function RoomCard({ id, title, description, categories, status, nextMeeti
 
       {status === "active" && (
         <>
-        <Button 
-        className="mt-4 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition cursor-pointer"
-        //onClick={() => navigate(`/TestRoom/${id}`)}
-        onPress={onOpen}
-        >
-          Join Room
-        </Button>
+          <Button
+            className="mt-4 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition cursor-pointer"
+            //onClick={() => navigate(`/TestRoom/${id}`)}
+            onPress={onOpen}
+          >
+            Join Room
+          </Button>
 
-        <WaitingRoom roomID={id} isOpen={isOpen} onOpen={onOpen} onOpenChange={onOpenChange}/>
+          <WaitingRoom
+            roomID={id}
+            isOpen={isOpen}
+            onOpen={onOpen}
+            onOpenChange={onOpenChange}
+          />
         </>
       )}
       {status === "scheduled" && (

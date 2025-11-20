@@ -1,9 +1,9 @@
 // Create: components/RemoveUserButton.tsx
-import { Endpoints } from '@/renderer/utils/endpoints';
-import { Button } from '@heroui/react';
-import { AlertCircle, Trash2, UserMinus } from 'lucide-react';
-import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { Endpoints } from "@/renderer/utils/endpoints";
+import { Button } from "@heroui/react";
+import { AlertCircle, Trash2, UserMinus } from "lucide-react";
+import React, { useState } from "react";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface RemoveUserButtonProps {
   workspaceId: string;
@@ -20,7 +20,7 @@ export const RemoveUserButton: React.FC<RemoveUserButtonProps> = ({
   userName,
   isCurrentUserOwner,
   isTargetUserOwner,
-  onRemoveSuccess
+  onRemoveSuccess,
 }) => {
   const { user } = useAuth();
   const [isRemoving, setIsRemoving] = useState(false);
@@ -37,7 +37,7 @@ export const RemoveUserButton: React.FC<RemoveUserButtonProps> = ({
 
   const handleRemoveUser = async () => {
     if (!user) {
-      setError('You must be logged in to remove users');
+      setError("You must be logged in to remove users");
       return;
     }
 
@@ -45,35 +45,38 @@ export const RemoveUserButton: React.FC<RemoveUserButtonProps> = ({
     setError(null);
 
     try {
-      const token = localStorage.getItem('bridge_token');
-      
-      const response = await fetch(`${Endpoints.WORKSPACE}/${workspaceId}/member/${userId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      const token = localStorage.getItem("bridge_token");
+
+      const response = await fetch(
+        `${Endpoints.WORKSPACE}/${workspaceId}/member/${userId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         }
-      });
+      );
 
       const data = await response.json();
 
       if (data.success) {
         console.log(`✅ Successfully removed user ${userName} from workspace`);
-        
+
         // Call success callback if provided
         if (onRemoveSuccess) {
           onRemoveSuccess(userId);
         }
-        
-        setShowConfirmation(false);
-        
-      } else {
-        throw new Error(data.message || 'Failed to remove user');
-      }
 
+        setShowConfirmation(false);
+      } else {
+        throw new Error(data.message || "Failed to remove user");
+      }
     } catch (error) {
-      console.error('❌ Remove user error:', error);
-      setError(error instanceof Error ? error.message : 'Failed to remove user');
+      console.error("❌ Remove user error:", error);
+      setError(
+        error instanceof Error ? error.message : "Failed to remove user"
+      );
     } finally {
       setIsRemoving(false);
     }
@@ -87,15 +90,16 @@ export const RemoveUserButton: React.FC<RemoveUserButtonProps> = ({
           <h4 className="font-medium text-red-900 text-sm">Remove User</h4>
         </div>
         <p className="text-xs text-red-700 mb-3">
-          Remove "{userName}" from this workspace? They'll lose access immediately.
+          Remove "{userName}" from this workspace? They'll lose access
+          immediately.
         </p>
-        
+
         {error && (
           <div className="mb-2 p-2 bg-red-100 border border-red-300 rounded text-xs text-red-700">
             {error}
           </div>
         )}
-        
+
         <div className="flex gap-2">
           <Button
             color="danger"
@@ -105,7 +109,7 @@ export const RemoveUserButton: React.FC<RemoveUserButtonProps> = ({
             startContent={!isRemoving && <UserMinus size={12} />}
             className="text-xs px-2 py-1 h-6"
           >
-            {isRemoving ? 'Removing...' : 'Remove'}
+            {isRemoving ? "Removing..." : "Remove"}
           </Button>
           <Button
             variant="bordered"

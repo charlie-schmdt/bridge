@@ -3,33 +3,33 @@ import { CheckCircle, Lock, Plus, Users } from "lucide-react";
 import { useState } from "react";
 import { MdClass } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
-import FavoriteButton from './FavoriteButton';
+import { useAuth } from "../../contexts/AuthContext";
+import FavoriteButton from "./FavoriteButton";
 
 interface WorkspaceCardProps {
-  id: number; 
+  id: number;
   title: string;
   description: string;
   nextMeeting?: string;
   members: number;
-  authorizedUsers?: string[]; 
-  isPrivate?: boolean; 
-  isFavorite?: boolean; 
+  authorizedUsers?: string[];
+  isPrivate?: boolean;
+  isFavorite?: boolean;
   onJoinSuccess?: () => void; // Callback for when join is successful
-  onFavoriteToggle?: (workspaceId: string, isFavorite: boolean) => void; 
+  onFavoriteToggle?: (workspaceId: string, isFavorite: boolean) => void;
 }
 
-export default function WorkspaceCard({ 
+export default function WorkspaceCard({
   id,
-  title, 
-  description, 
-  nextMeeting, 
+  title,
+  description,
+  nextMeeting,
   members,
   authorizedUsers = [],
   isPrivate = false,
   isFavorite = false,
   onJoinSuccess,
-  onFavoriteToggle
+  onFavoriteToggle,
 }: WorkspaceCardProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -49,43 +49,43 @@ export default function WorkspaceCard({
     setJoinError(null);
 
     try {
-      const token = localStorage.getItem('bridge_token');
+      const token = localStorage.getItem("bridge_token");
       console.log(user);
-      
+
       const response = await fetch(Endpoints.WORKSPACE_JOIN, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           workspaceId: id,
-        })
+        }),
       });
 
       const data = await response.json();
 
       if (data.success) {
         setIsJoined(true);
-        console.log('✅ Successfully joined workspace:', title);
-        
+        console.log("✅ Successfully joined workspace:", title);
+
         // Call callback if provided
         if (onJoinSuccess) {
           onJoinSuccess();
         }
-        
+
         // After successful join, navigate to workspace
         setTimeout(() => {
           navigate(`/workspace/${id}`);
         }, 1000);
-        
       } else {
-        throw new Error(data.message || 'Failed to join workspace');
+        throw new Error(data.message || "Failed to join workspace");
       }
-
     } catch (error) {
-      console.error('❌ Join workspace error:', error);
-      setJoinError(error instanceof Error ? error.message : 'Failed to join workspace');
+      console.error("❌ Join workspace error:", error);
+      setJoinError(
+        error instanceof Error ? error.message : "Failed to join workspace"
+      );
     } finally {
       setIsJoining(false);
     }
@@ -95,9 +95,8 @@ export default function WorkspaceCard({
     navigate(`/workspace/${id}`);
   };
 
-return (
+  return (
     <div className="w-full min-w-0 min-h-[15rem] bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-200 p-4 flex flex-col justify-between border border-gray-100">
-      
       {/* Header with icon, privacy indicator, and favorite button */}
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2">
@@ -111,7 +110,7 @@ return (
             </div>
           )}
         </div>
-        
+
         <div className="flex items-center gap-2">
           {/* Only show favorite button if user is a member */}
           {isJoined && (
@@ -121,10 +120,8 @@ return (
               onFavoriteToggle={onFavoriteToggle}
             />
           )}
-          
-          {isJoined && (
-            <CheckCircle className="text-green-500" size={20} />
-          )}
+
+          {isJoined && <CheckCircle className="text-green-500" size={20} />}
         </div>
       </div>
 
@@ -137,7 +134,7 @@ return (
           </span>
         )}
       </div>
-      
+
       {/* Description */}
       <p className="text-sm text-gray-600 mb-4 flex-grow">{description}</p>
 
@@ -163,8 +160,8 @@ return (
           disabled={isJoining}
           className={`w-full py-2 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 font-medium ${
             isJoining
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              : 'bg-blue-600 text-white hover:bg-blue-700'
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : "bg-blue-600 text-white hover:bg-blue-700"
           }`}
         >
           {isJoining ? (
@@ -187,11 +184,7 @@ return (
           <Users size={12} />
           <span>{members} members</span>
         </div>
-        {nextMeeting && (
-          <div>
-            Next: {nextMeeting}
-          </div>
-        )}
+        {nextMeeting && <div>Next: {nextMeeting}</div>}
       </div>
     </div>
   );

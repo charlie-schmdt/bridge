@@ -88,6 +88,8 @@ const FAQLayout = () => {
 
       } else {
         console.error("Failed to send question.");
+        showNotification("Failed to submit your question. Please try again later.", "error"); // type can be "success", "error", "warning", "info", "created"
+
       }
     } catch (error) {
       console.error("Error submitting question:", error);

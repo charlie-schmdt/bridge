@@ -1,5 +1,6 @@
 // src/components/Toggle.tsx
 import React from "react";
+import { Button } from "../components/ui/Button";
 
 type ToggleProps = {
   checked: boolean;
@@ -10,7 +11,7 @@ type ToggleProps = {
 
 export default function Toggle({ checked, onChange, disabled, className }: ToggleProps) {
   return (
-    <button
+    <Button
       type="button"
       role="switch"
       aria-checked={checked}
@@ -37,6 +38,6 @@ export default function Toggle({ checked, onChange, disabled, className }: Toggl
           checked ? "translate-x-6" : "translate-x-1",
         ].join(" ")}
       />
-    </button>
+    </Button>
   );
 }
