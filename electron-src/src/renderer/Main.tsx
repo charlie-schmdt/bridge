@@ -10,7 +10,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import TestWaitingRoomCall from './components/TestWaitingRoomCall';
 import { AudioContextProvider } from './contexts/AudioContext';
 import { AuthProvider } from './contexts/AuthContext';
-import FAQLayout from "./FAQLayout";
+import FAQLayout from "./pages/FAQ/FAQLayout";
 import { HomeLayout, homeLoader } from './HomeLayout';
 import LogInLayout from './LogInLayout';
 import OnboardingLayout from './OnboardingLayout';
