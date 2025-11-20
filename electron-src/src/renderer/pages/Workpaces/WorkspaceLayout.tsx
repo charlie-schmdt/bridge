@@ -10,6 +10,7 @@ import NotificationBanner from "../../components/NotificationBanner";
 import { RoomCard } from "./RoomCard";
 import { useAuth } from "../../contexts/AuthContext";
 import InviteUser from "./InviteUser";
+import { Meeting } from "@/renderer/utils/meetingUtils";
 
 interface WorkspaceMember {
   id: string;
@@ -28,6 +29,7 @@ interface WorkspaceInfo {
   isPrivate: boolean;
 }
 
+
 export const WorkspaceLayout = () => {
   const { user } = useAuth();
   const { workspaceId } = useParams<{ workspaceId: string }>(); // ← Get ID from URL
@@ -44,7 +46,7 @@ export const WorkspaceLayout = () => {
       description?: string;
       categories?: string[];
       status?: string;
-      meetings?: string;
+      meetings?: Meeting[];
     }>
   >([]);
   const [isCreateRoomModalOpen, setShowRoomModal] = useState(false);
@@ -579,7 +581,7 @@ export const WorkspaceLayout = () => {
                         (room.status as "active" | "scheduled" | "offline") ||
                         "offline"
                       }
-                      meetings={room.meetings || "TBA"}
+                      meetings={room.meetings || []}
                       editMode={editMode}
                     />
                   ))

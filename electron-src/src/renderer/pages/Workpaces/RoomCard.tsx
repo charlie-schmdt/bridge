@@ -8,6 +8,10 @@ import EditRoomModal from "./EditRoomModal";
 import { useNotification } from "@/hooks/useNotification";
 import NotificationBanner  from "../../components/NotificationBanner";
 import { Endpoints } from "@/utils/endpoints";
+import { useEffect } from "react";
+import { parseMeetings, getNextMeeting, formatNextMeeting, Meeting } from "../../utils/meetingUtils";
+
+
 //import { handleDeleteRoom, handleEditRoom } from "@/renderer/utils/roomActions";
 
 const statusColors = {
@@ -16,13 +20,14 @@ const statusColors = {
   offline: "text-red-600",
 };
 
+
 export interface RoomCardProps {
   id: string;
   title: string;
   description: string;
   categories?: string[];
   status: "active" | "scheduled" | "offline";
-  meetings: string;
+  meetings:  Meeting[];
   editMode?: boolean;
 }
 
@@ -38,43 +43,52 @@ export function RoomCard({
   const navigate = useNavigate();
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [nextMeeting, setNextMeeting] = useState(meetings);
   const { notification, showNotification } = useNotification(); // inside the exported component function
+  const [nextMeeting, setNextMeeting] = useState("TBD");
+    
+
+  useEffect(() => {
+    const parsedMeetings = parseMeetings(meetings); // room.meetings is JSON
+    const next = formatNextMeeting(getNextMeeting(parsedMeetings));
+    setNextMeeting(next);
+  }, [meetings]); // re-run if meetings prop changes
+
+
 
   const handleEditRoom = (room: RoomCardProps) => {
     // open edit modal
     setIsEditModalOpen(true);
     //setRoomToEdit(room);
   }
-const handleDeleteRoom = async (roomId: string) => {
-  if (!confirm("Are you sure you want to delete this room? This action cannot be undone.")) {
-    return;
-  }
+  const handleDeleteRoom = async (roomId: string) => {
+    if (!confirm("Are you sure you want to delete this room? This action cannot be undone.")) {
+      return;
+    }
 
-  try {
-    const token = localStorage.getItem("bridge_token");
+    try {
+      const token = localStorage.getItem("bridge_token");
 
-    const res = await fetch(`${Endpoints.ROOMS}/delete/${roomId}`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
+      const res = await fetch(`${Endpoints.ROOMS}/delete/${roomId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    if (!data.success) throw new Error(data.message || "Failed to delete room");
+      if (!data.success) throw new Error(data.message || "Failed to delete room");
 
-    showNotification("Room deleted successfully", "success");
+      showNotification("Room deleted successfully", "success");
 
-    // Optional: Call a callback to update the parent list
+      // Optional: Call a callback to update the parent list
 
-  } catch (err: any) {
-    console.error("Delete room error:", err);
-    showNotification(err.message || "Failed to delete room", "error");
-  }
-};
+    } catch (err: any) {
+      console.error("Delete room error:", err);
+      showNotification(err.message || "Failed to delete room", "error");
+    }
+  };
 
 
   return (

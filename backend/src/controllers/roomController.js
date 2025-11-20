@@ -84,7 +84,7 @@ async function createRoom(req, res) {
 
 async function editRoom(req, res) {
   const { roomId } = req.params;
-  const { name, description, categories, status, nextMeeting } = req.body;
+  const { name, description, categories, status, meetings } = req.body;
 
   try {
     const room = await Room.findByPk(roomId);
@@ -97,9 +97,10 @@ async function editRoom(req, res) {
       description,
       categories,
       status,
-      next_meeting: nextMeeting,
+      meetings,
     });
     return res.status(200).json({ success: true, room });
+
   } catch (error) {
     console.error('Error editing room:', error);
     return res.status(500).json({ success: false, message: 'Server error editing room' });
