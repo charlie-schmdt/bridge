@@ -116,7 +116,7 @@ function AGCValue({index}) {
 
 export default function Receiver() {
 
-  const { analyserNode, agcAnalyzerNodes } = useAudioContext();
+  const { analyserNode, remoteTracks, fileNameArray } = useAudioContext();
   return (
     <div>
       <Initialize/>
