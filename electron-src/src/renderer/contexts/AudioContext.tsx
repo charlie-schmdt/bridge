@@ -450,7 +450,9 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
     return rms / 128; // Normalize RMS value between 0 and 1
   }
 
-
+//TODO: in production this needs to be running right when the audio context starts
+//add a check to see if the trackmap has anything in it. if not do nothing
+//if it does, then start changing the values 
   function createAGCLoop(
     audioContext: AudioContext,
     agcAnalyserNodes: AnalyserNode[],
@@ -488,7 +490,6 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
       const bufferLength = analyser.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
       analyser.getByteTimeDomainData(dataArray);
-      analyser.getByteTimeDomainData(dataArray);
       const rms = calculateRMS(dataArray)
       const currentDb = rms > 0 ? 20 * Math.log10(rms) : -100;
 
@@ -519,7 +520,7 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
       });
     }
 
-    rafId = requestAnimationFrame(update);
+      rafId = requestAnimationFrame(update);
   }
 
   function start() {
@@ -538,7 +539,7 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
   }
 
   return { start, stop };
-}
+  }
 
   //Function to load files into loadAudio
   const playAudioFiles = async () => {
