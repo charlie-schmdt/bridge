@@ -1,4 +1,4 @@
-import { Endpoints } from "@/renderer/utils/endpoints";
+import { Endpoints } from "@/utils/endpoints";
 import { CheckCircle, Lock, Plus, Users } from "lucide-react";
 import { useState } from "react";
 import { MdClass } from "react-icons/md";

@@ -11,12 +11,10 @@ import { RoomSettingsFooter } from './RoomSettingsFooter';
 import { VideoGrid } from './VideoGrid';
 
 export interface RoomFeedProps {
-  streamChatClient: any;
-  streamChatChannel: any;
-  roomId: string;
+  roomId: string | undefined;
 }
 
-export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeedProps) {
+export function RoomFeed({roomId}: RoomFeedProps) {
   const { user } = useAuth()
   const { initializeAudioGraph, tearDownAudioGraph, micAudioStream } = useAudioContext();
   const localRoomMedia = useRoomMediaContext();
@@ -33,7 +31,7 @@ export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeed
 
   const remoteStreamRef = useRef<MediaStream | null>(null);
 
-  const effectiveRoomId = roomId === undefined ? "testroom" : roomId;
+  const effectiveRoomId = roomId || "testroom";
 
   console.log("RENDERING ROOMFEED FOR ROOM " + effectiveRoomId);
 
@@ -235,12 +233,6 @@ export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeed
     if (localStream) {
       localStream.getTracks().forEach(track => track.stop());
       setLocalStream(null);
-    }
-
-    //Reset message channel
-    if (streamChatChannel && streamChatClient) {
-      streamChatChannel.truncate();
-      //streamChatClient.disconnectUser();
     }
 
     tearDownAudioGraph()

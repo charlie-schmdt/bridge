@@ -1,5 +1,5 @@
 // Create: components/RemoveUserButton.tsx
-import { Endpoints } from "@/renderer/utils/endpoints";
+import { Endpoints } from "@/utils/endpoints";
 import { Button } from "@heroui/react";
 import { AlertCircle, Trash2, UserMinus } from "lucide-react";
 import React, { useState } from "react";

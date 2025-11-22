@@ -1,4 +1,4 @@
-import { Endpoints } from '@/renderer/utils/endpoints';
+import { Endpoints } from '@/utils/endpoints';
 import { Button } from '@heroui/react';
 import { PressEvent } from '@react-types/shared';
 import { Star } from 'lucide-react';

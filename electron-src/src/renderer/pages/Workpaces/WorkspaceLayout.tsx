@@ -1,5 +1,5 @@
 import { useNotification } from "@/hooks/useNotification";
-import { Endpoints } from "@/renderer/utils/endpoints";
+import { Endpoints } from "@/utils/endpoints";
 import { Button, Card } from "@heroui/react";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
@@ -10,7 +10,7 @@ import NotificationBanner from "../../components/NotificationBanner";
 import { RoomCard } from "./RoomCard";
 import { useAuth } from "../../contexts/AuthContext";
 import InviteUser from "./InviteUser";
-import { Meeting } from "@/renderer/utils/meetingUtils";
+import { Meeting } from "@/utils/meetingUtils";
 import { PlusCircle } from "lucide-react";
 
 interface WorkspaceMember {
@@ -42,6 +42,7 @@ export const WorkspaceLayout = () => {
   const [error, setError] = useState<string | null>(null);
   const [rooms, setRooms] = useState<
     Array<{
+      id: string;
       room_id: string;
       name: string;
       description?: string;
@@ -160,6 +161,9 @@ export const WorkspaceLayout = () => {
             console.log("✅ Fetched room data:", {
               workspaceId: room_data.workspaceId,
               roomCount: room_data.rooms.length,
+              rooms:  room_data.rooms.filter(
+                (room) => room.workspace_id === data.workspaceId
+              )
             });
           } else {
             throw new Error(room_data.message || "Failed to fetch room data");
@@ -266,13 +270,6 @@ export const WorkspaceLayout = () => {
       )
     )
   );
-  // const filteredRooms = selectedCategory
-  //   ? rooms.filter(room =>
-  //       Array.isArray(room.categories)
-  //         ? room.categories.includes(selectedCategory)
-  //         : room.categories === selectedCategory
-  //     )
-  //   : rooms;
 
   const filteredRooms = rooms.filter((room) => {
     // Filter by category
@@ -746,20 +743,35 @@ export const WorkspaceLayout = () => {
         {/* Main content: Room cards + Members list */}
         <div className="flex flex-col lg:flex-row gap-6 mt-6 px-6 mb-4">
           {/* Left: Room cards (75%) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-[minmax(10rem,_1fr)]">
-            {filteredRooms.length > 0 ? (
-              filteredRooms.map((room) => (
-                <RoomCard
-                  key={room.room_id}
-                  id={room.room_id}
-                  title={room.name}
-                  categories={room.categories || []}
-                  description={room.description || "No description provided"}
-                  status={(room.status as "active" | "scheduled" | "offline") || "offline"}
-                  meetings={room.meetings || []}
-                  editMode={editMode}
-                />
-              ))
+          <div className="lg:w-3/4 w-full">
+            {rooms.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-[minmax(10rem,_1fr)]">
+                {filteredRooms.length > 0 ? (
+                  filteredRooms.map((room) => (
+                    <RoomCard
+                      key={room.id}
+                      id={room.room_id}
+                      title={room.name}
+                      categories={room.categories || []}
+                      description={
+                        room.description || "No description provided"
+                      }
+                      status={
+                        (room.status as "active" | "scheduled" | "offline") ||
+                        "offline"
+                      }
+                      meetings={
+                        Array.isArray(room.meetings) 
+                          ? room.meetings 
+                          : [] // Pass empty array if meetings is a string or undefined
+                      }
+                      editMode={editMode}
+                    />
+                  ))
+                ) : (
+                  <p className="text-gray-500">No rooms match this category.</p>
+                )}
+              </div>
             ) : (
               <p className="text-gray-500 col-span-full">No rooms match this category.</p>
             )}

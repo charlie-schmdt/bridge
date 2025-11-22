@@ -10,7 +10,7 @@ import Banner from "../../components/Banner";
 import { Button } from "@/renderer/components/ui/Button";
  import { useNotification } from "@/hooks/useNotification"; // at the top of file
 import NotificationBanner from "@/renderer/components/NotificationBanner";
-import { Endpoints } from "@/renderer/utils/endpoints";
+import { Endpoints } from "@/utils/endpoints";
 
 // Sample FAQ Data
 const faqData = [
