@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Button } from "@heroui/react";
-import { Endpoints } from "../../utils/endpoints";
+import { Endpoints } from "@/utils/endpoints";
 
 interface Props {
   workspaceId: string;

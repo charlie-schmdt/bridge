@@ -1,4 +1,4 @@
-import { Endpoints } from "@/renderer/utils/endpoints";
+import { Endpoints } from "@/utils/endpoints";
 import { Switch, Textarea } from "@heroui/react";
 import { Lock, PlusCircle, X } from "lucide-react";
 import { useEffect, useState } from "react";

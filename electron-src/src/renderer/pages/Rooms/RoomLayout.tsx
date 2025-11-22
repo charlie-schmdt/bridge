@@ -10,16 +10,9 @@ interface RoomLayoutProps{}
 
 export const RoomLayout = ({}: RoomLayoutProps) => {
   const [isChatOpen, setIsChatOpen ] = useState(false);
-<<<<<<< HEAD
   const openChat = () => setIsChatOpen(true);
   const closeChat = () => setIsChatOpen(false);
-=======
-  const [client, setClient] = useState(null);
-  const [channel, setChannel] = useState(null);
->>>>>>> 327557cce2b278dd0cd08b09b68d7da00950a6e1
   const { tearDownAudioGraph } = useAudioContext();
-
-  const closeChat = () => setIsChatOpen(false);
   const toggleChat = () => setIsChatOpen(prevIsChatOpen => !prevIsChatOpen);
 
   const navigate = useNavigate();
@@ -77,15 +70,8 @@ export const RoomLayout = ({}: RoomLayoutProps) => {
       {isChatOpen && roomId && (
         <div className="w-80 flex-col-1 border-l">
           <Chat 
-<<<<<<< HEAD
             onClose={closeChat} 
             roomId={roomId}
-=======
-          closeChat={closeChat} 
-          toggleChat={toggleChat} 
-          client={client}
-          channel={channel}
->>>>>>> 327557cce2b278dd0cd08b09b68d7da00950a6e1
           />
         </div>
       )}

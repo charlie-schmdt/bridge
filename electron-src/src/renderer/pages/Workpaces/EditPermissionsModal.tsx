@@ -8,7 +8,7 @@ import {
   useDisclosure,
 } from "@heroui/react";
 import React, { useEffect, useState } from "react";
-import { Endpoints } from "@/renderer/utils/endpoints";
+import { Endpoints } from "@/utils/endpoints";
 
 interface EditPermissionsModalProps {
   workspaceId: string;

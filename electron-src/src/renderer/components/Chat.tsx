@@ -12,7 +12,6 @@ interface Message {
   created_at: string;
 }
 
-<<<<<<< HEAD
 interface ChatProps {
   onClose: () => void;
   roomId: string | undefined;
@@ -65,17 +64,6 @@ export default function Chat({ onClose, roomId }: ChatProps) {
         setLoading(false);
       }
     };
-=======
-export interface ChatProps {
-    closeChat: () => void;
-    toggleChat: () => void;
-    client: StreamChat | null;
-    channel: StreamChannel | null;
-}
-
-export default function Chat({ closeChat, toggleChat, client, channel }: ChatProps) {
-    //const { user } =  useAuth();
->>>>>>> 327557cce2b278dd0cd08b09b68d7da00950a6e1
 
     fetchMessages();
   }, [effectiveRoomId]);
@@ -161,7 +149,6 @@ export default function Chat({ closeChat, toggleChat, client, channel }: ChatPro
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
-<<<<<<< HEAD
     // Reset time to compare dates only
     const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -179,46 +166,6 @@ export default function Chat({ closeChat, toggleChat, client, channel }: ChatPro
       });
     }
   };
-=======
-  return (
-      <div className="w-80 bg-white shadow-lg z-50 flex flex-col h-full">       
-        <div className="flex items-center justify-between p-4 border-b">
-            <h1 className="text-lg font-semibold">Chat</h1>
-
-            <button
-                type="button"
-                onClick={toggleChat}
-                className="text-gray500 hover:text-gray-700 p-2"
-                //style={{ pointerEvents: 'auto' }}
-            >
-                x
-            </button>
-        </div>
-
-                
-        <body>
-         <div className="flex-1 overflow-hidden h-full">
-        
-            {client && <StreamChatComponent client={client} theme="messaging light">
-                    {channel && <Channel channel={channel}>
-                        <Window>
-                            <div className="flex flex-col h-full">
-                                    <MessageList />
-                                <div className="flex-1">
-                                    <MessageInput />
-                                </div>
-                            </div>
-                        </Window>
-                    </Channel>
-                    }
-            </StreamChatComponent>
-            }
-         </div>
-         </body>
-      </div>
-  );
-}
->>>>>>> 327557cce2b278dd0cd08b09b68d7da00950a6e1
 
   const shouldShowDateSeparator = (currentMsg: Message, previousMsg: Message | null) => {
     if (!previousMsg) return true;

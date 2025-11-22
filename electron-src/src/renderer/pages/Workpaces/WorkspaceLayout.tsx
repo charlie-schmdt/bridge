@@ -1,5 +1,5 @@
 import { useNotification } from "@/hooks/useNotification";
-import { Endpoints } from "@/renderer/utils/endpoints";
+import { Endpoints } from "@/utils/endpoints";
 import { Button, Card } from "@heroui/react";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
@@ -10,7 +10,7 @@ import NotificationBanner from "../../components/NotificationBanner";
 import { RoomCard } from "./RoomCard";
 import { useAuth } from "../../contexts/AuthContext";
 import InviteUser from "./InviteUser";
-import { Meeting } from "@/renderer/utils/meetingUtils";
+import { Meeting } from "@/utils/meetingUtils";
 import { PlusCircle } from "lucide-react";
 
 interface WorkspaceMember {
@@ -42,6 +42,7 @@ export const WorkspaceLayout = () => {
   const [error, setError] = useState<string | null>(null);
   const [rooms, setRooms] = useState<
     Array<{
+      id: string;
       room_id: string;
       name: string;
       description?: string;
@@ -269,13 +270,6 @@ export const WorkspaceLayout = () => {
       )
     )
   );
-  // const filteredRooms = selectedCategory
-  //   ? rooms.filter(room =>
-  //       Array.isArray(room.categories)
-  //         ? room.categories.includes(selectedCategory)
-  //         : room.categories === selectedCategory
-  //     )
-  //   : rooms;
 
   const filteredRooms = rooms.filter((room) => {
     // Filter by category
@@ -766,7 +760,11 @@ export const WorkspaceLayout = () => {
                         (room.status as "active" | "scheduled" | "offline") ||
                         "offline"
                       }
-                      nextMeeting={room.next_meeting || "TBA"}
+                      meetings={
+                        Array.isArray(room.meetings) 
+                          ? room.meetings 
+                          : [] // Pass empty array if meetings is a string or undefined
+                      }
                       editMode={editMode}
                     />
                   ))

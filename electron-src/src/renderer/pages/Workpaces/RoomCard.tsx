@@ -9,7 +9,7 @@ import { useNotification } from "@/hooks/useNotification";
 import NotificationBanner  from "../../components/NotificationBanner";
 import { Endpoints } from "@/utils/endpoints";
 import { useEffect } from "react";
-import { parseMeetings, getNextMeeting, formatNextMeeting, Meeting } from "../../utils/meetingUtils";
+import { parseMeetings, getNextMeeting, formatNextMeeting, Meeting } from "../../../utils/meetingUtils";
 
 
 //import { handleDeleteRoom, handleEditRoom } from "@/renderer/utils/roomActions";
@@ -27,7 +27,7 @@ export interface RoomCardProps {
   description: string;
   categories?: string[];
   status: "active" | "scheduled" | "offline";
-  meetings:  Meeting[];
+  meetings:  string | Meeting[];
   editMode?: boolean;
 }
 

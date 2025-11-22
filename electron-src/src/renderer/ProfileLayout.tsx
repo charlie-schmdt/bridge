@@ -1,4 +1,4 @@
-import { Endpoints } from "@/renderer/utils/endpoints";
+import { Endpoints } from '@/utils/endpoints';
 import {
   Button,
   Card,
@@ -12,7 +12,7 @@ import Banner from "./components/Banner";
 import Header from "./components/Header";
 import NotificationBanner from "./components/NotificationBanner";
 import { useAuth } from "./contexts/AuthContext";
-import { buildDiceBearUrl } from "./utils/buildDiceBearURL";
+import { buildDiceBearUrl } from "@/utils/buildDiceBearURL";
 
 export const ProfileLayout = () => {
   const { updateUser } = useAuth();

@@ -1,5 +1,5 @@
 import { CallStatus, Exit, IceCandidate, Join, PeerExit, SdpAnswer, SdpOffer, SignalMessage, SignalMessageType } from "@/renderer/types/roomTypes";
-import { WebSocketURL } from "@/renderer/utils/endpoints";
+import { WebSocketURL } from "@/utils/endpoints";
 
 // Define React callbacks for the RoomFeed renderer to provide
 export interface RoomConnectionManagerCallbacks {

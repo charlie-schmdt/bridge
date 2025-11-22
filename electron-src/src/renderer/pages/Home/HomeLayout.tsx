@@ -5,7 +5,7 @@ import Banner from "../../components/Banner";
 import CreateWorkspaceCard from "./CreateWorskpaceCard";
 import Header from "../../components/Header";
 import WorkspaceCard from "./WorkspaceCard";
-import { Endpoints } from "../../utils/endpoints";
+import { Endpoints } from "@/utils/endpoints";
 
 import { useAuth } from "../../contexts/AuthContext";
 
