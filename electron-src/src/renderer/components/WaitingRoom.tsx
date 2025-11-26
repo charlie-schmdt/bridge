@@ -12,6 +12,8 @@ import AudioOutputOptions from "./AudioOutputOptions"
 import MicSensitivity from "./MicSensitivity";
 import AudioMeter from "./AudioMeter";
 import { useNavigate } from "react-router";
+import VF from "./VF";
+import { useAuth } from "../contexts/AuthContext";
 /*
 
 - session id redirection
@@ -28,6 +30,9 @@ interface WaitingRoomProps{
 
 export default function WaitingRoom({roomID, isOpen, onOpen, onOpenChange}: WaitingRoomProps){ 
     const navigate = useNavigate();
+    const { user } = useAuth();
+    
+    
     const [videoSource, setVideoSource] = useState(
         /*
             TODO: add video source options, default, and populate with user's video sources
@@ -46,30 +51,6 @@ export default function WaitingRoom({roomID, isOpen, onOpen, onOpenChange}: Wait
   )
     
     const videoRef = useRef<HTMLVideoElement>();//useRef<HTMLVideoElement>(null)
-    const { video, isCameraInitialised, isCameraEnabled, error, toggleCamera } = useCamera(videoRef);
-
-    /*
-    useEffect(() => {
-        async function initCamera() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: isVideoEnabled, audio: isAudioEnabled});
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream;
-                    videoRef.current.play();
-                }
-            } catch (err) {
-                console.error("Error accessing camera:", err);
-            }
-        }
-        initCamera();
-
-        return () => {
-
-        }
-    }, []);
-    */
-   
-
 
     return (
         <Modal 
@@ -101,41 +82,10 @@ export default function WaitingRoom({roomID, isOpen, onOpen, onOpenChange}: Wait
                                 Admin Test Skip WR
                             </button>
                             <div>
-                                {/*
-                                <video
-                                    ref={videoRef}
-                                            autoPlay={true}
-                                            muted={true}
-                                    className={`w-[25%] h-[25%] ${isCameraEnabled ? 'block' : 'hidden'}`}
-                                />
-  
-                                    !isCameraEnabled && (
-                                        <div className="h-[25%] w-[25%] bg-blue-500"></div>
-                                    )
-                                */}
-                            </div>
-
-                             <div className="flex gap-4">
-                                        {/*
-                                        <button className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer"
-                                            onClick={setIsAudioEnabled(!isAudioEnabled)}>
-                                            
-                                            <img src={ isAudioEnabled? mic : micOff} alt="App Icon" className="h-auto w-auto max-w-[32px] max-h-[32px]" />  
-
-                                        </button>
-                                        */}
-                                        
-                                        <button className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer"
-                                            onClick={
-                                                toggleCamera
-                                                
-                                            }
-                                        >
-                                            <img src={isCameraEnabled? videopng : video_inactivepng} alt="App Icon" className="h-auto w-auto max-w-[32px] max-h-[32px]" />          
-                                        </button>
-                                    </div>       
-                                {/* Meeting details*/}
-                                {/*turn on/off camera and audio*/}
+                                <VF />
+                            </div>   
+                            {/* Meeting details*/}
+                            {/*turn on/off camera and audio*/}
                             <div className="grid grid-cols-1 grid-rows-2 flex-1 min-w-[300px] mt-2 mb-2">
                                 <div className="p-1 ">
                                   <label className="mb-1">Video source:</label>
