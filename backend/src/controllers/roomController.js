@@ -7,6 +7,8 @@ const User = require('../models/User');
 module.exports = {
     getRooms,
     createRoom,
+    editRoom,
+    deleteRoom,
     getRoomMembers,
     updateRoomMembers,
 };
@@ -42,7 +44,7 @@ async function getRooms(req, res) {
 }
 
 async function createRoom(req, res) {
-  const { workspaceId, name, description, categories } = req.body;
+  const { workspaceId, name, description, categories, meetings } = req.body;
   const userId = req.user?.id;
 
   if (!workspaceId || !name) {
@@ -62,6 +64,7 @@ async function createRoom(req, res) {
       categories,
       workspace_id: workspaceId,
       created_by: userId,
+      meetings,
     });
 
     // Update workspace’s room_ids array
@@ -164,3 +167,42 @@ async function updateRoomMembers(req, res) {
 
 
 
+async function editRoom(req, res) {
+  const { roomId } = req.params;
+  const { name, description, categories, status, meetings } = req.body;
+
+  try {
+    const room = await Room.findByPk(roomId);
+    if (!room) {
+      return res.status(404).json({ success: false, message: 'Room not found' });
+    }
+    // Update the room
+    await room.update({
+      name,
+      description,
+      categories,
+      status,
+      meetings,
+    });
+    return res.status(200).json({ success: true, room });
+
+  } catch (error) {
+    console.error('Error editing room:', error);
+    return res.status(500).json({ success: false, message: 'Server error editing room' });
+  }
+}
+
+async function deleteRoom(req, res) {
+  const { roomId } = req.params;
+  try {
+    const room = await Room.findByPk(roomId);
+    if (!room) {
+      return res.status(404).json({ success: false, message: 'Room not found' });
+    }
+    await room.destroy();
+    return res.status(200).json({ success: true, message: 'Room deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting room:', error);
+    return res.status(500).json({ success: false, message: 'Server error deleting room' });
+  }
+}
