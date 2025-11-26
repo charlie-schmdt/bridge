@@ -39,7 +39,7 @@ export const WorkspaceLayout = () => {
   const [error, setError] = useState<string | null>(null);
   const [rooms, setRooms] = useState<
     Array<{
-      id: string;
+      room_id: string;
       name: string;
       description?: string;
       categories?: string[];
@@ -132,7 +132,7 @@ export const WorkspaceLayout = () => {
                 (room) => room.workspace_id === data.workspaceId
               )
             );
-            console.log("✅ Fetched room data:", {
+            console.log("✅ Fetched room data:", room_data, "etc: ",  {
               workspaceId: room_data.workspaceId,
               roomCount: room_data.rooms.length,
             });
@@ -515,7 +515,8 @@ export const WorkspaceLayout = () => {
                 {filteredRooms.length > 0 ? (
                   filteredRooms.map((room) => (
                     <RoomCard
-                      key={room.id}
+                      key={room.room_id}
+                      room_id={room.room_id.trim()}
                       id={room.name}
                       title={room.name}
                       categories={room.categories || []}

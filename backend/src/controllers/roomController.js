@@ -7,6 +7,8 @@ const User = require('../models/User');
 module.exports = {
     getRooms,
     createRoom,
+    getRoomMembers,
+    updateRoomMembers,
 };
 
 async function getRooms(req, res) {
@@ -79,4 +81,86 @@ async function createRoom(req, res) {
     return res.status(500).json({ success: false, message: 'Server error creating room' });
   }
 }
+async function getRoomMembers(req, res) {
+  /*
+    [(UUID, state)...]
+    state:
+        in waiting room
+        active in call
+
+    check if admin in room using compare
+
+  */
+ try {
+    const { roomId } = req.params;
+    
+    const room = await Room.findByPk(roomId);
+
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: 'Room not found'
+      });
+    }
+
+    const allMembers = [room.room_members];
+    res.json({
+      sucess: true,
+      room_members: allMembers
+    });
+
+  
+
+ } catch (error) {
+    console.error('Error fetching room members:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching room members',
+      error: error.message
+    });
+  }
+}
+async function updateRoomMembers(req, res) {
+ try {
+    const { roomId } = req.params;
+    /* json created in front end for user */
+    const listOfMembers = req.body;
+
+    console.log("So this is before, ", roomId)
+    
+    const room = await Room.findByPk(roomId);
+
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: 'Room not found'
+      });
+    }
+
+    await room.update({
+      room_members: listOfMembers
+    });
+ 
+    console.log(`✅ Room ${roomId} updated successfully`);
+
+    const allMembers = [room.room_members];
+    res.json({
+      sucess: true,
+      room_members: allMembers
+    });
+
+
+  
+
+ } catch (error) {
+    console.error('Error fetching room members:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching room members',
+      error: error.message
+    });
+  }
+}
+
+
 

@@ -50,6 +50,10 @@ const Room = sequelize.define('Room', {
     type: DataTypes.ARRAY(DataTypes.TEXT),
     allowNull: true,
   },
+  room_members: {
+    type: DataTypes.JSONB,
+    allowNull: true,
+  }
   
 }, {
   timestamps: false,

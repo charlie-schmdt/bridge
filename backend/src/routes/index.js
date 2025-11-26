@@ -4,7 +4,7 @@ const router = express.Router();
 // Import controllers
 const { getWorkspaces, createWorkspace, joinWorkspace, getUserWorkspaces, getWorkspaceMembers, leaveWorkspace, removeUserFromWorkspace, updateWorkspace, setPermissions, getPermissions, toggleWorkspaceFavorite, getUserFavoriteWorkspaces, inviteUserToWorkspace, getJoinableWorkspaces, acceptInvite } = require('../controllers/workspaceController');
 const { createUser, loginUser, getSettings, updateSettings, oauthLogin, deleteAccount, setOnboarding, getUsers } = require('../controllers/userController');
-const { getRooms, createRoom } = require('../controllers/roomController');
+const { getRooms, createRoom, getRoomMembers, updateRoomMembers } = require('../controllers/roomController');
 // Import middleware
 const { auth, authenticateToken } = require('../middleware/auth');
 
@@ -69,6 +69,8 @@ router.post('/workspace/:workspaceId/accept-invite', authenticateToken, acceptIn
 // Room routes would go here
 router.get('/workspace/:workspaceId/rooms', authenticateToken, getRooms);
 router.post('/rooms/create', authenticateToken, createRoom);
+router.get('/rooms/:roomId/getRoomMembers', authenticateToken, getRoomMembers);
+router.put('/rooms/:roomId/updateRoomMembers', authenticateToken, updateRoomMembers)
 // Protected routes (require authentication)
 router.delete('/auth/delete-account', authenticateToken, deleteAccount);
 
