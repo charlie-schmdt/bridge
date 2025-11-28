@@ -9,6 +9,7 @@ import { RoomConnectionManager, RoomConnectionManagerCallbacks } from './RoomCon
 import { useRoomMediaContext } from './RoomMediaContext';
 import { RoomSettingsFooter } from './RoomSettingsFooter';
 import { VideoGrid } from './VideoGrid';
+import WaitingRoom from '@/renderer/components/WaitingRoom';
 
 export interface RoomFeedProps {
   roomId: string | undefined;
@@ -256,7 +257,16 @@ export function RoomFeed({roomId}: RoomFeedProps) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center min-h-0">
       { callStatus === "inactive" ? (
-        <Button color="primary" onPress={joinRoom}>Join Call</Button>
+        <>
+        
+          <WaitingRoom 
+            roomID={roomId}
+            callStatus={callStatus}
+          />
+          <Button color="primary" onPress={joinRoom}>Join Call</Button>
+
+        </>
+
       )
         :
       (

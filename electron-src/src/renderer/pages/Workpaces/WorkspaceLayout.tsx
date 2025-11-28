@@ -749,6 +749,7 @@ export const WorkspaceLayout = () => {
                 {filteredRooms.length > 0 ? (
                   filteredRooms.map((room) => (
                     <RoomCard
+                      room_id={room.room_id}
                       key={room.id}
                       id={room.room_id}
                       title={room.name}

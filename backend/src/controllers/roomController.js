@@ -11,6 +11,7 @@ module.exports = {
     deleteRoom,
     getRoomMembers,
     updateRoomMembers,
+    addRoomMember, 
 };
 
 async function getRooms(req, res) {
@@ -107,7 +108,7 @@ async function getRoomMembers(req, res) {
     }
 
     const allMembers = [room.room_members];
-    res.json({
+    return res.status(201).json({
       sucess: true,
       room_members: allMembers
     });
@@ -129,7 +130,6 @@ async function updateRoomMembers(req, res) {
     /* json created in front end for user */
     const listOfMembers = req.body;
 
-    console.log("So this is before, ", roomId)
     
     const room = await Room.findByPk(roomId);
 
@@ -147,7 +147,53 @@ async function updateRoomMembers(req, res) {
     console.log(`✅ Room ${roomId} updated successfully`);
 
     const allMembers = [room.room_members];
-    res.json({
+    return res.status(201).json({
+      sucess: true,
+      room_members: allMembers
+    });
+
+
+  
+
+ } catch (error) {
+    console.error('Error fetching room members:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching room members',
+      error: error.message
+    });
+  }
+}
+
+async function addRoomMember(req, res) {
+ try {
+    const { roomId } = req.params;
+    /* json created in front end for user */
+    const member = req.body.waiting_user;
+
+    
+    const room = await Room.findByPk(roomId);
+
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: 'Room not found'
+      });
+    }
+
+    const allMembers = [...(room.room_members || []), {
+      uuid: member.uuid,
+      state: member.state
+    }];
+    await room.update({
+      room_members: allMembers
+    });
+ 
+    console.log(`✅ Member added to ${roomId} successfully`);
+
+
+
+    return res.status(201).json({
       sucess: true,
       room_members: allMembers
     });

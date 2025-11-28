@@ -10,6 +10,7 @@ import NotificationBanner  from "../../components/NotificationBanner";
 import { Endpoints } from "@/utils/endpoints";
 import { useEffect } from "react";
 import { parseMeetings, getNextMeeting, formatNextMeeting, Meeting } from "../../../utils/meetingUtils";
+import { useAuth } from "@/renderer/contexts/AuthContext";
 
 
 //import { handleDeleteRoom, handleEditRoom } from "@/renderer/utils/roomActions";
@@ -22,6 +23,7 @@ const statusColors = {
 
 
 export interface RoomCardProps {
+  room_id: string;
   id: string;
   title: string;
   description: string;
@@ -32,6 +34,7 @@ export interface RoomCardProps {
 }
 
 export function RoomCard({
+  room_id,
   id,
   title,
   description,
@@ -41,10 +44,18 @@ export function RoomCard({
   editMode,
 }: RoomCardProps) {
   const navigate = useNavigate();
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { notification, showNotification } = useNotification(); // inside the exported component function
   const [nextMeeting, setNextMeeting] = useState("TBD");
+  const {user}= useAuth();
+
+  
+    const waiting_user = {
+    //for jsonb of state of user to be added to room members 
+
+    uuid: user.id,
+    state: 'user_waiting'
+  }
     
 
   useEffect(() => {
@@ -54,6 +65,41 @@ export function RoomCard({
   }, [meetings]); // re-run if meetings prop changes
 
 
+
+  const addToWaitingRoom = async () => {
+    try {
+      const token = localStorage.getItem("bridge_token");
+      console.log("response: ", Endpoints.ROOMS, "/addRoomMember", room_id )
+      const response = await fetch(`${Endpoints.ROOMS}/addRoomMember/${room_id}`, {
+        method: "PUT",
+        headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          waiting_user
+        }),
+      }).then((response) => response.json())
+      .then((data) => {
+        /*
+        setRoomMembers((prev) => prev ? { ...prev, name: updatedInfo.name, description: updatedInfo.description, members: updatedInfo.members, isPrivate: updatedInfo.isPrivate } : null);
+        console.log("✅ Workspace updated successfully:", data.workspace);
+        showNotification("Workspace updated successfully!", "success");
+        */
+        console.log("✅ Room members updated successfully:", data)
+      })
+
+      //console.log("error in response for updating room membeers")
+      //console.error(data.message);
+      //alert(data.message);
+
+
+    } catch (error) {
+      console.error("Error updating members:", error);
+      alert("Failed to update members");
+    }
+    navigate(`/TestRoom/${room_id}`)
+  };
 
   const handleEditRoom = (room: RoomCardProps) => {
     // open edit modal
@@ -115,7 +161,7 @@ export function RoomCard({
               size="sm"
               radius="md"
               variant="flat"
-              onPress={() => handleEditRoom({ id, title, description, categories, status, meetings })}
+              onPress={() => handleEditRoom({ room_id, id, title, description, categories, status, meetings })}
               className="text-xs bg-white-100 text-blue-700 hover:bg-blue-200 flex items-center gap-1"
             >
               <SquarePen size={16} />
@@ -155,17 +201,10 @@ export function RoomCard({
         <>
           <Button
             className="mt-4 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition cursor-pointer"
-            onPress={onOpen}
+            onPress={addToWaitingRoom}
           >
             Join Room
           </Button>
-
-          <WaitingRoom
-            roomID={id}
-            isOpen={isOpen}
-            onOpen={onOpen}
-            onOpenChange={onOpenChange}
-          />
         </>
       )}
 
@@ -184,12 +223,14 @@ export function RoomCard({
       <p className="text-xs text-gray-400 mt-2">Next Meeting: {nextMeeting}</p>
 
       {/* EDIT ROOM MODAL */}
+      {/*
       <EditRoomModal
         isOpen={isEditModalOpen}
         onOpenChange={setIsEditModalOpen}
         room={{ id, title, description, categories, status, meetings: meetings }}
         onSuccess={() => showNotification("Room updated successfully", "success")}
       />
+      */}
       
     </div>
   );
