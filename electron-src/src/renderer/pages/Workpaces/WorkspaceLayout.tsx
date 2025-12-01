@@ -49,6 +49,7 @@ export const WorkspaceLayout = () => {
       categories?: string[];
       status?: string;
       meetings?: Meeting[];
+      created_by: string;
     }>
   >([]);
   const [isCreateRoomModalOpen, setShowRoomModal] = useState(false);
@@ -767,6 +768,7 @@ export const WorkspaceLayout = () => {
                           : [] // Pass empty array if meetings is a string or undefined
                       }
                       editMode={editMode}
+                      isOwner={!!isCurrentUserOwner}
                     />
                   ))
                 ) : (
