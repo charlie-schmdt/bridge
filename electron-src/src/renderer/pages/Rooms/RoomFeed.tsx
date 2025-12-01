@@ -10,6 +10,8 @@ import { useRoomMediaContext } from './RoomMediaContext';
 import { RoomSettingsFooter } from './RoomSettingsFooter';
 import { VideoGrid } from './VideoGrid';
 import WaitingRoom from '@/renderer/components/WaitingRoom';
+import { supabase } from '@/renderer/lib/supabase';
+import { Endpoints } from '@/utils/endpoints';
 
 export interface RoomFeedProps {
   roomId: string | undefined;
@@ -24,6 +26,8 @@ export function RoomFeed({roomId}: RoomFeedProps) {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   // map streamId/peerId (implemented as the same in the SFU) to its MediaStream
   const [remoteStreams, setRemoteStreams] = useState<Map<String, MediaStream>>(new Map());
+  const [isAdmitted, setIsAdmitted] = useState(false);
+  const [userRole, setUserRole] = useState("");
 
   const roomConnectionManagerRef = useRef<RoomConnectionManager | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -34,7 +38,95 @@ export function RoomFeed({roomId}: RoomFeedProps) {
 
   const effectiveRoomId = roomId || "testroom";
 
+  const cleanUpRoomExit = async () => {
+    try {//Remove user from room on unmount
+      const token = localStorage.getItem("bridge_token");
+      console.log("TRYING TO REMOVE: ", Endpoints.ROOMS, "/removeRoomMember", roomId )
+      const response = await fetch(`${Endpoints.ROOMS}/removeRoomMember/${roomId}`, {
+        method: "PUT",
+        headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          uuid: user.id
+        }),
+      }).then((response) => response.json())
+      .then((data) => {
+        console.log("✅ ROOM MEMBER REMOVED SUCCESFULLY:", data)
+
+      })
+    } catch (error) {
+      console.error("Error updating members:", error);
+      alert("Failed to update members");
+    }
+  };
+  const getUserRole = async () => {
+    try {
+        const token = localStorage.getItem("bridge_token");
+        const response = await fetch(`${Endpoints.ROOMS}/getRoom/${roomId}`, {
+          headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch user room");
+        }
+        const data = await response.json();
+        console.log("📣 Fetched room data: ", data);
+        const room_data = data.room;
+        const isHost = (room_data.created_by === user.id);
+        
+
+        if (isHost) {
+          setUserRole("Host");
+        }
+        else {
+          setUserRole("Member");
+        }
+
+      } catch (error) {
+        console.error("Error fetching room: " , error);
+      }
+  };
+
   console.log("RENDERING ROOMFEED FOR ROOM " + effectiveRoomId);
+
+  useEffect(() => {
+    getUserRole();
+    console.log("ROOM FEED CHANNEL  STARTED")
+    const channel = supabase.channel("room-feed-members")
+    .on("postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "rooms",
+      },
+      async (payload) => {
+        if (payload.eventType === "UPDATE") {
+          console.log("UPDATING ROOM MEMBERS ");
+          const updated_RM = payload.new.room_members;
+          const user_entry = updated_RM.find(entry => (entry.uuid===user.id));
+          if (user_entry) {
+            const curr_state = user_entry.state;
+            if (curr_state === "user_admitted") {
+              joinRoom();
+              console.log("ADMITTING USER");
+            }
+          }
+        }
+      }
+    )
+    .subscribe();
+  
+    return () => {
+      supabase.removeChannel(channel);
+      cleanUpRoomExit();
+      
+    };
+  }, [])
+    
 
   // Initiate the WebSocket connection with the Node server
   // NOTE: This is NOT the WebRTC stream for video/audio, so it has the same lifetime as the component
@@ -220,6 +312,12 @@ export function RoomFeed({roomId}: RoomFeedProps) {
     // Initiate P2P connection with the SFU
     await manager.connect(stream, micAudioStream);
   };
+  const hostStartCall = async () => {
+    joinRoom();
+    /*
+      TODO: Host starting call tasks
+    */
+  };
 
   const exitRoom = async () => {
     roomConnectionManagerRef.current?.disconnect();
@@ -262,12 +360,13 @@ export function RoomFeed({roomId}: RoomFeedProps) {
             TODO:
               Host option to start room instead of default waiting room
           */}
-          <WaitingRoom 
+          
+          {!isAdmitted && (<WaitingRoom 
             room_id={roomId}
             callStatus={callStatus}
-          />
-          <Button color="primary" onPress={joinRoom}>Join Call</Button>
-
+          />)}
+          {userRole==="Host" && <Button color="primary" onPress={hostStartCall}>Start Call</Button>}
+          <Button color="primary" onPress={joinRoom}>(BYPASS ADMITTED) Join Call</Button>
         </>
 
       )
