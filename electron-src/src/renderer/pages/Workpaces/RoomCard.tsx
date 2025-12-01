@@ -31,6 +31,7 @@ export interface RoomCardProps {
   status: "active" | "scheduled" | "offline";
   meetings:  string | Meeting[];
   editMode?: boolean;
+  isOwner?: boolean;
 }
 
 export function RoomCard({
@@ -42,6 +43,7 @@ export function RoomCard({
   status,
   meetings,
   editMode,
+  isOwner
 }: RoomCardProps) {
   const navigate = useNavigate();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -54,7 +56,8 @@ export function RoomCard({
     //for jsonb of state of user to be added to room members 
 
     uuid: user.id,
-    state: 'user_waiting'
+    state: 'user_waiting',
+    name: user.name
   }
     
 
@@ -67,31 +70,41 @@ export function RoomCard({
 
 
   const addToWaitingRoom = async () => {
-    try {
-      const token = localStorage.getItem("bridge_token");
-      console.log("response: ", Endpoints.ROOMS, "/addRoomMember", room_id )
-      const response = await fetch(`${Endpoints.ROOMS}/addRoomMember/${room_id}`, {
-        method: "PUT",
-        headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          waiting_user
-        }),
-      }).then((response) => response.json())
-      .then((data) => {
-        /*
-        setRoomMembers((prev) => prev ? { ...prev, name: updatedInfo.name, description: updatedInfo.description, members: updatedInfo.members, isPrivate: updatedInfo.isPrivate } : null);
-        console.log("✅ Workspace updated successfully:", data.workspace);
-        showNotification("Workspace updated successfully!", "success");
-        */
-        console.log("✅ Room members updated successfully:", data)
-      })
+    var user_to_add = waiting_user;
+    if(isOwner) {
+      const host_user = {
+        uuid: user.id,
+        state: 'host_joined',
+        name: user.name
+      };
+      user_to_add = host_user;
 
-      //console.log("error in response for updating room membeers")
-      //console.error(data.message);
-      //alert(data.message);
+    }
+    try {
+        const token = localStorage.getItem("bridge_token");
+        console.log("response: ", Endpoints.ROOMS, "/addRoomMember", room_id )
+        const response = await fetch(`${Endpoints.ROOMS}/addRoomMember/${room_id}`, {
+          method: "PUT",
+          headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            user_to_add
+          }),
+        }).then((response) => response.json())
+        .then((data) => {
+          /*
+          setRoomMembers((prev) => prev ? { ...prev, name: updatedInfo.name, description: updatedInfo.description, members: updatedInfo.members, isPrivate: updatedInfo.isPrivate } : null);
+          console.log("✅ Workspace updated successfully:", data.workspace);
+          showNotification("Workspace updated successfully!", "success");
+          */
+          console.log("✅ Room members updated successfully:", data)
+        })
+
+        //console.log("error in response for updating room membeers")
+        //console.error(data.message);
+        //alert(data.message);
 
 
     } catch (error) {

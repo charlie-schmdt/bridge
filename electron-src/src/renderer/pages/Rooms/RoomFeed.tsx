@@ -258,9 +258,12 @@ export function RoomFeed({roomId}: RoomFeedProps) {
     <div className="flex-1 flex flex-col items-center justify-center min-h-0">
       { callStatus === "inactive" ? (
         <>
-        
+          {/*
+            TODO:
+              Host option to start room instead of default waiting room
+          */}
           <WaitingRoom 
-            roomID={roomId}
+            room_id={roomId}
             callStatus={callStatus}
           />
           <Button color="primary" onPress={joinRoom}>Join Call</Button>
@@ -274,7 +277,7 @@ export function RoomFeed({roomId}: RoomFeedProps) {
           <div className="flex-1 w-full min-h-0">
             <VideoGrid streams={allStreams} />
           </div>
-          <RoomSettingsFooter onLeave={exitRoom} />
+          <RoomSettingsFooter roomId={roomId} onLeave={exitRoom} />
         </>
       )}
     </div>

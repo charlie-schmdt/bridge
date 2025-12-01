@@ -9,9 +9,10 @@ import { useRoomMediaContext } from "./RoomMediaContext";
 
 export interface RoomSettingsFooterProps {
   onLeave: () => void;
+  roomId: string;
 }
 
-export function RoomSettingsFooter({ onLeave }: RoomSettingsFooterProps) {
+export function RoomSettingsFooter({ roomId, onLeave }: RoomSettingsFooterProps) {
   const VF = useRoomMediaContext();
   const {isOpen, onOpen, onOpenChange} = useDisclosure();
 
@@ -47,7 +48,7 @@ export function RoomSettingsFooter({ onLeave }: RoomSettingsFooterProps) {
         >
           Menu
         </Button>
-        <UserFeaturesModal isOpen={isOpen} onOpen={onOpen} onOpenChange={onOpenChange}/>
+        <UserFeaturesModal roomId={roomId} isOpen={isOpen} onOpen={onOpen} onOpenChange={onOpenChange}/>
       </div>
 
       <div className="flex flex-1 justify-end">

@@ -14,6 +14,8 @@ import AudioMeter from "./AudioMeter";
 import { useNavigate } from "react-router";
 import VF from "./VF";
 import { useAuth } from "../contexts/AuthContext";
+import { Endpoints } from "@/utils/endpoints";
+import { supabase } from "../lib/supabase";
 /*
 
 - session id redirection
@@ -22,31 +24,117 @@ import { useAuth } from "../contexts/AuthContext";
 */
 
 interface WaitingRoomProps{
-    roomID: string;
+    room_id: string;
     callStatus: string;
 }
 
-export default function WaitingRoom({roomID, callStatus}: WaitingRoomProps){ 
+export default function WaitingRoom({room_id , callStatus}: WaitingRoomProps){ 
     const navigate = useNavigate();
     const { user } = useAuth();
-    
-    
     const [videoSource, setVideoSource] = useState(
         /*
             TODO: add video source options, default, and populate with user's video sources
         */
        "default"
     )
+    const [user_role, setUserRole] = useState("");
+    const [user_status, setUserStatus] = useState("user_waiting");
+    
     const { initializeAudioGraph, tearDownAudioGraph } = useAudioContext();
+    const getUserRole = async () => {
+        try {
+            const token = localStorage.getItem("bridge_token");
+            const response = await fetch(`${Endpoints.ROOMS}/getRoom/${room_id}`, {
+              headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+            });
+            if (!response.ok) {
+              throw new Error("Failed to fetch user room");
+            }
+            const data = await response.json();
+            console.log("📣 Fetched room data: ", data);
+            const room_data = data.room;
+            const isHost = (room_data.created_by === user.id);
+            if (isHost) {
+              setUserRole("Host");
+            }
+            else {
+              setUserRole("Member");
+            }
+          } catch (error) {
+            console.error("Error fetching room: " , error);
+          }
+    };
+
+    useEffect(() => {
+      console.log("CHANNEL STARTED")
+      const channel = supabase.channel("waiting-room")
+      .on("postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "rooms",
+        },
+        (payload) => {
+          if (payload.eventType === "UPDATE") {
+            const updated_RM = payload.new.room_members;
+            const curr_state = updated_RM.find(entry => (entry.uuid === user.id));
+            if (curr_state && (curr_state.state === "user_admitted")) {
+              setUserStatus("user_admitted");
+              callStatus = "active";
+            }
+          }
+        }
+      )
+      .subscribe();
+    
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }, [room_id])
+    
 
     useEffect(() => {
       initializeAudioGraph()
+      getUserRole();
 
       return () => {
         //tearDownAudioGraph();
+
+       removeFromWaitingRoom()
       }
     },[]
-  )
+    )
+      const removeFromWaitingRoom = async () => {
+        try {
+          const token = localStorage.getItem("bridge_token");
+          console.log("TRYING TO REMOVE: ", Endpoints.ROOMS, "/removeRoomMember", room_id )
+          const response = await fetch(`${Endpoints.ROOMS}/removeRoomMember/${room_id}`, {
+            method: "PUT",
+            headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              uuid: user.id
+            }),
+          }).then((response) => response.json())
+          .then((data) => {
+            console.log("✅ ROOM MEMBER REMOVED SUCCESFULLY:", data)
+          })
+    
+          //console.log("error in response for updating room membeers")
+          //console.error(data.message);
+          //alert(data.message);
+    
+    
+        } catch (error) {
+          console.error("Error updating members:", error);
+          alert("Failed to update members");
+        }
+      };
     
     const videoRef = useRef<HTMLVideoElement>();//useRef<HTMLVideoElement>(null)
 

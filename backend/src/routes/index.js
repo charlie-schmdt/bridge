@@ -6,7 +6,7 @@ const { getWorkspaces, createWorkspace, joinWorkspace, getUserWorkspaces, getWor
   removeUserFromWorkspace, updateWorkspace, setPermissions, getPermissions, toggleWorkspaceFavorite, getUserFavoriteWorkspaces, 
   inviteUserToWorkspace, getJoinableWorkspaces, acceptInvite, setUserRole } = require('../controllers/workspaceController');
 const { createUser, loginUser, getSettings, updateSettings, oauthLogin, deleteAccount, setOnboarding, getUsers } = require('../controllers/userController');
-const { getRooms, createRoom, getRoomMembers, updateRoomMembers, editRoom, deleteRoom } = require('../controllers/roomController');
+const { getRooms, createRoom, getRoomMembers, updateRoomMembers, addRoomMember, removeRoomMember, editRoom, deleteRoom, updateStatusRoomMember, getRoom} = require('../controllers/roomController');
 const { submitQuestion } = require('../controllers/questionController');
 // Import middleware
 const { auth, authenticateToken } = require('../middleware/auth');
@@ -78,8 +78,12 @@ router.post('/rooms/create', authenticateToken, createRoom);
 router.put('/rooms/edit/:roomId', authenticateToken, editRoom);
 router.delete('/rooms/delete/:roomId', authenticateToken, deleteRoom);
 
-router.get('/rooms/:roomId/getRoomMembers', authenticateToken, getRoomMembers);
-router.put('/rooms/:roomId/updateRoomMembers', authenticateToken, updateRoomMembers)
+router.get('/rooms/getRoomMembers/:roomId', authenticateToken, getRoomMembers);
+router.put('/rooms/updateRoomMembers/:roomId', authenticateToken, updateRoomMembers);
+router.put('/rooms/addRoomMember/:roomId', authenticateToken, addRoomMember);
+router.put('/rooms/removeRoomMember/:roomId', authenticateToken, removeRoomMember)
+router.put('/rooms/updateStatusRoomMember/:roomId', authenticateToken, updateStatusRoomMember);
+router.get('/rooms/getRoom/:roomId', authenticateToken, getRoom)
 // Protected routes (require authentication)
 router.delete('/auth/delete-account', authenticateToken, deleteAccount);
 
