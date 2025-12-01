@@ -6,6 +6,7 @@ import CreateWorkspaceCard from "./components/CreateWorskpaceCard";
 import Header from "./components/Header";
 import WorkspaceCard from "./components/WorkspaceCard";
 import { Endpoints } from "./utils/endpoints";
+import NotificationBanner from "./components/NotificationBanner";
 
 import { useAuth } from "./contexts/AuthContext";
 
@@ -164,6 +165,42 @@ const handleFavoriteToggle = (workspaceId: string, isFavorite: boolean) => {
     }
   };
 
+  const [notification, setNotification] = useState<{ message: string; type: any } | null>(null);
+
+  const showNotification = (message: string, type: any = "info", duration: number = 3000) => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), duration);
+  };
+
+  const requestJoinWorkspace = async (workspaceId: number) => {
+    if (!user) {
+      showNotification('Login required to request access', 'info');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('bridge_token');
+      const resp = await fetch(`${Endpoints.WORKSPACE}/${workspaceId}/request-join`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ message: 'Requesting access via Discover' })
+      });
+
+      if (resp.ok) {
+        showNotification('Request to join submitted', 'created');
+      } else {
+        // Backend may not yet implement; show queued/info
+        showNotification('Request queued (backend not implemented)', 'info');
+      }
+    } catch (err) {
+      console.error('Request to join failed:', err);
+      showNotification('Failed to send request to join', 'error');
+    }
+  };
+
   // Filter functions
   const filterOwnWorkspace = (workspace: Workspace) => {
     if (activeFilter === "Private") return workspace.isPrivate;
@@ -207,6 +244,14 @@ const handleFavoriteToggle = (workspaceId: string, isFavorite: boolean) => {
           <Header />
           <Banner />
         </div>
+        {notification && (
+          <div className="fixed top-20 right-4 z-[9999]">
+            <NotificationBanner
+              message={notification.message}
+              type={notification.type}
+            />
+          </div>
+        )}
 
         {/* Central Search Bar */}
         <div className="w-full max-w-6xl mx-auto px-6">
@@ -334,21 +379,63 @@ const handleFavoriteToggle = (workspaceId: string, isFavorite: boolean) => {
                 {error}
               </div>
             ) : filteredPublicWorkspaces.length > 0 ? (
-              filteredPublicWorkspaces.map((workspace) => (
-                <WorkspaceCard
-                  key={workspace.id}
-                  id={workspace.id}
-                  title={workspace.name}
-                  description={workspace.description}
-                  members={workspace.authorizedUsers?.length || 0}
-                  authorizedUsers={workspace.authorizedUsers}
-                  isPrivate={workspace.isPrivate}
-                  nextMeeting="Tomorrow at 2 PM"
-                  onJoinSuccess={refreshWorkspaces}
-                  isFavorite={workspace.isFavorite}
-                  onFavoriteToggle={handleFavoriteToggle}
-                />
-              ))
+              filteredPublicWorkspaces.map((workspace) => {
+                const isMember = user ? (workspace.authorizedUsers || []).includes(user.id) : false;
+
+                // If the workspace is private and the current user is NOT a member,
+                // render a simplified orange card that allows the user to request access.
+                if (workspace.isPrivate && !isMember) {
+                  return (
+                    <div key={workspace.id} className="w-full min-w-0 min-h-[15rem] bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-200 p-4 flex flex-col justify-between border border-orange-100">
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className="text-orange-600 bg-orange-50 rounded-full p-2">
+                              🔒
+                            </div>
+                            <span className="text-lg font-semibold text-gray-900">{workspace.name}</span>
+                            <span className="ml-2 text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">Private</span>
+                          </div>
+                        </div>
+
+                        <p className="text-sm text-gray-600 mb-4 flex-grow">{workspace.description}</p>
+                      </div>
+
+                      <div className="mt-3 pt-3 border-t border-orange-50 flex flex-col gap-3 items-stretch">
+                        <div className="flex justify-between text-xs text-gray-500">
+                          <div className="flex items-center gap-1">
+                            <span>{workspace.authorizedUsers?.length || 0} members</span>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => requestJoinWorkspace(workspace.id)}
+                          className="w-full px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors duration-150 font-medium"
+                        >
+                          Request to Join
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Otherwise show the normal WorkspaceCard (public or member-visible)
+                return (
+                  <WorkspaceCard
+                    key={workspace.id}
+                    id={workspace.id}
+                    title={workspace.name}
+                    description={workspace.description}
+                    members={workspace.authorizedUsers?.length || 0}
+                    authorizedUsers={workspace.authorizedUsers}
+                    isPrivate={workspace.isPrivate}
+                    nextMeeting="Tomorrow at 2 PM"
+                    onJoinSuccess={refreshWorkspaces}
+                    isFavorite={workspace.isFavorite}
+                    onFavoriteToggle={handleFavoriteToggle}
+                  />
+                );
+              })
             ) : (
               <div className="col-span-full text-center py-8 text-gray-500">
                 {searchTerm 

@@ -1,4 +1,4 @@
-import { useNotification } from "@/hooks/useNotification";
+import NotificationBanner from "./components/NotificationBanner";
 import { Endpoints } from "@/renderer/utils/endpoints";
 import { Button, Card } from "@heroui/react";
 import { useEffect, useState } from "react";
@@ -6,7 +6,6 @@ import { useParams } from "react-router-dom";
 import Header from "./components/Header";
 import LeaveWorkspaceButton from "./components/LeaveWorkspaceButton";
 import MembersList from "./components/MemberList";
-import NotificationBanner from "./components/NotificationBanner";
 import { RoomCard } from "./components/RoomCard";
 import { useAuth } from "./contexts/AuthContext";
 
@@ -46,6 +45,8 @@ export const WorkspaceLayout = () => {
       next_meeting?: string;
     }>
   >([]);
+  const [isMember, setIsMember] = useState(false);
+  const [pendingRequests, setPendingRequests] = useState<Array<any>>([]);
   const [isCreateRoomModalOpen, setShowRoomModal] = useState(false);
   const [roomName, setRoomName] = useState("");
   const [roomDescription, setRoomDescription] = useState("");
@@ -53,7 +54,12 @@ export const WorkspaceLayout = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [editMode, setEditMode] = useState(false);
-  const { notification, showNotification } = useNotification();
+  const [notification, setNotification] = useState<{ message: string; type: any } | null>(null);
+
+  const showNotification = (message: string, type: any = "info", duration: number = 3000) => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), duration);
+  };
   const [updatedWorkspaceInfo, setUpdatedWorkspaceInfo] = useState<WorkspaceInfo | null>(null);
 
   const isCurrentUserOwner =
@@ -92,18 +98,11 @@ export const WorkspaceLayout = () => {
           }
         );
 
-        console.log(room_response)
-        if (!response.ok) {
-          throw new Error(`Failed to fetch workspace data: ${response.status}`);
-        }
-        if (!room_response.ok) {
-          throw new Error(`Failed to fetch room data: ${room_response.status}`);
-        }
+        console.log(room_response);
+        const data = response.ok ? await response.json() : null;
+        const room_data = room_response.ok ? await room_response.json() : null;
 
-        const data = await response.json();
-        const room_data = await room_response.json();
-
-        if (data.success) {
+        if (response.ok && data?.success) {
           setWorkspaceInfo({
             id: data.workspaceId,
             name: data.workspaceName,
@@ -119,13 +118,33 @@ export const WorkspaceLayout = () => {
             isPrivate: data.private,
           });
           setMembers(data.members);
+          setIsMember(
+            !!data.members.find((m: any) => String(m.id) === String(user.id))
+          );
+          // If current user is owner, fetch pending join requests
+          if (data.owner_real_id === user.id || data.members.find((m: any) => m.isOwner)) {
+            try {
+              const token = localStorage.getItem('bridge_token');
+              const reqResp = await fetch(`${Endpoints.WORKSPACE}/${workspaceId}/requests`, {
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                }
+              });
+              if (reqResp.ok) {
+                const reqData = await reqResp.json();
+                setPendingRequests(reqData.requests || []);
+              }
+            } catch (e) {
+              console.error('Failed to fetch pending requests:', e);
+            }
+          }
           console.log("✅ Fetched workspace data:", {
             workspaceId: data.workspaceId,
             name: data.workspaceName,
             memberCount: data.members.length,
           });
-          
-          if (room_data.success) {
+          if (room_data?.success) {
             setRooms(
               room_data.rooms.filter(
                 (room) => room.workspace_id === data.workspaceId
@@ -136,10 +155,20 @@ export const WorkspaceLayout = () => {
               roomCount: room_data.rooms.length,
             });
           } else {
-            throw new Error(room_data.message || "Failed to fetch room data");
+            // rooms may be private or restricted; keep empty and continue
+            console.log("Rooms not available or restricted for this user");
           }
         } else {
-          throw new Error(data.message || "Failed to fetch workspace data");
+          // Could not fetch members (maybe private workspace). Show minimal info so user can request access.
+          console.log("Cannot fetch workspace members (private or no access)");
+          setWorkspaceInfo({
+            id: workspaceId,
+            name: workspaceId ? `Workspace ${workspaceId}` : "Private Workspace",
+            members: [],
+            description: "This workspace is private. Request access to view members and rooms.",
+            isPrivate: true,
+          });
+          setIsMember(false);
         }
       } catch (err) {
         console.error("❌ Error fetching workspace data:", err);
@@ -195,6 +224,81 @@ export const WorkspaceLayout = () => {
     } catch (error) {
       console.error("Error creating room:", error);
       alert("Failed to create room");
+    }
+  };
+
+  const requestJoin = async () => {
+    try {
+      const token = localStorage.getItem("bridge_token");
+      const resp = await fetch(`${Endpoints.WORKSPACE}/${workspaceId}/request-join`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message: "Requesting access" }),
+      });
+      if (resp.ok) {
+        showNotification("Request to join submitted", "created");
+      } else {
+        showNotification("Request queued (backend not implemented)", "info");
+      }
+    } catch (e) {
+      console.error("Request to join failed:", e);
+      showNotification("Failed to send request to join", "error");
+    }
+  };
+
+  const acceptRequest = async (requesterId: string) => {
+    try {
+      const token = localStorage.getItem('bridge_token');
+      const resp = await fetch(`${Endpoints.WORKSPACE}/${workspaceId}/requests/${requesterId}/accept`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (resp.ok) {
+        showNotification('Request accepted', 'success');
+        setPendingRequests(prev => prev.filter(r => String(r.id) !== String(requesterId)));
+        // Refresh member list
+        const membersResp = await fetch(`${Endpoints.WORKSPACE}/${workspaceId}/members`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('bridge_token')}` } });
+        if (membersResp.ok) {
+          const mdata = await membersResp.json();
+          setMembers(mdata.members || []);
+          setWorkspaceInfo(prev => prev ? { ...prev, members: mdata.members } : prev);
+        }
+      } else {
+        const data = await resp.json();
+        showNotification(data.message || 'Failed to accept request', 'error');
+      }
+    } catch (e) {
+      console.error('Accept request failed:', e);
+      showNotification('Failed to accept request', 'error');
+    }
+  };
+
+  const denyRequest = async (requesterId: string) => {
+    try {
+      const token = localStorage.getItem('bridge_token');
+      const resp = await fetch(`${Endpoints.WORKSPACE}/${workspaceId}/requests/${requesterId}/deny`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (resp.ok) {
+        showNotification('Request denied', 'info');
+        setPendingRequests(prev => prev.filter(r => String(r.id) !== String(requesterId)));
+      } else {
+        const data = await resp.json();
+        showNotification(data.message || 'Failed to deny request', 'error');
+      }
+    } catch (e) {
+      console.error('Deny request failed:', e);
+      showNotification('Failed to deny request', 'error');
     }
   };
 
@@ -422,12 +526,29 @@ export const WorkspaceLayout = () => {
               <Button
                 color="primary"
                 onPress={setShowRoomModal.bind(null, true)}
+                disabled={!isMember}
+                className={!isMember ? "opacity-60 cursor-not-allowed" : ""}
               >
                 + Create Room
               </Button>
+
+              {workspaceInfo?.isPrivate && !isMember && (
+                <div className="flex items-center gap-3">
+                  <span className="px-3 py-1 rounded-md bg-orange-100 text-orange-800 font-medium">
+                    Private Workspace
+                  </span>
+                  <button
+                    onClick={requestJoin}
+                    className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
+                  >
+                    Request to Join
+                  </button>
+                </div>
+              )}
+
               <LeaveWorkspaceButton
                 workspaceId={workspaceId}
-                workspaceName={workspaceInfo.name}
+                workspaceName={workspaceInfo?.name}
                 isOwner={!!isCurrentUserOwner}
                 onLeaveSuccess={() => {
                   console.log("Left workspace successfully");
@@ -489,6 +610,27 @@ export const WorkspaceLayout = () => {
                 </div>
               </div>
             )}
+
+            {/* Pending join requests (owner only) */}
+            {isCurrentUserOwner && pendingRequests.length > 0 && (
+              <div className="w-full px-6 mt-4">
+                <h3 className="text-lg font-semibold mb-2">Pending Join Requests</h3>
+                <div className="space-y-3">
+                  {pendingRequests.map((req) => (
+                    <div key={req.id} className="flex items-center justify-between bg-white border border-gray-100 rounded-lg p-3">
+                      <div>
+                        <div className="font-medium text-gray-900">{req.user?.name || req.id}</div>
+                        {req.message && <div className="text-xs text-gray-500">{req.message}</div>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => acceptRequest(req.id)} className="px-3 py-1 bg-green-600 text-white rounded-md">Accept</button>
+                        <button onClick={() => denyRequest(req.id)} className="px-3 py-1 bg-red-100 text-red-700 rounded-md">Deny</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -496,7 +638,11 @@ export const WorkspaceLayout = () => {
         <div className="flex flex-col lg:flex-row gap-6 mt-6 px-6 mb-4">
           {/* Left: Room cards (75%) */}
           <div className="lg:w-3/4 w-full">
-            {rooms.length > 0 ? (
+            {workspaceInfo?.isPrivate && !isMember ? (
+              <div className="bg-white rounded-xl shadow-lg border border-orange-100 p-8 text-center text-orange-700">
+                Rooms are private. Request access to view and join rooms.
+              </div>
+            ) : rooms.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-[minmax(10rem,_1fr)]">
                 {filteredRooms.length > 0 ? (
                   filteredRooms.map((room) => (

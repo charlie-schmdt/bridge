@@ -3,6 +3,7 @@ const { Op } = require('sequelize'); // Add this import
 const Workspace = require('../models/Workspaces');
 const User = require('../models/User');
 const UserWorkspaceFavorites = require('../models/UserWorkspaceFavorites')
+const clientRegistry = require('../utils/clientRegistry');
 
 const generateToken = (userID) => {
   return jwt.sign({ userID }, process.env.JWT_SECRET, { expiresIn: '1h' });
@@ -12,19 +13,18 @@ const getWorkspaces = async (req, res) => {
   try {
     console.log("Fetching all public workspaces");
     
-    // Fetch all workspaces with their authorized users
-    const workspaces = await Workspace.findAll({
-      where: { 
-        private: false
-      },
-    });
+    // Fetch all workspaces (include private ones so Discover can list them).
+    // For private workspaces we intentionally do NOT expose member lists here —
+    // the frontend will show a 'Private' indicator and request-to-join action.
+    const workspaces = await Workspace.findAll();
 
     const formattedWorkspaces = workspaces.map(workspace => ({
       id: workspace.workspace_id,
       name: workspace.name,
       description: workspace.description,
       isPrivate: workspace.private,
-      authorizedUsers: workspace.auth_users || [],
+      // Expose member list only for non-private workspaces to avoid leaking membership
+      authorizedUsers: workspace.private ? [] : (workspace.auth_users || []),
       ownerId: workspace.owner_real_id,
       createdAt: workspace.created_at
     }));
@@ -291,6 +291,152 @@ const getWorkspaceMembers = async (req, res) => {
     });
   }
 };
+
+// Request to join a workspace (creates a pending request)
+const requestJoinWorkspace = async (req, res) => {
+  try {
+    const { workspaceId } = req.params;
+    const userId = req.user.id;
+    const { message } = req.body || {};
+
+    const workspace = await Workspace.findByPk(workspaceId);
+    if (!workspace) return res.status(404).json({ success: false, message: 'Workspace not found' });
+
+    // Prevent duplicate requests
+    const pending = Array.isArray(workspace.pending_requests) ? workspace.pending_requests : (workspace.pending_requests ? JSON.parse(workspace.pending_requests) : []);
+    if (pending.find(r => String(r.id) === String(userId))) {
+      return res.status(400).json({ success: false, message: 'Request already submitted' });
+    }
+
+    const reqEntry = { id: userId, message: message || null, created_at: new Date().toISOString() };
+    const updatedPending = [...pending, reqEntry];
+
+    // Persist
+    workspace.pending_requests = updatedPending;
+    workspace.changed('pending_requests', true);
+    await workspace.save();
+
+    // Notify owner via websocket if connected
+    const ownerId = workspace.owner_real_id;
+    const ownerSocket = clientRegistry.getClientById(ownerId);
+    if (ownerSocket && ownerSocket.readyState === ownerSocket.OPEN) {
+      try {
+        ownerSocket.send(JSON.stringify({ type: 'workspace_event', event: 'join_request', workspaceId, request: reqEntry }));
+      } catch (e) {
+        console.error('Failed to notify owner socket:', e);
+      }
+    }
+
+    return res.json({ success: true, message: 'Request submitted', request: reqEntry });
+  } catch (error) {
+    console.error('Error requesting to join workspace:', error);
+    return res.status(500).json({ success: false, message: 'Failed to submit request' });
+  }
+}
+
+// Get pending join requests (owner only)
+const getPendingRequests = async (req, res) => {
+  try {
+    const { workspaceId } = req.params;
+    const userId = req.user.id;
+    const workspace = await Workspace.findByPk(workspaceId);
+    if (!workspace) return res.status(404).json({ success: false, message: 'Workspace not found' });
+    if (workspace.owner_real_id !== userId) return res.status(403).json({ success: false, message: 'Only owner can view requests' });
+
+    const pending = Array.isArray(workspace.pending_requests) ? workspace.pending_requests : (workspace.pending_requests ? JSON.parse(workspace.pending_requests) : []);
+    // Optionally enrich with basic user info
+    const userIds = pending.map(p => p.id);
+    const users = await User.findAll({ where: { id: userIds }, attributes: ['id', 'name', 'email', 'picture'] });
+    const usersById = {};
+    users.forEach(u => { usersById[String(u.id)] = u; });
+
+    const decorated = pending.map(p => ({ ...p, user: usersById[String(p.id)] || null }));
+    return res.json({ success: true, requests: decorated });
+  } catch (error) {
+    console.error('Error fetching pending requests:', error);
+    return res.status(500).json({ success: false, message: 'Failed to fetch requests' });
+  }
+}
+
+// Owner accepts a pending request
+const acceptJoinRequest = async (req, res) => {
+  try {
+    const { workspaceId, requesterId } = req.params;
+    const userId = req.user.id; // owner
+    const workspace = await Workspace.findByPk(workspaceId);
+    if (!workspace) return res.status(404).json({ success: false, message: 'Workspace not found' });
+    if (workspace.owner_real_id !== userId) return res.status(403).json({ success: false, message: 'Only owner can accept requests' });
+
+    const pending = Array.isArray(workspace.pending_requests) ? workspace.pending_requests : (workspace.pending_requests ? JSON.parse(workspace.pending_requests) : []);
+    const idx = pending.findIndex(p => String(p.id) === String(requesterId));
+    if (idx === -1) return res.status(404).json({ success: false, message: 'Request not found' });
+
+    // Remove from pending
+    const [acceptedReq] = pending.splice(idx, 1);
+
+    // Add to auth_users and authorized_users
+    const currentAuth = workspace.auth_users || [];
+    if (!currentAuth.includes(requesterId)) currentAuth.push(requesterId);
+
+    const currentAuthorized = Array.isArray(workspace.authorized_users) ? workspace.authorized_users : (workspace.authorized_users ? JSON.parse(workspace.authorized_users) : []);
+    currentAuthorized.push({ id: requesterId, role: 'member', permissions: { canCreateRooms: false, canDeleteRooms: false, canEditWorkspace: false } });
+
+    workspace.pending_requests = pending;
+    workspace.auth_users = currentAuth;
+    workspace.authorized_users = currentAuthorized;
+    workspace.changed('pending_requests', true);
+    workspace.changed('auth_users', true);
+    workspace.changed('authorized_users', true);
+    await workspace.save();
+
+    // Notify requester via websocket if connected
+    const requesterSocket = clientRegistry.getClientById(requesterId);
+    if (requesterSocket && requesterSocket.readyState === requesterSocket.OPEN) {
+      try {
+        requesterSocket.send(JSON.stringify({ type: 'workspace_event', event: 'request_accepted', workspaceId, message: 'Your request was accepted' }));
+      } catch (e) { console.error('Failed to notify requester socket:', e); }
+    }
+
+    return res.json({ success: true, message: 'Request accepted', userId: requesterId });
+  } catch (error) {
+    console.error('Error accepting join request:', error);
+    return res.status(500).json({ success: false, message: 'Failed to accept request' });
+  }
+}
+
+// Owner denies a pending request
+const denyJoinRequest = async (req, res) => {
+  try {
+    const { workspaceId, requesterId } = req.params;
+    const userId = req.user.id; // owner
+    const workspace = await Workspace.findByPk(workspaceId);
+    if (!workspace) return res.status(404).json({ success: false, message: 'Workspace not found' });
+    if (workspace.owner_real_id !== userId) return res.status(403).json({ success: false, message: 'Only owner can deny requests' });
+
+    const pending = Array.isArray(workspace.pending_requests) ? workspace.pending_requests : (workspace.pending_requests ? JSON.parse(workspace.pending_requests) : []);
+    const idx = pending.findIndex(p => String(p.id) === String(requesterId));
+    if (idx === -1) return res.status(404).json({ success: false, message: 'Request not found' });
+
+    const [deniedReq] = pending.splice(idx, 1);
+
+    workspace.pending_requests = pending;
+    workspace.changed('pending_requests', true);
+    await workspace.save();
+
+    // Notify requester via websocket if connected
+    const requesterSocket = clientRegistry.getClientById(requesterId);
+    if (requesterSocket && requesterSocket.readyState === requesterSocket.OPEN) {
+      try {
+        requesterSocket.send(JSON.stringify({ type: 'workspace_event', event: 'request_denied', workspaceId, message: 'Your request was denied' }));
+      } catch (e) { console.error('Failed to notify requester socket:', e); }
+    }
+
+    return res.json({ success: true, message: 'Request denied' });
+  } catch (error) {
+    console.error('Error denying join request:', error);
+    return res.status(500).json({ success: false, message: 'Failed to deny request' });
+  }
+}
 
 // Get workspaces where user is a member
 const getUserWorkspaces = async (req, res) => {
@@ -682,5 +828,9 @@ module.exports = {
   getUserFavoriteWorkspaces,
   updateWorkspace,
   setPermissions,
-  getPermissions
+  getPermissions,
+  requestJoinWorkspace,
+  getPendingRequests,
+  acceptJoinRequest,
+  denyJoinRequest
 };
