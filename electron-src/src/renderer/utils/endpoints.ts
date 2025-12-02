@@ -7,6 +7,7 @@ export const Endpoints = {
   WORKSPACE: BACKEND + "/api/workspace",
   WORKSPACE_JOIN: BACKEND + "/api/workspace/join",
   WORKSPACES: BACKEND + "/api/workspaces",
+  WORKSPACES_JOINABLE: BACKEND + "/api/workspaces/joinable",
   WORKSPACES_USER: BACKEND + "/api/workspaces/user",
   WORKSPACES_PUBLIC: BACKEND + "/api/workspaces/public",
   ROOMS: BACKEND + "/api/rooms",

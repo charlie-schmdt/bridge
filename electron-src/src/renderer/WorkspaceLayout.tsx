@@ -54,6 +54,9 @@ export const WorkspaceLayout = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [editMode, setEditMode] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
   const [notification, setNotification] = useState<{ message: string; type: any } | null>(null);
 
   const showNotification = (message: string, type: any = "info", duration: number = 3000) => {
@@ -531,6 +534,56 @@ export const WorkspaceLayout = () => {
               >
                 + Create Room
               </Button>
+
+              {isCurrentUserOwner && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="email"
+                    placeholder="Invite by email"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    className="border border-gray-300 rounded-md px-3 py-2 w-56 focus:ring-2 focus:ring-blue-500"
+                    aria-label="Invite by email"
+                  />
+                  <Button
+                    color="primary"
+                    onPress={async () => {
+                      setInviteError(null);
+                      if (!inviteEmail.trim()) {
+                        setInviteError('Please enter an email');
+                        return;
+                      }
+                      try {
+                        setInviteLoading(true);
+                        const token = localStorage.getItem('bridge_token');
+                        const resp = await fetch(`${Endpoints.WORKSPACE}/${workspaceId}/invite`, {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                          },
+                          body: JSON.stringify({ email: inviteEmail.trim() })
+                        });
+                        const data = await resp.json();
+                        if (resp.ok && data.success) {
+                          showNotification('Invitation sent (pending acceptance)', 'success');
+                          setInviteEmail('');
+                        } else {
+                          setInviteError(data.message || 'Failed to send invite');
+                        }
+                      } catch (e) {
+                        console.error('Invite failed', e);
+                        setInviteError('Network error');
+                      } finally {
+                        setInviteLoading(false);
+                      }
+                    }}
+                    disabled={inviteLoading}
+                  >
+                    {inviteLoading ? 'Sending...' : 'Invite'}
+                  </Button>
+                </div>
+              )}
 
               {workspaceInfo?.isPrivate && !isMember && (
                 <div className="flex items-center gap-3">

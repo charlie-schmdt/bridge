@@ -28,6 +28,11 @@ const Workspace = sequelize.define('Workspace', {
     type: DataTypes.ARRAY(DataTypes.UUID), // Postgres-only 
     allowNull: true,
   },
+  pending_invites: {
+    type: DataTypes.ARRAY(DataTypes.UUID),
+    allowNull: true,
+    defaultValue: []
+  },
   pending_requests: {
     type: DataTypes.JSONB,
     defaultValue: [],

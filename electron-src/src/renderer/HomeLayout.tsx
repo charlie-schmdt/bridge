@@ -30,6 +30,7 @@ export const HomeLayout = () => {
   
   // State for both user workspaces and public workspaces
   const [userWorkspaces, setUserWorkspaces] = useState<Workspace[]>([]);
+  const [joinableWorkspaces, setJoinableWorkspaces] = useState<Array<{ id: number; name: string | null; description: string | null; isPrivate: boolean; ownerId: string }>>([]);
   const [publicWorkspaces, setPublicWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
   const [userWorkspacesLoading, setUserWorkspacesLoading] = useState(true);
@@ -162,6 +163,99 @@ const handleFavoriteToggle = (workspaceId: string, isFavorite: boolean) => {
       }
     } catch (err) {
       console.error('Error refreshing public workspaces:', err);
+    }
+    // Also refresh joinable invites
+    try {
+      await fetchJoinable();
+    } catch (e) {
+      /* ignore */
+    }
+  };
+
+  // Fetch joinable workspaces (invitations) for the current user
+  const fetchJoinable = async () => {
+    console.log('[HomeLayout] fetchJoinable called, user=', user?.id || null);
+    if (!user) {
+      console.log('[HomeLayout] fetchJoinable: no user, clearing joinableWorkspaces');
+      return setJoinableWorkspaces([]);
+    }
+    try {
+      const token = localStorage.getItem('bridge_token');
+      const resp = await fetch(Endpoints.WORKSPACES_JOINABLE, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        console.log('[HomeLayout] Fetched joinable workspaces:', data.workspaces?.length || 0, data.workspaces || []);
+        setJoinableWorkspaces(data.workspaces || []);
+      } else {
+        const text = await resp.text().catch(() => '<no body>');
+        console.warn('[HomeLayout] fetchJoinable non-OK response', resp.status, resp.statusText, text);
+        setJoinableWorkspaces([]);
+      }
+    } catch (err) {
+      console.error('[HomeLayout] Error fetching joinable workspaces:', err);
+      setJoinableWorkspaces([]);
+    }
+  };
+
+  // Ensure joinable invites are fetched on initial mount and when user changes
+  useEffect(() => {
+    fetchJoinable();
+  }, [user]);
+
+  const acceptInvite = async (workspaceId: number) => {
+    try {
+      const token = localStorage.getItem('bridge_token');
+      const resp = await fetch(`${Endpoints.WORKSPACE}/${workspaceId}/accept-invite`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log('[HomeLayout] acceptInvite response status:', resp.status);
+      if (resp.ok) {
+        showNotification('Invite accepted — joined workspace', 'success');
+        // Refresh lists
+        await refreshWorkspaces();
+        await fetchJoinable();
+        setJoinableWorkspaces(prev => prev.filter(w => w.id !== workspaceId));
+      } else {
+        const data = await resp.json().catch(() => ({}));
+        showNotification(data.message || 'Failed to accept invite', 'error');
+      }
+    } catch (err) {
+      console.error('Accept invite failed:', err);
+      showNotification('Failed to accept invite', 'error');
+    }
+  };
+
+  const rejectInvite = async (workspaceId: number) => {
+    try {
+      const token = localStorage.getItem('bridge_token');
+      const resp = await fetch(`${Endpoints.WORKSPACE}/${workspaceId}/reject-invite`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log('[HomeLayout] rejectInvite response status:', resp.status);
+      if (resp.ok) {
+        showNotification('Invite rejected', 'info');
+        await fetchJoinable();
+        setJoinableWorkspaces(prev => prev.filter(w => w.id !== workspaceId));
+      } else {
+        const data = await resp.json().catch(() => ({}));
+        showNotification(data.message || 'Failed to reject invite', 'error');
+      }
+    } catch (err) {
+      console.error('Reject invite failed:', err);
+      showNotification('Failed to reject invite', 'error');
     }
   };
 
@@ -357,6 +451,39 @@ const handleFavoriteToggle = (workspaceId: string, isFavorite: boolean) => {
             {user && <CreateWorkspaceCard />}
           </div>
         </section>
+
+        {/* Pending Invites Section (shows joinable workspaces invited to) */}
+        {user && joinableWorkspaces.length > 0 && (
+          <section className="px-6">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Invitations</h2>
+                <p className="mt-1 text-gray-600">Workspaces you've been invited to — accept or reject.</p>
+              </div>
+            </div>
+
+            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              {joinableWorkspaces.map((ws) => (
+                <div key={ws.id} className="w-full bg-white rounded-xl shadow-lg p-4 border border-gray-100 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="text-blue-600 bg-blue-50 rounded-full p-2">🔔</div>
+                        <span className="text-lg font-semibold text-gray-900">{ws.name || `Workspace ${ws.id}`}</span>
+                        {ws.isPrivate && <span className="ml-2 text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">Private</span>}
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-4">{ws.description || 'You were invited to this workspace.'}</p>
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <button onClick={() => acceptInvite(ws.id)} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg">Accept</button>
+                    <button onClick={() => rejectInvite(ws.id)} className="flex-1 px-4 py-2 bg-red-100 text-red-700 rounded-lg">Reject</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Joinable Workspaces Section */}
         <section className="col-span-full w-full px-6">
