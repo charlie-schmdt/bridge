@@ -114,7 +114,7 @@ func (r *defaultRouter) ForwardAudioTrack(id string, remote *webrtc.TrackRemote)
 		broadcaster = r.broadcasters[id]
 		broadcaster.SetAudioSource(remote)
 	} else {
-		broadcaster = InitBroadcaster(rpc, nil, remote)
+		broadcaster = InitBroadcaster(id, rpc, nil, remote)
 		r.broadcasters[id] = broadcaster
 	}
 
@@ -143,7 +143,7 @@ func (r *defaultRouter) ForwardVideoTrack(id string, remote *webrtc.TrackRemote)
 		broadcaster = r.broadcasters[id]
 		broadcaster.SetVideoSource(remote)
 	} else {
-		broadcaster = InitBroadcaster(rpc, remote, nil)
+		broadcaster = InitBroadcaster(id, rpc, remote, nil)
 		r.broadcasters[id] = broadcaster
 	}
 
