@@ -132,16 +132,9 @@ export default function CreateWorkspaceCard() {
         return;
       }
 
-      const authorizedUsers = selectedUsers.map((id) => ({
-        id,
-        role: "Member",
-        permissions: {
-          canCreateRooms: false,
-          canDeleteRooms: false,
-          canEditWorkspace: false,
-        },
-      }));
-      authorizedUsers.push({
+      // Only include the owner in `authorized_users` on creation.
+      // The selectedUsers are treated as pending invites and sent in `auth_users`.
+      const ownerAuthorizedEntry = {
         id: user.id,
         role: "Owner",
         permissions: {
@@ -149,20 +142,24 @@ export default function CreateWorkspaceCard() {
           canDeleteRooms: true,
           canEditWorkspace: true,
         },
-      });
+      };
 
       const response = await fetch(Endpoints.WORKSPACES, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("bridge_token")}`,
         },
         body: JSON.stringify({
           name: formData.name,
           description: formData.description,
           private: formData.isPrivate,
+          // `auth_users` are IDs we want to INVITE (pending invites)
           auth_users: selectedUsers,
-          authorized_users: authorizedUsers,
-          owner_real_id: user.id, // Changed from 'id' to 'owner_real_id' to match controller
+          // Only persist the owner as an authorized user; invited users will be
+          // moved into `auth_users` (members) when they accept the invite.
+          authorized_users: [ownerAuthorizedEntry],
+          owner_real_id: user.id,
         }),
       });
 

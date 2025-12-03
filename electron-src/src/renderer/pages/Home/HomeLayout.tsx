@@ -32,7 +32,6 @@ export const HomeLayout = () => {
 
   // State for both user workspaces and public workspaces
   const [userWorkspaces, setUserWorkspaces] = useState<Workspace[]>([]);
-  const [joinableWorkspaces, setJoinableWorkspaces] = useState<Array<{ id: number; name: string | null; description: string | null; isPrivate: boolean; ownerId: string }>>([]);
   const [publicWorkspaces, setPublicWorkspaces] = useState<Workspace[]>([]);
   const [joinableWorkspaces, setJoinableWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,28 +102,7 @@ export const HomeLayout = () => {
 
     fetchUserWorkspaces();
 
-    // Fetch joinable (invited) workspaces for this user
-    const fetchJoinable = async () => {
-      if (!user) return;
-      try {
-        const token = localStorage.getItem("bridge_token");
-        const response = await fetch(Endpoints.WORKSPACES_JOINABLE, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (!response.ok)
-          throw new Error("Failed to fetch joinable workspaces");
-        const data = await response.json();
-        setJoinableWorkspaces(data.workspaces || []);
-      } catch (err) {
-        console.error("Error fetching joinable workspaces:", err);
-      }
-    };
-
-    fetchJoinable();
+    // (Joinable workspaces are fetched by the dedicated fetchJoinable function below)
   }, [user]); // Re-fetch when user changes (login/logout)
 
   // Fetch public workspaces (for discovery)
@@ -217,142 +195,10 @@ export const HomeLayout = () => {
         console.error("Error refreshing joinable workspaces:", err);
       }
     }
-    // Also refresh joinable invites
-    try {
-      await fetchJoinable();
-    } catch (e) {
-      /* ignore */
-    }
+    // Also refresh joinable invites (handled by fetchJoinable below)
   };
 
-  // Fetch joinable workspaces (invitations) for the current user
-  const fetchJoinable = async () => {
-    console.log('[HomeLayout] fetchJoinable called, user=', user?.id || null);
-    if (!user) {
-      console.log('[HomeLayout] fetchJoinable: no user, clearing joinableWorkspaces');
-      return setJoinableWorkspaces([]);
-    }
-    try {
-      const token = localStorage.getItem('bridge_token');
-      const resp = await fetch(Endpoints.WORKSPACES_JOINABLE, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      if (resp.ok) {
-        const data = await resp.json();
-        console.log('[HomeLayout] Fetched joinable workspaces:', data.workspaces?.length || 0, data.workspaces || []);
-        setJoinableWorkspaces(data.workspaces || []);
-      } else {
-        const text = await resp.text().catch(() => '<no body>');
-        console.warn('[HomeLayout] fetchJoinable non-OK response', resp.status, resp.statusText, text);
-        setJoinableWorkspaces([]);
-      }
-    } catch (err) {
-      console.error('[HomeLayout] Error fetching joinable workspaces:', err);
-      setJoinableWorkspaces([]);
-    }
-  };
-
-  // Ensure joinable invites are fetched on initial mount and when user changes
-  useEffect(() => {
-    fetchJoinable();
-  }, [user]);
-
-  const acceptInvite = async (workspaceId: number) => {
-    try {
-      const token = localStorage.getItem('bridge_token');
-      const resp = await fetch(`${Endpoints.WORKSPACE}/${workspaceId}/accept-invite`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      console.log('[HomeLayout] acceptInvite response status:', resp.status);
-      if (resp.ok) {
-        showNotification('Invite accepted — joined workspace', 'success');
-        // Refresh lists
-        await refreshWorkspaces();
-        await fetchJoinable();
-        setJoinableWorkspaces(prev => prev.filter(w => w.id !== workspaceId));
-      } else {
-        const data = await resp.json().catch(() => ({}));
-        showNotification(data.message || 'Failed to accept invite', 'error');
-      }
-    } catch (err) {
-      console.error('Accept invite failed:', err);
-      showNotification('Failed to accept invite', 'error');
-    }
-  };
-
-  const rejectInvite = async (workspaceId: number) => {
-    try {
-      const token = localStorage.getItem('bridge_token');
-      const resp = await fetch(`${Endpoints.WORKSPACE}/${workspaceId}/reject-invite`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      console.log('[HomeLayout] rejectInvite response status:', resp.status);
-      if (resp.ok) {
-        showNotification('Invite rejected', 'info');
-        await fetchJoinable();
-        setJoinableWorkspaces(prev => prev.filter(w => w.id !== workspaceId));
-      } else {
-        const data = await resp.json().catch(() => ({}));
-        showNotification(data.message || 'Failed to reject invite', 'error');
-      }
-    } catch (err) {
-      console.error('Reject invite failed:', err);
-      showNotification('Failed to reject invite', 'error');
-    }
-  };
-
-  const [notification, setNotification] = useState<{ message: string; type: any } | null>(null);
-
-  const showNotification = (message: string, type: any = "info", duration: number = 3000) => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), duration);
-  };
-
-  const requestJoinWorkspace = async (workspaceId: number) => {
-    if (!user) {
-      showNotification('Login required to request access', 'info');
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem('bridge_token');
-      const resp = await fetch(`${Endpoints.WORKSPACE}/${workspaceId}/request-join`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ message: 'Requesting access via Discover' })
-      });
-
-      if (resp.ok) {
-        showNotification('Request to join submitted', 'created');
-      } else {
-        // Backend may not yet implement; show queued/info
-        showNotification('Request queued (backend not implemented)', 'info');
-      }
-    } catch (err) {
-      console.error('Request to join failed:', err);
-      showNotification('Failed to send request to join', 'error');
-    }
-    // Also refresh joinable invites
-    try {
-      await fetchJoinable();
-    } catch (e) {
-      /* ignore */
-    }
-  };
+  
 
   // Fetch joinable workspaces (invitations) for the current user
   const fetchJoinable = async () => {
@@ -666,76 +512,7 @@ export const HomeLayout = () => {
           </section>
         )}
 
-        {/* Joinable Workspaces Section */}
-        {user && joinableWorkspaces.length > 0 && (
-          <section className="px-6">
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Invited Workspaces
-              </h2>
-              <p className="mt-2 text-gray-600">
-                Workspaces you've been invited to — accept to join them.
-              </p>
-            </div>
-
-            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 mb-8">
-              {joinableWorkspaces.map((ws) => (
-                <div
-                  key={ws.id}
-                  className="bg-white rounded-xl shadow p-4 border border-gray-100"
-                >
-                  <h3 className="font-semibold text-lg">{ws.name}</h3>
-                  <p className="text-sm text-gray-600 mb-3">{ws.description}</p>
-                  <div className="flex gap-2">
-                    <Button
-                      color="primary"
-                      onPress={async () => {
-                        try {
-                          const token = localStorage.getItem("bridge_token");
-                          const resp = await fetch(
-                            `${Endpoints.WORKSPACE}/${ws.id}/accept-invite`,
-                            {
-                              method: "POST",
-                              headers: {
-                                "Content-Type": "application/json",
-                                Authorization: `Bearer ${token}`,
-                              },
-                            }
-                          );
-                          const data = await resp.json();
-                          if (resp.ok && data.success) {
-                            // Refresh lists
-                            refreshWorkspaces();
-                            // Remove from local joinable list
-                            setJoinableWorkspaces((prev) =>
-                              prev.filter((j) => j.id !== ws.id)
-                            );
-                          } else {
-                            alert(data.message || "Failed to accept invite");
-                          }
-                        } catch (err) {
-                          console.error("Accept invite error:", err);
-                          alert("Failed to accept invite");
-                        }
-                      }}
-                    >
-                      Accept Invite
-                    </Button>
-                    <Button
-                      onPress={() =>
-                        setJoinableWorkspaces((prev) =>
-                          prev.filter((j) => j.id !== ws.id)
-                        )
-                      }
-                    >
-                      Dismiss
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+        {/* 'Invited Workspaces' duplicate removed — keep the main 'Invitations' section above */}
 
         <section className="col-span-full w-full px-6">
           <div className="mb-6">

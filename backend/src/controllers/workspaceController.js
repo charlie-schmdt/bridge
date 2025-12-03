@@ -125,6 +125,21 @@ const createWorkspace = async (req, res) => {
       authorized_users: authorized_users,
       room_ids: []
     });
+    // Notify invited users via websocket if connected (same as inviteUserToWorkspace)
+    try {
+      (pendingInvites || []).forEach((invitedId) => {
+        try {
+          const invitedSocket = clientRegistry.getClientById(invitedId);
+          if (invitedSocket && invitedSocket.readyState === invitedSocket.OPEN) {
+            invitedSocket.send(JSON.stringify({ type: 'workspace_invite', workspaceId: newWorkspace.workspace_id, workspaceName: newWorkspace.name }));
+          }
+        } catch (e) {
+          console.error('Failed to notify invited user via websocket during workspace creation:', e);
+        }
+      });
+    } catch (e) {
+      console.error('Error while notifying invited users for new workspace:', e);
+    }
         
         res.status(201).json({
             success: true,
@@ -454,7 +469,32 @@ const acceptInvite = async (req, res) => {
 
     const updatedPending = pending.filter(id => String(id) !== String(userId));
 
-    await workspace.update({ auth_users: newAuth, pending_invites: updatedPending });
+    // Ensure authorized_users contains an entry for this user (role + permissions)
+    let currentAuthorized = Array.isArray(workspace.authorized_users)
+      ? workspace.authorized_users
+      : (workspace.authorized_users ? JSON.parse(workspace.authorized_users) : []);
+
+    // Only add if not already present
+    if (!currentAuthorized.find(u => String(u.id) === String(userId))) {
+      currentAuthorized.push({
+        id: userId,
+        role: 'Member',
+        permissions: {
+          canCreateRooms: false,
+          canDeleteRooms: false,
+          canEditWorkspace: false,
+        }
+      });
+    }
+
+    // Persist changes: add to auth_users, remove from pending_invites, and update authorized_users
+    workspace.auth_users = newAuth;
+    workspace.pending_invites = updatedPending;
+    workspace.authorized_users = currentAuthorized;
+    workspace.changed('auth_users', true);
+    workspace.changed('pending_invites', true);
+    workspace.changed('authorized_users', true);
+    await workspace.save();
 
     console.log(`✅ User ${userId} accepted invite to workspace ${workspaceId}`);
     console.log('auth_users before:', beforeAuth, 'after:', newAuth);

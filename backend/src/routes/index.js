@@ -2,8 +2,9 @@ const express = require('express');
 const router = express.Router();
 
 // Import controllers
-const { getWorkspaces, createWorkspace, joinWorkspace, getUserWorkspaces, getWorkspaceMembers, leaveWorkspace, removeUserFromWorkspace, 
-  updateWorkspace, setPermissions, getPermissions, toggleWorkspaceFavorite, getUserFavoriteWorkspaces } = require('../controllers/workspaceController');
+const { getWorkspaces, createWorkspace, joinWorkspace, getUserWorkspaces, getWorkspaceMembers, leaveWorkspace, 
+  removeUserFromWorkspace, updateWorkspace, setPermissions, getPermissions, toggleWorkspaceFavorite, getUserFavoriteWorkspaces, 
+  requestJoinWorkspace, getPendingRequests, acceptJoinRequest, denyJoinRequest, inviteUserToWorkspace, getJoinableWorkspaces, acceptInvite, setUserRole } = require('../controllers/workspaceController');
 const { createUser, loginUser, getSettings, updateSettings, oauthLogin, deleteAccount, setOnboarding, getUsers } = require('../controllers/userController');
 const { getRooms, createRoom, getRoomMembers, updateRoomMembers, addRoomMember, removeRoomMember, editRoom, deleteRoom, updateStatusRoomMember, getRoom} = require('../controllers/roomController');
 const { submitQuestion } = require('../controllers/questionController');
@@ -65,6 +66,20 @@ router.post('/workspace/:workspaceId/favorite', authenticateToken, toggleWorkspa
 router.get('/workspaces/user/favorites', authenticateToken, getUserFavoriteWorkspaces);
 router.put('/workspaces/:workspaceId/permissions', authenticateToken, setPermissions);
 router.get('/workspaces/:workspaceId/permissions/:userId', authenticateToken, getPermissions);
+
+// Join request endpoints
+router.post('/workspace/:workspaceId/request-join', authenticateToken, requestJoinWorkspace);
+router.get('/workspace/:workspaceId/requests', authenticateToken, getPendingRequests);
+router.post('/workspace/:workspaceId/requests/:requesterId/accept', authenticateToken, acceptJoinRequest);
+router.post('/workspace/:workspaceId/requests/:requesterId/deny', authenticateToken, denyJoinRequest);
+
+// Invite endpoints (owner invites by email -> pending invite)
+router.post('/workspace/:workspaceId/invite', authenticateToken, inviteUserToWorkspace);
+// List workspaces where current user has pending invites
+router.get('/workspaces/joinable', authenticateToken, getJoinableWorkspaces);
+// Accept or reject a pending invite
+router.post('/workspace/:workspaceId/accept-invite', authenticateToken, acceptInvite);
+router.post('/workspace/:workspaceId/reject-invite', authenticateToken, require('../controllers/workspaceController').rejectInvite);
 
 // Room routes would go here
 router.get('/workspace/:workspaceId/rooms', authenticateToken, getRooms);
