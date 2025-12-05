@@ -13,11 +13,17 @@ const getWorkspaces = async (req, res) => {
   try {
     console.log("Fetching all public workspaces");
     
+    // Extract pagination params
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 12; // 12 items per page (4x3 grid)
+    const offset = (page - 1) * limit;
+    
     // Fetch all workspaces (include private ones so Discover can list them).
     // For private workspaces we intentionally do NOT expose member lists here —
     // the frontend will show a 'Private' indicator and request-to-join action.
     const workspaces = await Workspace.findAll();
 
+    // Format and sort by name (alphabetically)
     const formattedWorkspaces = workspaces.map(workspace => ({
       id: workspace.workspace_id,
       name: workspace.name,
@@ -27,9 +33,25 @@ const getWorkspaces = async (req, res) => {
       authorizedUsers: workspace.private ? [] : (workspace.auth_users || []),
       ownerId: workspace.owner_real_id,
       createdAt: workspace.created_at
-    }));
+    })).sort((a, b) => {
+      // Sort alphabetically by name (case-insensitive)
+      return (a.name || '').localeCompare(b.name || '');
+    });
+    
+    // Apply pagination
+    const totalCount = formattedWorkspaces.length;
+    const totalPages = Math.ceil(totalCount / limit);
+    const paginatedWorkspaces = formattedWorkspaces.slice(offset, offset + limit);
 
-    res.json(formattedWorkspaces);
+    res.json({
+      workspaces: paginatedWorkspaces,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages
+      }
+    });
   } catch (error) {
     console.error('Error fetching workspaces:', error);
     res.status(500).json({ 
@@ -682,6 +704,11 @@ const getUserWorkspaces = async (req, res) => {
     const userId = req.user.id;
     console.log(`Fetching workspaces for user: ${userId}`);
     
+    // Extract pagination params
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 12; // 12 items per page (4x3 grid)
+    const offset = (page - 1) * limit;
+    
     // Fetch all workspaces and filter in JavaScript (simpler and more reliable)
     const allWorkspaces = await Workspace.findAll();
     
@@ -700,10 +727,6 @@ const getUserWorkspaces = async (req, res) => {
       return isOwner || isMember;
     });
 
-
-
-    console.log(favoriteIds);
-    console.log(favoriteIds.includes(18))
     // Format workspaces with favorite status
     const formattedWorkspaces = userWorkspaces.map(workspace => ({
       id: workspace.workspace_id,
@@ -719,17 +742,29 @@ const getUserWorkspaces = async (req, res) => {
       isFavorite: favoriteIds.includes(workspace.workspace_id)
     }));
 
-    // Sort: favorites first, then by creation date
+    // Sort: favorites first, then alphabetically by name
     formattedWorkspaces.sort((a, b) => {
       if (a.isFavorite && !b.isFavorite) return -1; // Favorites first
       if (!a.isFavorite && b.isFavorite) return 1;
-      return new Date(b.createdAt) - new Date(a.createdAt); // Then by date
+      // Then sort alphabetically by name
+      return (a.name || '').localeCompare(b.name || '');
     });
 
-    console.log(`✅ Found ${formattedWorkspaces.length} workspaces for user ${userId} (${favoriteIds.length} favorites)`);
-    res.json(formattedWorkspaces);
-    
-    console.log(formattedWorkspaces);
+    // Apply pagination
+    const totalCount = formattedWorkspaces.length;
+    const totalPages = Math.ceil(totalCount / limit);
+    const paginatedWorkspaces = formattedWorkspaces.slice(offset, offset + limit);
+
+    console.log(`✅ Found ${paginatedWorkspaces.length} workspaces for user ${userId} on page ${page}/${totalPages} (${favoriteIds.length} favorites)`);
+    res.json({
+      workspaces: paginatedWorkspaces,
+      pagination: {
+        page,
+        limit,
+        totalCount,
+        totalPages
+      }
+    });
   } catch (error) {
     console.error('Error fetching user workspaces:', error);
     res.status(500).json({ 
