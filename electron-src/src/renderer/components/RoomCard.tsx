@@ -1,6 +1,9 @@
 import { Button, useDisclosure } from "@heroui/react";
 import { useNavigate } from "react-router-dom";
 import WaitingRoom from "./WaitingRoom";
+import { useAuth } from "../contexts/AuthContext";
+import { Endpoints } from "@/renderer/utils/endpoints";
+import { useState } from "react";
 
 const statusColors = {
   active: "text-green-600",
@@ -9,6 +12,7 @@ const statusColors = {
 };
 
 export interface RoomCardProps {
+  room_id: string;
   id: string;
   title: string;
   description: string;
@@ -18,13 +22,52 @@ export interface RoomCardProps {
   editMode?: boolean;
 }
 
-export function RoomCard({ id, title, description, categories, status, nextMeeting, editMode }: RoomCardProps) {
+
+export function RoomCard({ room_id, id, title, description, categories, status, nextMeeting, editMode }: RoomCardProps) {
   const navigate = useNavigate();
+  const {user} = useAuth();
   const handleDeleteRoom = () => {
     // Implement room deletion logic here
     console.log(`Deleting room: ${title}`);
   };
-      const {isOpen, onOpen, onOpenChange} = useDisclosure();
+  const {isOpen, onOpen, onOpenChange} = useDisclosure();
+  const waiting_user = {
+    uuid: user.id,
+    state: 'user_waiting'
+  }
+
+    const handleAddMembers = async () => {
+      try {
+        const token = localStorage.getItem("bridge_token");
+        console.log("response: ", Endpoints.ROOMS, room_id, "/updateRoomMembers" )
+        const response = await fetch(`${Endpoints.ROOMS}/${room_id}/updateRoomMembers`, {
+          method: "PUT",
+          headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            room_members: waiting_user
+          }),
+        });
+        const data = await response.json();
+        if (data.success) {
+          /*
+          setRoomMembers((prev) => prev ? { ...prev, name: updatedInfo.name, description: updatedInfo.description, members: updatedInfo.members, isPrivate: updatedInfo.isPrivate } : null);
+          console.log("✅ Workspace updated successfully:", data.workspace);
+          showNotification("Workspace updated successfully!", "success");
+          */
+          console.log("✅ Room members updated successfully:", data.roomMembers)
+
+          } else {
+          console.error(data.message);
+          alert(data.message);
+        }
+      } catch (error) {
+        console.error("Error updating members:", error);
+        alert("Failed to update members");
+      }
+    };
 
 
   return (
@@ -58,7 +101,9 @@ export function RoomCard({ id, title, description, categories, status, nextMeeti
         <Button 
         className="mt-4 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition cursor-pointer"
         //onClick={() => navigate(`/TestRoom/${id}`)}
-        onPress={onOpen}
+        //onPress={onOpen}
+        
+        onPress={handleAddMembers}
         >
           Join Room
         </Button>

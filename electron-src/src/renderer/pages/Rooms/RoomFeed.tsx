@@ -1,27 +1,33 @@
+import { Button } from '@/renderer/components/ui/Button';
 import { CallStatus } from '@/renderer/types/roomTypes';
-import { Button } from '@heroui/react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { v4 as uuid } from 'uuid';
 import { useAudioContext } from "../../contexts/AudioContext";
 import { useAuth } from '../../contexts/AuthContext';
 import { RoomConnectionManager, RoomConnectionManagerCallbacks } from './RoomConnectionManager';
 import { useRoomMediaContext } from './RoomMediaContext';
+import { RoomSettingsFooter } from './RoomSettingsFooter';
+import { VideoGrid } from './VideoGrid';
+import WaitingRoom from '@/renderer/components/WaitingRoom';
+import { supabase } from '@/renderer/lib/supabase';
+import { Endpoints } from '@/utils/endpoints';
 
 export interface RoomFeedProps {
-  streamChatClient: any;
-  streamChatChannel: any;
-  roomId: string;
+  roomId: string | undefined;
 }
 
-export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeedProps) {
+export function RoomFeed({roomId}: RoomFeedProps) {
   const { user } = useAuth()
   const { initializeAudioGraph, tearDownAudioGraph, micAudioStream } = useAudioContext();
   const localRoomMedia = useRoomMediaContext();
 
   const [callStatus, setCallStatus] = useState<CallStatus>("inactive");
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  // map streamId/peerId (implemented as the same in the SFU) to its MediaStream
+  const [remoteStreams, setRemoteStreams] = useState<Map<String, MediaStream>>(new Map());
+  const [isAdmitted, setIsAdmitted] = useState(false);
+  const [userRole, setUserRole] = useState("");
 
   const roomConnectionManagerRef = useRef<RoomConnectionManager | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -30,37 +36,141 @@ export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeed
 
   const remoteStreamRef = useRef<MediaStream | null>(null);
 
-  const effectiveRoomId = roomId === undefined ? "testroom" : roomId;
+  const effectiveRoomId = roomId || "testroom";
+
+  const cleanUpRoomExit = async () => {
+    try {//Remove user from room on unmount
+      const token = localStorage.getItem("bridge_token");
+      console.log("TRYING TO REMOVE: ", Endpoints.ROOMS, "/removeRoomMember", roomId )
+      const response = await fetch(`${Endpoints.ROOMS}/removeRoomMember/${roomId}`, {
+        method: "PUT",
+        headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          uuid: user.id
+        }),
+      }).then((response) => response.json())
+      .then((data) => {
+        console.log("✅ ROOM MEMBER REMOVED SUCCESFULLY:", data)
+
+      })
+    } catch (error) {
+      console.error("Error updating members:", error);
+      alert("Failed to update members");
+    }
+  };
+  const getUserRole = async () => {
+    try {
+        const token = localStorage.getItem("bridge_token");
+        const response = await fetch(`${Endpoints.ROOMS}/getRoom/${roomId}`, {
+          headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch user room");
+        }
+        const data = await response.json();
+        console.log("📣 Fetched room data: ", data);
+        const room_data = data.room;
+        const isHost = (room_data.created_by === user.id);
+        
+
+        if (isHost) {
+          setUserRole("Host");
+        }
+        else {
+          setUserRole("Member");
+        }
+
+      } catch (error) {
+        console.error("Error fetching room: " , error);
+      }
+  };
 
   console.log("RENDERING ROOMFEED FOR ROOM " + effectiveRoomId);
+
+  useEffect(() => {
+    getUserRole();
+    console.log("ROOM FEED CHANNEL  STARTED")
+    const channel = supabase.channel("room-feed-members")
+    .on("postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "rooms",
+      },
+      async (payload) => {
+        if (payload.eventType === "UPDATE") {
+          console.log("UPDATING ROOM MEMBERS ");
+          const updated_RM = payload.new.room_members;
+          const user_entry = updated_RM.find(entry => (entry.uuid===user.id));
+          if (user_entry) {
+            const curr_state = user_entry.state;
+            if (curr_state === "user_admitted") {
+              joinRoom();
+              console.log("ADMITTING USER");
+            }
+          }
+        }
+      }
+    )
+    .subscribe();
+  
+    return () => {
+      supabase.removeChannel(channel);
+      cleanUpRoomExit();
+      
+    };
+  }, [])
+    
 
   // Initiate the WebSocket connection with the Node server
   // NOTE: This is NOT the WebRTC stream for video/audio, so it has the same lifetime as the component
   useEffect(() => {
+    console.log("UUID: ", clientId);
     // Define callbacks used by the roomConnectionManager to update state
     const callbacks: RoomConnectionManagerCallbacks = {
       onStatusChange: (status: CallStatus) => setCallStatus(status),
-      onRemoteTrack: (track: MediaStreamTrack) => {
-        if (!remoteStreamRef.current) {
-          // First remote track to arrive, create the stream container
-          console.log("Creating new stream locally");
-          remoteStreamRef.current = new MediaStream();
-          setRemoteStream(remoteStreamRef.current) // Call once to trigger UI
-        }
-        // Add the track to the ref object (for first and subsequent tracks)
-        console.log("Adding remote track");
-        remoteStreamRef.current.addTrack(track);
+      onRemoteStream: (stream: MediaStream) => {
+        // New track received, update remoteStreams accordingly
+        setRemoteStreams(prevRemoteStreams => {
+          console.log("got stream id: " + stream.id);
+          if (prevRemoteStreams.has(stream.id)) {
+            // Stream already exists, browser instance should automatically add it to the stream
+            return prevRemoteStreams;
+          }
+          else {
+            // Add new stream to remoteStreams
+            const newRemoteStreams = new Map(prevRemoteStreams);
+            newRemoteStreams.set(stream.id, stream);
+            return newRemoteStreams;
+          }
+        });
       },
       onRemoteStreamStopped: () => {
         // leave for now
       },
-      onPeerExit: (peerName) => {
-        // Close remote stream
-        setRemoteStream(null);
-        if (remoteStreamRef.current) {
-          remoteStreamRef.current?.getTracks().forEach(track => track.stop());
-        }
-        toast(`${peerName} has left the room`);
+      onPeerExit: (peerId, peerName) => {
+        // Close remote stream if the ref still holds tracks
+        setRemoteStreams(prevRemoteStreams => {
+          if (prevRemoteStreams.has(peerId)) {
+            prevRemoteStreams.get(peerId).getTracks().forEach(track => track.stop());
+            prevRemoteStreams.delete(peerId)
+            const newRemoteStreams = new Map(prevRemoteStreams);
+            toast(`${peerName} has left the room`);
+            console.log(newRemoteStreams);
+            return newRemoteStreams;
+          }
+          else {
+            // Stream does not exist for the peerID
+            console.error(`Stream does not exist for peer ${peerName} with id ${peerId}`);
+            return prevRemoteStreams;
+          }
+        });
       },
       onError: (message) => toast.error(message),
     };
@@ -84,9 +194,6 @@ export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeed
         console.log("Cleaning up connection manager...");
         manager.cleanup(); // This will disconnect and close the WebSocket
         roomConnectionManagerRef.current = null;
-
-        // Stop local stream
-        localStream?.getTracks().forEach(t => t.stop());
 
         // Stop audio graph
         tearDownAudioGraph();
@@ -112,36 +219,36 @@ export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeed
     }
   }, [micAudioStream, localRoomMedia.isAudioEnabled])
 
-  // Handle remote video component changes
-  useEffect(() => {
-    if (!remoteVideoRef.current) {
-      // Ref points to nothing yet, do nothing
-      return;
-    }
+  //// Handle remote video component changes
+  //useEffect(() => {
+  //  if (!remoteVideoRef.current) {
+  //    // Ref points to nothing yet, do nothing
+  //    return;
+  //  }
 
-    if (remoteStream) {
-      if (remoteVideoRef.current.srcObject !== remoteStream) {
-        remoteVideoRef.current.srcObject = remoteStream;
-        remoteVideoRef.current.play()
-          .then(_ => {
-            console.log("Playing remote stream")
-          })
-          .catch(error => {
-            if (error.name === 'NotAllowedError') {
-              console.error("Autoplay was prevented. User must interact with the page")
-            }
-            else if (error.name !== 'AbortError') { // AbortError occurs on unmount
-              console.error("Video play() failed:", error);
-            }
-          });
-      }
-    }
-    else {
-      // remoteStream is null, remove video reference
-      console.log("Remote stream is null, clearing srcObject");
-      remoteVideoRef.current.srcObject = null;
-    }
-  }, [remoteVideoRef, remoteStream]) // videoRef inclusion does nothing, satisfies ESLint
+  //  if (remoteStream) {
+  //    if (remoteVideoRef.current.srcObject !== remoteStream) {
+  //      remoteVideoRef.current.srcObject = remoteStream;
+  //      remoteVideoRef.current.play()
+  //        .then(_ => {
+  //          console.log("Playing remote stream")
+  //        })
+  //        .catch(error => {
+  //          if (error.name === 'NotAllowedError') {
+  //            console.error("Autoplay was prevented. User must interact with the page")
+  //          }
+  //          else if (error.name !== 'AbortError') { // AbortError occurs on unmount
+  //            console.error("Video play() failed:", error);
+  //          }
+  //        });
+  //    }
+  //  }
+  //  else {
+  //    // remoteStream is null, remove video reference
+  //    console.log("Remote stream is null, clearing srcObject");
+  //    remoteVideoRef.current.srcObject = null;
+  //  }
+  //}, [remoteVideoRef, remoteStream]) // videoRef inclusion does nothing, satisfies ESLint
 
   // Handle local video component changes
   useEffect(() => {
@@ -188,6 +295,7 @@ export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeed
   };
 
   const joinRoom = async () => {
+    setCallStatus("loading");
     const manager = roomConnectionManagerRef.current;
     if (!manager || !micAudioStream) {
       toast.error("Connection not ready or microphone not available");
@@ -204,9 +312,21 @@ export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeed
     // Initiate P2P connection with the SFU
     await manager.connect(stream, micAudioStream);
   };
+  const hostStartCall = async () => {
+    joinRoom();
+    /*
+      TODO: Host starting call tasks
+    */
+  };
 
   const exitRoom = async () => {
     roomConnectionManagerRef.current?.disconnect();
+
+    // Stop and clear remote media
+    setRemoteStreams(prevRemoteStreams => {
+      Array.from(prevRemoteStreams.values()).forEach(stream => stream.getTracks().forEach(track => track.stop()));
+      return new Map();
+    });
 
     // Stop and clear local media
     if (localStream) {
@@ -214,39 +334,50 @@ export function RoomFeed({streamChatClient, streamChatChannel, roomId}: RoomFeed
       setLocalStream(null);
     }
 
-    //Reset message channel
-    if (streamChatChannel && streamChatClient) {
-      streamChatChannel.truncate();
-      //streamChatClient.disconnectUser();
-    }
-
     tearDownAudioGraph()
 
     setCallStatus("inactive");
   };
 
+  const allStreams = useMemo(() => {
+    const streams = [];
+    if (localStream) {
+      // The local video is always muted for the user to avoid feedback
+      streams.push({ stream: localStream, isMuted: true });
+    }
+    Array.from(remoteStreams.values()).forEach(stream => {
+      // Remote streams are not muted
+      streams.push({ stream, isMuted: false });
+    });
+    return streams;
+  }, [localStream, remoteStreams]);
+
   return (
-    <div className="w-full h-full">
+    <div className="flex-1 flex flex-col items-center justify-center min-h-0">
       { callStatus === "inactive" ? (
-        <Button 
-        className="text-white bg-blue-600 font-medium hover:text-black cursor-pointer px-2"
+        <>
+          {/*
+            TODO:
+              Host option to start room instead of default waiting room
+          */}
           
-        onPress={joinRoom}>Join Call</Button>
+          {!isAdmitted && (<WaitingRoom 
+            room_id={roomId}
+            callStatus={callStatus}
+          />)}
+          {userRole==="Host" && <Button color="primary" onPress={hostStartCall}>Start Call</Button>}
+          <Button color="primary" onPress={joinRoom}>(BYPASS ADMITTED) Join Call</Button>
+        </>
+
       )
         :
       (
-        <div>
-          <div className="flex gap-4 p-4 w-full h-full">
-            <video className="h-full w-1/2 rounded-lg" ref={localRoomMedia.videoRef} autoPlay muted />
-            <video className="h-full w-1/2 rounded-lg" ref={remoteVideoRef} autoPlay />
+        <>
+          <div className="flex-1 w-full min-h-0">
+            <VideoGrid streams={allStreams} />
           </div>
-          <Button 
-            onPress={exitRoom}
-            className="text-white bg-red-600 font-medium hover:text-black cursor-pointer px-2"
-          >
-            Call Out
-          </Button>
-        </div>
+          <RoomSettingsFooter roomId={roomId} onLeave={exitRoom} />
+        </>
       )}
     </div>
   );

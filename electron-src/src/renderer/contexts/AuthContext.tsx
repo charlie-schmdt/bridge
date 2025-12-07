@@ -1,4 +1,4 @@
-import { Endpoints } from '@/renderer/utils/endpoints';
+import { Endpoints } from '@/utils/endpoints';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 

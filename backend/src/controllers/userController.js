@@ -79,7 +79,7 @@ const oauthLogin = async (req, res) => {
 
 const generateToken = (userId) => {
   // return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
-  return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '15d' });
 };
 
 const getUsers = async (req, res) => {
@@ -457,7 +457,7 @@ const setOnboarding = async (req, res) => {
     const user = req.user;
 
     if (!user) {
-      return res.status(401).json({ success: false, message: 'Unauthorized' });
+      return res.status(401).json({ success: false, message: 'Unauthorized!!!!' });
     }
 
     // Ensure the token owner matches the id in the URL

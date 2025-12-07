@@ -7,6 +7,14 @@ const User = require('../models/User');
 module.exports = {
     getRooms,
     createRoom,
+    editRoom,
+    deleteRoom,
+    getRoomMembers,
+    updateRoomMembers,
+    addRoomMember, 
+    removeRoomMember,
+    updateStatusRoomMember,
+    getRoom
 };
 
 async function getRooms(req, res) {
@@ -40,7 +48,7 @@ async function getRooms(req, res) {
 }
 
 async function createRoom(req, res) {
-  const { workspaceId, name, description, categories } = req.body;
+  const { workspaceId, name, description, categories, meetings } = req.body;
   const userId = req.user?.id;
 
   if (!workspaceId || !name) {
@@ -60,6 +68,7 @@ async function createRoom(req, res) {
       categories,
       workspace_id: workspaceId,
       created_by: userId,
+      meetings,
     });
 
     // Update workspace’s room_ids array
@@ -79,4 +88,295 @@ async function createRoom(req, res) {
     return res.status(500).json({ success: false, message: 'Server error creating room' });
   }
 }
+async function getRoomMembers(req, res) {
+  /*
+    [(UUID, state)...]
+    state:
+        in waiting room
+        active in call
+  */
+ try {
+    const { roomId } = req.params;
+    
+    const room = await Room.findByPk(roomId);
 
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: 'Room not found'
+      });
+    }
+
+    const allMembers = room.room_members;
+    return res.status(201).json({
+      sucess: true,
+      room_members: allMembers
+    });
+
+  
+
+ } catch (error) {
+    console.error('Error fetching room members:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching room members',
+      error: error.message
+    });
+  }
+}
+async function updateRoomMembers(req, res) {
+ try {
+    const { roomId } = req.params;
+    /* json created in front end for user */
+    const listOfMembers = req.body;
+
+    
+    const room = await Room.findByPk(roomId);
+
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: 'Room not found'
+      });
+    }
+
+    await room.update({
+      room_members: listOfMembers
+    });
+ 
+    console.log(`✅ Room ${roomId} updated successfully`);
+
+    const allMembers = [room.room_members];
+    return res.status(201).json({
+      sucess: true,
+      room_members: allMembers
+    });
+
+
+  
+
+ } catch (error) {
+    console.error('Error fetching room members:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching room members',
+      error: error.message
+    });
+  }
+}
+
+async function addRoomMember(req, res) {
+ try {
+    const { roomId } = req.params;
+    /* json created in front end for user */
+    const member = req.body.user_to_add;
+
+    
+    const room = await Room.findByPk(roomId);
+
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: 'Room not found'
+      });
+    }
+
+    const allMembers = [...(room.room_members || []), {
+      uuid: member.uuid,
+      state: member.state,
+      name: member.name
+    }];
+    await room.update({
+      room_members: allMembers
+    });
+ 
+    console.log(`✅ Member added to ${roomId} successfully`);
+
+
+
+    return res.status(201).json({
+      sucess: true,
+      room_members: allMembers
+    });
+
+
+  
+
+ } catch (error) {
+    console.error('Error fetching room members:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching room members',
+      error: error.message
+    });
+  }
+}
+
+async function removeRoomMember(req, res) {
+ try {
+    const { roomId } = req.params;
+    /* 
+      json created in front end for user 
+    */
+    const member = req.body;
+    console.log("👋 member data: ", member.uuid)
+
+    
+    const room = await Room.findByPk(roomId);
+
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: 'Room not found'
+      });
+    }
+
+    const currMembers = room.room_members || [];
+    
+    const updatedMembers = currMembers.filter(entry => (entry.uuid!==member.uuid)) || [];
+    await room.update({
+      room_members: updatedMembers
+    });
+ 
+    console.log(`✅ Member removed from waiting state ${roomId} successfully`);
+
+
+
+    return res.status(201).json({
+      sucess: true,
+      room_members: updatedMembers
+    });
+
+
+  
+
+ } catch (error) {
+    console.error('Error fetching room members:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching room members',
+      error: error.message
+    });
+  }
+}
+
+async function updateStatusRoomMember(req, res) {
+ try {
+    const { roomId } = req.params;
+    /* json created in front end for user 
+      is member with uuid, state, and name
+      - with difference of new_state
+    
+    */
+    const member = req.body;
+
+    
+    const room = await Room.findByPk(roomId);
+
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: 'Room not found'
+      });
+    }
+    const currMembers = room.room_members || [];
+    const removed = currMembers.filter(entry => (entry.uuid!==member.uuid)) || [];
+    //remove current entry to add updated status
+    const updated = [...(removed || []), {
+      uuid: member.uuid,
+      state: member.new_state,
+      name: member.name
+    }];
+
+    await room.update({
+      room_members: updated
+    });
+ 
+    console.log(`✅ Member updated in ${roomId} successfully`);
+
+
+
+    return res.status(201).json({
+      sucess: true,
+      room_members: updated
+    });
+
+
+  
+
+ } catch (error) {
+    console.error('Error fetching room members:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching room members',
+      error: error.message
+    });
+  }
+}
+
+async function getRoom(req, res) {
+   try {
+    const { roomId } = req.params;
+    
+    const room = await Room.findByPk(roomId);
+
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: 'Room not found'
+      });
+    }
+    return res.status(201).json({
+      sucess: true,
+      room: room
+    });
+ } catch (error) {
+    console.error('Error fetching room:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching room',
+      error: error.message
+    });
+  }
+}
+
+
+async function editRoom(req, res) {
+  const { roomId } = req.params;
+  const { name, description, categories, status, meetings } = req.body;
+
+  try {
+    const room = await Room.findByPk(roomId);
+    if (!room) {
+      return res.status(404).json({ success: false, message: 'Room not found' });
+    }
+    // Update the room
+    await room.update({
+      name,
+      description,
+      categories,
+      status,
+      meetings,
+    });
+    return res.status(200).json({ success: true, room });
+
+  } catch (error) {
+    console.error('Error editing room:', error);
+    return res.status(500).json({ success: false, message: 'Server error editing room' });
+  }
+}
+
+async function deleteRoom(req, res) {
+  const { roomId } = req.params;
+  try {
+    const room = await Room.findByPk(roomId);
+    if (!room) {
+      return res.status(404).json({ success: false, message: 'Room not found' });
+    }
+    await room.destroy();
+    return res.status(200).json({ success: true, message: 'Room deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting room:', error);
+    return res.status(500).json({ success: false, message: 'Server error deleting room' });
+  }
+}

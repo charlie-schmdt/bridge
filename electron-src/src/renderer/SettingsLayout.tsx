@@ -1,5 +1,5 @@
 // src/pages/SettingsLayout.tsx
-import { Endpoints } from "@/renderer/utils/endpoints";
+import { Endpoints } from "@/utils/endpoints";
 import {
   Button,
   Card,

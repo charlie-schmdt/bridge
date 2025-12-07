@@ -1,8 +1,8 @@
-import { Endpoints } from "@/renderer/utils/endpoints";
+import { Endpoints } from "@/utils/endpoints";
 import { Switch, Textarea } from "@heroui/react";
 import { Lock, PlusCircle, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import NotificationBanner from "./NotificationBanner";
+import NotificationBanner from "../../components/NotificationBanner";
 
 // ============================
 // Custom Modal Component
@@ -56,7 +56,6 @@ const ModalFooter = ({ children }) => (
   </div>
 );
 
-
 // ============================
 // Main Component
 // ============================
@@ -81,44 +80,37 @@ export default function CreateWorkspaceCard() {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
-  
-  
+
   const fetchUsers = async () => {
-      const token = localStorage.getItem('bridge_token');
-      const response = await fetch(`${Endpoints.USERS}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      if (!response.ok) {
-        console.error('Failed to fetch users:', response.statusText);
-        return;
-      }
-      const data = await response.json();
-      console.log("Fetched users data:", data);
-      if (data.success) {
-        const allUsers = data.data;
-        const storedUser = JSON.parse(localStorage.getItem("bridge_user"));
+    const token = localStorage.getItem("bridge_token");
+    const response = await fetch(`${Endpoints.USERS}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-        // ✅ Filter out the creator
-        const availableUsers = allUsers.filter(
-          (u) => u.id !== storedUser.id
-        );
+    if (!response.ok) {
+      console.error("Failed to fetch users:", response.statusText);
+      return;
+    }
+    const data = await response.json();
+    console.log("Fetched users data:", data);
+    if (data.success) {
+      const allUsers = data.data;
+      const storedUser = JSON.parse(localStorage.getItem("bridge_user"));
 
-        setAvailableUsers(availableUsers);
-      }
+      // ✅ Filter out the creator
+      const availableUsers = allUsers.filter((u) => u.id !== storedUser.id);
 
-    };
+      setAvailableUsers(availableUsers);
+    }
+  };
   // Fix for the Switch toggle (HeroUI uses `onValueChange`)
   const handleTogglePrivate = (checked) => {
     setFormData((prev) => ({ ...prev, isPrivate: checked }));
   };
 
-
   useEffect(() => {
     fetchUsers();
   }, []);
-
-
 
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
@@ -128,50 +120,53 @@ export default function CreateWorkspaceCard() {
     }
 
     try {
-      const userData = localStorage.getItem('bridge_user');
+      const userData = localStorage.getItem("bridge_user");
       if (!userData) {
-        console.error('No user data found');
+        console.error("No user data found");
         return;
       }
       const user = JSON.parse(userData);
-      console.log('User data:', user); // Added logging to verify user data
+      console.log("User data:", user); // Added logging to verify user data
       if (!user.id) {
-        console.error('No user ID found in stored data');
+        console.error("No user ID found in stored data");
         return;
       }
 
-      const authorizedUsers = selectedUsers.map((id) => ({ id, role: 'member', 
-        permissions: { 
-          canCreateRooms: false,
-          canDeleteRooms: false,
-          canEditWorkspace: false,
-         } }));
-      authorizedUsers.push({ id: user.id, role: 'owner', 
-        permissions: { 
+      // Only include the owner in `authorized_users` on creation.
+      // The selectedUsers are treated as pending invites and sent in `auth_users`.
+      const ownerAuthorizedEntry = {
+        id: user.id,
+        role: "Owner",
+        permissions: {
           canCreateRooms: true,
           canDeleteRooms: true,
           canEditWorkspace: true,
-         } });
+        },
+      };
 
       const response = await fetch(Endpoints.WORKSPACES, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json'
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("bridge_token")}`,
         },
         body: JSON.stringify({
           name: formData.name,
           description: formData.description,
           private: formData.isPrivate,
+          // `auth_users` are IDs we want to INVITE (pending invites)
           auth_users: selectedUsers,
-          authorized_users: authorizedUsers,
-          owner_real_id: user.id  // Changed from 'id' to 'owner_real_id' to match controller
-        })
+          // Only persist the owner as an authorized user; invited users will be
+          // moved into `auth_users` (members) when they accept the invite.
+          authorized_users: [ownerAuthorizedEntry],
+          owner_real_id: user.id,
+        }),
       });
 
       const data = await response.json();
-      
+
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to create workspace');
+        throw new Error(data.message || "Failed to create workspace");
       }
 
       console.log("✅ Workspace Created:", data);
@@ -184,10 +179,11 @@ export default function CreateWorkspaceCard() {
       // Show success banner
       setShowNotification(true);
       setTimeout(() => setShowNotification(false), 3000);
-
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create workspace');
-      console.error('Error creating workspace:', err);
+      setError(
+        err instanceof Error ? err.message : "Failed to create workspace"
+      );
+      console.error("Error creating workspace:", err);
     }
   };
 
@@ -203,9 +199,16 @@ export default function CreateWorkspaceCard() {
         tabIndex={0}
       >
         <PlusCircle className="w-10 h-10 text-blue-500 group-hover:text-blue-600 transition duration-200" />
-        <p className="text-lg font-semibold text-gray-800">Create New Workspace</p>
-        <p className="text-sm text-gray-500">Start organizing your projects and teams here.</p>
-        <button onClick={handleOpen} className="mt-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition cursor-pointer">
+        <p className="text-lg font-semibold text-gray-800">
+          Create New Workspace
+        </p>
+        <p className="text-sm text-gray-500">
+          Start organizing your projects and teams here.
+        </p>
+        <button
+          onClick={handleOpen}
+          className="mt-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition cursor-pointer"
+        >
           Get Started
         </button>
       </div>
@@ -239,7 +242,9 @@ export default function CreateWorkspaceCard() {
           <div className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all">
             <div className="flex items-center gap-2">
               <Lock className="w-5 h-5 text-gray-500" />
-              <span className="text-gray-700 font-medium">Private Workspace</span>
+              <span className="text-gray-700 font-medium">
+                Private Workspace
+              </span>
             </div>
             <Switch
               size="md"
@@ -251,8 +256,7 @@ export default function CreateWorkspaceCard() {
           <p className="text-xs text-gray-500 ml-1">
             {formData.isPrivate
               ? "Only invited members can view this workspace."
-              : "This workspace will be visible and joinable by everyone in your organization."
-            }
+              : "This workspace will be visible and joinable by everyone in your organization."}
           </p>
           {formData.isPrivate && (
             <div className="mt-3">
@@ -273,7 +277,9 @@ export default function CreateWorkspaceCard() {
                           if (e.target.checked) {
                             setSelectedUsers([...selectedUsers, user.id]);
                           } else {
-                            setSelectedUsers(selectedUsers.filter((id) => id !== user.id));
+                            setSelectedUsers(
+                              selectedUsers.filter((id) => id !== user.id)
+                            );
                           }
                         }}
                         className="rounded text-blue-600"
@@ -287,10 +293,12 @@ export default function CreateWorkspaceCard() {
               </div>
             </div>
           )}
-
         </ModalBody>
         <ModalFooter>
-          <button className="mt-2 text-black bg-gray-200 px-4 py-2 rounded-lg hover:bg-gray-300 transition cursor-pointer" onClick={handleClose}>
+          <button
+            className="mt-2 text-black bg-gray-200 px-4 py-2 rounded-lg hover:bg-gray-300 transition cursor-pointer"
+            onClick={handleClose}
+          >
             Cancel
           </button>
           <button
@@ -306,7 +314,10 @@ export default function CreateWorkspaceCard() {
       {/* Notification Banner */}
       {showNotification && (
         <div className="fixed top-20 right-4 z-[9999]">
-          <NotificationBanner message="Workspace created successfully! 🎉" type="created" />
+          <NotificationBanner
+            message="Workspace created successfully! 🎉"
+            type="created"
+          />
         </div>
       )}
     </>

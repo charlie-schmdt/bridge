@@ -1,4 +1,4 @@
-import { Endpoints } from '@/renderer/utils/endpoints';
+import { Endpoints } from '@/utils/endpoints';
 import { Button, Card, CardBody, CardHeader } from '@heroui/react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';

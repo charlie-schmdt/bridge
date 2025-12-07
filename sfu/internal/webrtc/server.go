@@ -200,7 +200,7 @@ func (s *session) handleExit(id, roomId, name string) {
 		name = s.routers[roomId].GetName(id)
 	}
 	closeSubscriber := func(peerId string) {
-		payload, err := json.Marshal(signaling.PeerExit{PeerID: peerId, PeerName: name})
+		payload, err := json.Marshal(signaling.PeerExit{PeerID: id, PeerName: name})
 		if err != nil {
 			log.Printf("Error marshaling the PeerExit payload for peer %s", peerId)
 		}
