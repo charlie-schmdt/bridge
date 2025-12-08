@@ -4,9 +4,9 @@ const router = express.Router();
 // Import controllers
 const { getWorkspaces, createWorkspace, joinWorkspace, getUserWorkspaces, getWorkspaceMembers, leaveWorkspace, 
   removeUserFromWorkspace, updateWorkspace, setPermissions, getPermissions, toggleWorkspaceFavorite, getUserFavoriteWorkspaces, 
-  inviteUserToWorkspace, getJoinableWorkspaces, acceptInvite, setUserRole } = require('../controllers/workspaceController');
+  requestJoinWorkspace, getPendingRequests, acceptJoinRequest, denyJoinRequest, inviteUserToWorkspace, getJoinableWorkspaces, acceptInvite, setUserRole } = require('../controllers/workspaceController');
 const { createUser, loginUser, getSettings, updateSettings, oauthLogin, deleteAccount, setOnboarding, getUsers } = require('../controllers/userController');
-const { getRooms, getRoom, createRoom, getRoomMembers, updateRoomMembers, editRoom, deleteRoom } = require('../controllers/roomController');
+const { getRooms, createRoom, getRoomMembers, updateRoomMembers, addRoomMember, removeRoomMember, editRoom, deleteRoom, updateStatusRoomMember, getRoom} = require('../controllers/roomController');
 const { submitQuestion } = require('../controllers/questionController');
 const { getQAQuestions, submitQuestion: submitQAQuestion, updateQuestionStatus } = require('../controllers/qaController');
 // Import middleware
@@ -67,11 +67,20 @@ router.post('/workspace/:workspaceId/favorite', authenticateToken, toggleWorkspa
 router.get('/workspaces/user/favorites', authenticateToken, getUserFavoriteWorkspaces);
 router.put('/workspaces/:workspaceId/permissions', authenticateToken, setPermissions);
 router.get('/workspaces/:workspaceId/permissions/:userId', authenticateToken, getPermissions);
-router.post('/workspace/:workspaceId/invite', authenticateToken, inviteUserToWorkspace);
-router.get('/workspaces/joinable', authenticateToken, getJoinableWorkspaces);
-router.post('/workspace/:workspaceId/accept-invite', authenticateToken, acceptInvite);
-router.put('/workspace/:workspaceId/member/:userId/role', authenticateToken, setUserRole);
 
+// Join request endpoints
+router.post('/workspace/:workspaceId/request-join', authenticateToken, requestJoinWorkspace);
+router.get('/workspace/:workspaceId/requests', authenticateToken, getPendingRequests);
+router.post('/workspace/:workspaceId/requests/:requesterId/accept', authenticateToken, acceptJoinRequest);
+router.post('/workspace/:workspaceId/requests/:requesterId/deny', authenticateToken, denyJoinRequest);
+
+// Invite endpoints (owner invites by email -> pending invite)
+router.post('/workspace/:workspaceId/invite', authenticateToken, inviteUserToWorkspace);
+// List workspaces where current user has pending invites
+router.get('/workspaces/joinable', authenticateToken, getJoinableWorkspaces);
+// Accept or reject a pending invite
+router.post('/workspace/:workspaceId/accept-invite', authenticateToken, acceptInvite);
+router.post('/workspace/:workspaceId/reject-invite', authenticateToken, require('../controllers/workspaceController').rejectInvite);
 
 // Room routes would go here
 router.get('/workspace/:workspaceId/rooms', authenticateToken, getRooms);
@@ -88,6 +97,12 @@ router.get('/rooms/:roomId/qa', authenticateToken, getQAQuestions);
 router.post('/rooms/:roomId/qa', authenticateToken, submitQAQuestion);
 router.patch('/rooms/:roomId/qa/:questionId/status', authenticateToken, updateQuestionStatus);
 
+router.get('/rooms/getRoomMembers/:roomId', authenticateToken, getRoomMembers);
+router.put('/rooms/updateRoomMembers/:roomId', authenticateToken, updateRoomMembers);
+router.put('/rooms/addRoomMember/:roomId', authenticateToken, addRoomMember);
+router.put('/rooms/removeRoomMember/:roomId', authenticateToken, removeRoomMember)
+router.put('/rooms/updateStatusRoomMember/:roomId', authenticateToken, updateStatusRoomMember);
+router.get('/rooms/getRoom/:roomId', authenticateToken, getRoom)
 // Protected routes (require authentication)
 router.delete('/auth/delete-account', authenticateToken, deleteAccount);
 

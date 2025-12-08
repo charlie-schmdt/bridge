@@ -49,8 +49,11 @@ export const WorkspaceLayout = () => {
       categories?: string[];
       status?: string;
       meetings?: Meeting[];
+      created_by: string;
     }>
   >([]);
+  const [isMember, setIsMember] = useState(false);
+  const [pendingRequests, setPendingRequests] = useState<Array<any>>([]);
   const [isCreateRoomModalOpen, setShowRoomModal] = useState(false);
   const [roomName, setRoomName] = useState("");
   const [roomDescription, setRoomDescription] = useState("");
@@ -146,6 +149,27 @@ export const WorkspaceLayout = () => {
             isPrivate: data.private,
           });
           setMembers(data.members);
+          setIsMember(
+            !!data.members.find((m: any) => String(m.id) === String(user.id))
+          );
+          // If current user is owner, fetch pending join requests
+          if (data.owner_real_id === user.id || data.members.find((m: any) => m.isOwner)) {
+            try {
+              const token = localStorage.getItem('bridge_token');
+              const reqResp = await fetch(`${Endpoints.WORKSPACE}/${workspaceId}/requests`, {
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                }
+              });
+              if (reqResp.ok) {
+                const reqData = await reqResp.json();
+                setPendingRequests(reqData.requests || []);
+              }
+            } catch (e) {
+              console.error('Failed to fetch pending requests:', e);
+            }
+          }
           console.log("✅ Fetched workspace data:", {
             workspaceId: data.workspaceId,
             name: data.workspaceName,
@@ -166,10 +190,20 @@ export const WorkspaceLayout = () => {
               )
             });
           } else {
-            throw new Error(room_data.message || "Failed to fetch room data");
+            // rooms may be private or restricted; keep empty and continue
+            console.log("Rooms not available or restricted for this user");
           }
         } else {
-          throw new Error(data.message || "Failed to fetch workspace data");
+          // Could not fetch members (maybe private workspace). Show minimal info so user can request access.
+          console.log("Cannot fetch workspace members (private or no access)");
+          setWorkspaceInfo({
+            id: workspaceId,
+            name: workspaceId ? `Workspace ${workspaceId}` : "Private Workspace",
+            members: [],
+            description: "This workspace is private. Request access to view members and rooms.",
+            isPrivate: true,
+          });
+          setIsMember(false);
         }
       } catch (err) {
         console.error("❌ Error fetching workspace data:", err);
@@ -258,6 +292,81 @@ export const WorkspaceLayout = () => {
 
 
 
+
+  const requestJoin = async () => {
+    try {
+      const token = localStorage.getItem("bridge_token");
+      const resp = await fetch(`${Endpoints.WORKSPACE}/${workspaceId}/request-join`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message: "Requesting access" }),
+      });
+      if (resp.ok) {
+        showNotification("Request to join submitted", "created");
+      } else {
+        showNotification("Request queued (backend not implemented)", "info");
+      }
+    } catch (e) {
+      console.error("Request to join failed:", e);
+      showNotification("Failed to send request to join", "error");
+    }
+  };
+
+  const acceptRequest = async (requesterId: string) => {
+    try {
+      const token = localStorage.getItem('bridge_token');
+      const resp = await fetch(`${Endpoints.WORKSPACE}/${workspaceId}/requests/${requesterId}/accept`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (resp.ok) {
+        showNotification('Request accepted', 'success');
+        setPendingRequests(prev => prev.filter(r => String(r.id) !== String(requesterId)));
+        // Refresh member list
+        const membersResp = await fetch(`${Endpoints.WORKSPACE}/${workspaceId}/members`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('bridge_token')}` } });
+        if (membersResp.ok) {
+          const mdata = await membersResp.json();
+          setMembers(mdata.members || []);
+          setWorkspaceInfo(prev => prev ? { ...prev, members: mdata.members } : prev);
+        }
+      } else {
+        const data = await resp.json();
+        showNotification(data.message || 'Failed to accept request', 'error');
+      }
+    } catch (e) {
+      console.error('Accept request failed:', e);
+      showNotification('Failed to accept request', 'error');
+    }
+  };
+
+  const denyRequest = async (requesterId: string) => {
+    try {
+      const token = localStorage.getItem('bridge_token');
+      const resp = await fetch(`${Endpoints.WORKSPACE}/${workspaceId}/requests/${requesterId}/deny`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (resp.ok) {
+        showNotification('Request denied', 'info');
+        setPendingRequests(prev => prev.filter(r => String(r.id) !== String(requesterId)));
+      } else {
+        const data = await resp.json();
+        showNotification(data.message || 'Failed to deny request', 'error');
+      }
+    } catch (e) {
+      console.error('Deny request failed:', e);
+      showNotification('Failed to deny request', 'error');
+    }
+  };
 
   const uniqueCategories = Array.from(
     new Set(
@@ -526,6 +635,8 @@ export const WorkspaceLayout = () => {
                 {/* <Button
                   color="primary"
                   onPress={setShowRoomModal.bind(null, true)}
+                disabled={!isMember}
+                className={!isMember ? "opacity-60 cursor-not-allowed" : ""}
                 >
                   + Create Room
                 </Button> */}
@@ -549,21 +660,40 @@ export const WorkspaceLayout = () => {
                     Get Started
                   </button>
                 </div> */}
-                {isCurrentUserOwner && (
+                {/* InviteUser handled below; keep single InviteUser instance */}
+              </div>
+
+
+              {isCurrentUserOwner && (
+                // Use the modular InviteUser component for inviting by email
+                <div className="flex items-center gap-2">
                   <InviteUser
                     workspaceId={workspaceId}
                     onInviteSuccess={(invited) => {
-                      console.log("Invited user:", invited);
-                      // Invitation recorded as pending on the server; do not add to members list.
-                      // Optionally show a toast or refresh pending-invites if you add that UI.
+                      console.log('Invited user via InviteUser component:', invited);
                     }}
+                    onNotify={(msg, type) => showNotification(msg, type)}
                   />
-                )}
-              </div>
+                </div>
+              )}
+
+              {workspaceInfo?.isPrivate && !isMember && (
+                <div className="flex items-center gap-3">
+                  <span className="px-3 py-1 rounded-md bg-orange-100 text-orange-800 font-medium">
+                    Private Workspace
+                  </span>
+                  <button
+                    onClick={requestJoin}
+                    className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
+                  >
+                    Request to Join
+                  </button>
+                </div>
+              )}
 
               <LeaveWorkspaceButton
                 workspaceId={workspaceId}
-                workspaceName={workspaceInfo.name}
+                workspaceName={workspaceInfo?.name}
                 isOwner={!!isCurrentUserOwner}
                 onLeaveSuccess={() => {
                   console.log("Left workspace successfully");
@@ -737,6 +867,27 @@ export const WorkspaceLayout = () => {
                 </div>
               </div>
             )}
+
+            {/* Pending join requests (owner only) */}
+            {isCurrentUserOwner && pendingRequests.length > 0 && (
+              <div className="w-full px-6 mt-4">
+                <h3 className="text-lg font-semibold mb-2">Pending Join Requests</h3>
+                <div className="space-y-3">
+                  {pendingRequests.map((req) => (
+                    <div key={req.id} className="flex items-center justify-between bg-white border border-gray-100 rounded-lg p-3">
+                      <div>
+                        <div className="font-medium text-gray-900">{req.user?.name || req.id}</div>
+                        {req.message && <div className="text-xs text-gray-500">{req.message}</div>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => acceptRequest(req.id)} className="px-3 py-1 bg-green-600 text-white rounded-md">Accept</button>
+                        <button onClick={() => denyRequest(req.id)} className="px-3 py-1 bg-red-100 text-red-700 rounded-md">Deny</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -744,7 +895,11 @@ export const WorkspaceLayout = () => {
         <div className="flex flex-col lg:flex-row gap-6 mt-6 px-6 mb-4">
           {/* Left: Room cards (75%) */}
           <div className="lg:w-3/4 w-full">
-            {rooms.length > 0 ? (
+            {workspaceInfo?.isPrivate && !isMember ? (
+              <div className="bg-white rounded-xl shadow-lg border border-orange-100 p-8 text-center text-orange-700">
+                Rooms are private. Request access to view and join rooms.
+              </div>
+            ) : rooms.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-[minmax(10rem,_1fr)]">
                 {filteredRooms.length > 0 ? (
                   filteredRooms.map((room) => (
@@ -767,6 +922,7 @@ export const WorkspaceLayout = () => {
                           : [] // Pass empty array if meetings is a string or undefined
                       }
                       editMode={editMode}
+                      isOwner={!!isCurrentUserOwner}
                     />
                   ))
                 ) : (
@@ -779,26 +935,41 @@ export const WorkspaceLayout = () => {
 
             {/* Add the CreateRoomCard at the end of the grid */}
             {/* <CreateRoomCard /> */}
-            <div
+            
+            {/* Only show Create Room option to workspace owners */}
+            {isCurrentUserOwner ? (
+              <div
+                onClick={setShowRoomModal.bind(null, true)}
+                className="group border-2 border-dashed border-blue-300 hover:border-blue-500 bg-white 
+                  rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer 
+                  p-6 sm:p-8 w-full flex flex-col items-center text-center space-y-3"
+                role="button"
+                tabIndex={0}
+              >
+                <PlusCircle className="w-10 h-10 text-blue-500 group-hover:text-blue-600 transition duration-200" />
+                <p className="text-lg font-semibold text-gray-800">Create New Room</p>
+                <p className="text-sm text-gray-500">
+                  Quickly set up a new meeting room for your team.
+                </p>
+                <button
                   onClick={setShowRoomModal.bind(null, true)}
-                  className="group border-2 border-dashed border-blue-300 hover:border-blue-500 bg-white 
-                    rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer 
-                    p-6 sm:p-8 w-full flex flex-col items-center text-center space-y-3"
-                  role="button"
-                  tabIndex={0}
+                  className="mt-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition cursor-pointer"
                 >
-                  <PlusCircle className="w-10 h-10 text-blue-500 group-hover:text-blue-600 transition duration-200" />
-                  <p className="text-lg font-semibold text-gray-800">Create New Room</p>
-                  <p className="text-sm text-gray-500">
-                    Quickly set up a new meeting room for your team.
-                  </p>
-                  <button
-                    onClick={setShowRoomModal.bind(null, true)}
-                    className="mt-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition cursor-pointer"
-                  >
-                    Get Started
-                  </button>
-                </div>
+                  Get Started
+                </button>
+              </div>
+            ) : (
+              <div
+                className="border-2 border-gray-200 bg-gray-50 rounded-xl shadow p-6 sm:p-8 w-full 
+                  flex flex-col items-center text-center space-y-3"
+              >
+                <PlusCircle className="w-10 h-10 text-gray-400" />
+                <p className="text-lg font-semibold text-gray-600">Create New Room</p>
+                <p className="text-sm text-gray-500">
+                  Only workspace owners can create new rooms.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Right: Members list (25%) */}

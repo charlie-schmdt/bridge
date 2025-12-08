@@ -9,19 +9,16 @@ interface Props {
     name?: string;
     email: string;
   }) => void;
+  onNotify?: (message: string, type?: string) => void;
 }
 
-const InviteUser: React.FC<Props> = ({ workspaceId, onInviteSuccess }) => {
+const InviteUser: React.FC<Props> = ({ workspaceId, onInviteSuccess, onNotify }) => {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   const handleInvite = async () => {
-    setError(null);
-    setSuccess(null);
     if (!email.trim()) {
-      setError("Please enter an email address.");
+      onNotify?.('Please enter an email address.', 'error');
       return;
     }
 
@@ -39,7 +36,8 @@ const InviteUser: React.FC<Props> = ({ workspaceId, onInviteSuccess }) => {
 
       const data = await resp.json();
       if (resp.ok && data.success) {
-        setSuccess("Invitation sent — user added to workspace.");
+        // Notify parent via callback (will show banner)
+        onNotify?.('Invitation sent (pending acceptance)', 'success');
         setEmail("");
         onInviteSuccess?.(
           data.invitedUser || {
@@ -49,10 +47,10 @@ const InviteUser: React.FC<Props> = ({ workspaceId, onInviteSuccess }) => {
           }
         );
       } else {
-        setError(data.message || "Failed to invite user");
+        onNotify?.(data.message || 'Failed to send invite', 'error');
       }
     } catch (err: any) {
-      setError(err?.message || "Network error");
+      onNotify?.(err?.message || 'Network error', 'error');
     } finally {
       setLoading(false);
     }
@@ -71,8 +69,6 @@ const InviteUser: React.FC<Props> = ({ workspaceId, onInviteSuccess }) => {
       <Button color="primary" onPress={handleInvite} disabled={loading}>
         {loading ? "Inviting..." : "Invite"}
       </Button>
-      {error && <p className="text-red-500 text-sm">{error}</p>}
-      {success && <p className="text-green-600 text-sm">{success}</p>}
     </div>
   );
 };

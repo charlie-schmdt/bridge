@@ -108,7 +108,7 @@ export function RoomCard({ room_id, id, title, description, categories, status, 
           Join Room
         </Button>
 
-        <WaitingRoom roomID={id} isOpen={isOpen} onOpen={onOpen} onOpenChange={onOpenChange} callStatus={status}/>
+        <WaitingRoom room_id={id} isOpen={isOpen} onOpen={onOpen} onOpenChange={onOpenChange} callStatus={status}/>
         </>
       )}
       {status === "scheduled" && (

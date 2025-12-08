@@ -46,7 +46,7 @@ export const RoomLayout = ({}: RoomLayoutProps) => {
         if (response.ok) {
           const data = await response.json();
           console.log('✅ Room data received:', data);
-          setRoom(data);
+          setRoom(data.room);
         } else {
           console.error('❌ Failed to fetch room:', response.status, await response.text());
         }
