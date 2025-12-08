@@ -2,7 +2,7 @@ import { Button, useDisclosure } from "@heroui/react";
 import { useNavigate } from "react-router-dom";
 import WaitingRoom from "./WaitingRoom";
 import { useAuth } from "../contexts/AuthContext";
-import { Endpoints } from "@/renderer/utils/endpoints";
+import { Endpoints } from "@/utils/endpoints";
 import { useState } from "react";
 
 const statusColors = {
@@ -108,7 +108,7 @@ export function RoomCard({ room_id, id, title, description, categories, status, 
           Join Room
         </Button>
 
-        <WaitingRoom roomID={id} isOpen={isOpen} onOpen={onOpen} onOpenChange={onOpenChange}/>
+        <WaitingRoom roomID={id} isOpen={isOpen} onOpen={onOpen} onOpenChange={onOpenChange} callStatus={status}/>
         </>
       )}
       {status === "scheduled" && (

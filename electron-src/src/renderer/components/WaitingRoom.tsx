@@ -24,9 +24,12 @@ import { useAuth } from "../contexts/AuthContext";
 interface WaitingRoomProps{
     roomID: string;
     callStatus: string;
+    isOpen: boolean;
+    onOpen: ()=> void;
+    onOpenChange: () => void;
 }
 
-export default function WaitingRoom({roomID, callStatus}: WaitingRoomProps){ 
+export default function WaitingRoom({roomID, callStatus, isOpen, onOpen, onOpenChange}: WaitingRoomProps){ 
     const navigate = useNavigate();
     const { user } = useAuth();
     
