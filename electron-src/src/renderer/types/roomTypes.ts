@@ -1,3 +1,5 @@
+export type VideoLayout = "grid" | "speaker";
+
 export type SignalMessageType = "join" | "exit" | "peerExit" | "offer" | "answer" | "candidate" | "subscribe" | "unsubscribe" | "pli";
 
 export interface SignalMessage {

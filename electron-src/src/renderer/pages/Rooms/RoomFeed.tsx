@@ -1,7 +1,7 @@
 import { Button } from '@/renderer/components/ui/Button';
 import WaitingRoom from '@/renderer/components/WaitingRoom';
 import { supabase } from '@/renderer/lib/supabase';
-import { CallStatus } from '@/renderer/types/roomTypes';
+import { CallStatus, VideoLayout } from '@/renderer/types/roomTypes';
 import { Endpoints } from '@/utils/endpoints';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
@@ -33,6 +33,7 @@ export function RoomFeed({roomId}: RoomFeedProps) {
 
   const [isScreenSelectorOpen, setIsScreenSelectorOpen] = useState(false);
   const [screenIsShared, setScreenIsShared] = useState(false);
+  const [currentLayout, setCurrentLayout] = useState<VideoLayout>("grid");
 
   const roomConnectionManagerRef = useRef<RoomConnectionManager | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -100,7 +101,7 @@ export function RoomFeed({roomId}: RoomFeedProps) {
 
   useEffect(() => {
     getUserRole();
-    console.log("ROOM FEED CHANNEL  STARTED")
+    console.log("ROOM FEED CHANNEL STARTED")
     const channel = supabase.channel("room-feed-members")
     .on("postgres_changes",
       {
@@ -352,6 +353,7 @@ export function RoomFeed({roomId}: RoomFeedProps) {
     if (stream) {
       setScreenStream(stream);
       setScreenIsShared(true);
+      setCurrentLayout("speaker");
       toast("Sharing screen");
     }
     else {
@@ -386,10 +388,6 @@ export function RoomFeed({roomId}: RoomFeedProps) {
       // The local video is always muted for the user to avoid feedback
       streams.push({ stream: localStream, isMuted: true });
     }
-    if (screenStream) {
-      // local screen share is always muted for the user to avoid feedback
-      streams.push({ stream: screenStream, isMuted: true });
-    }
     Array.from(remoteStreams.values()).forEach(stream => {
       // Remote streams are not muted
       streams.push({ stream, isMuted: false });
@@ -420,13 +418,16 @@ export function RoomFeed({roomId}: RoomFeedProps) {
           {userRole==="Host" && <Button color="primary" onPress={hostStartCall}>Start Call</Button>}
           <Button color="primary" onPress={joinRoom}>(BYPASS ADMITTED) Join Call</Button>
         </>
-
       )
         :
       (
         <>
           <div className="flex-1 w-full min-h-0">
-            <VideoGrid streams={allStreams} />
+            <VideoGrid
+              layout={currentLayout}
+              streams={allStreams}
+              screenStream={{stream: screenStream, isMuted: true}}
+            />
           </div>
           <RoomSettingsFooter
             roomId={roomId}
