@@ -8,7 +8,7 @@ import EchoCancellationToggle from "./EchoCancellationToggle";
 import NoiseSuppressionToggle from "./NoiseSuppressionToggle";
 import AudioMeter from "./AudioMeter";
 import { Endpoints } from "@/utils/endpoints";
-import { Check, X } from 'lucide-react';
+import { Check, Hand, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 
@@ -29,6 +29,8 @@ interface RoomMember{
 
 export default function UserFeaturesModal({roomId, isOpen, onOpen, onOpenChange}: UserFeaturesModalProps) {
   const [waitingMembers, setWaitingMembers] = useState<RoomMember[]>([]);
+    const [handsRaised, setHandsRaised] = useState<RoomMember[]>([]);
+
   const [user_status, setUserStatus] = useState("");
   const { user } = useAuth();
 
@@ -81,6 +83,8 @@ export default function UserFeaturesModal({roomId, isOpen, onOpen, onOpenChange}
           const updated_RM = payload.new.room_members;
           const waiting_members = updated_RM.filter(entry => (entry.state==='user_waiting')) || [];
           setWaitingMembers(waiting_members);
+          const hands_raised = updated_RM.filter(entry => (entry.state==='hand_raised')) || [];
+          setHandsRaised(hands_raised);
         }
       }
     )
@@ -183,7 +187,6 @@ export default function UserFeaturesModal({roomId, isOpen, onOpen, onOpenChange}
                             {/*
                                 TODO: entries for participants waiting
                                 - Call must be active
-                                - must be host to view waiting list
                             */}
                             
                               <div>
@@ -231,7 +234,33 @@ export default function UserFeaturesModal({roomId, isOpen, onOpen, onOpenChange}
                                 ))}
                               </div>
                             
-                            </>)}
+                             <h3 className="font-semibold mb-4">Hands Raised</h3>
+                             <div>
+                                { handsRaised.map((mem) =>(
+                                  <>
+                                    <li  
+                                      key={mem.uuid}           
+                                      className="text-gray-800 flex items-center justify-between group"
+                                    >
+                                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                                        <div className="flex flex-col min-w-0 flex-1">
+                                          <span className="text-sm font-medium truncate">
+                                            {mem.name}
+                                          </span>
+                                        </div>
+                                      </div>
+                                      <div
+                                        className="flex items-center gap-2 ml-2"
+                                      >
+                                        <Hand size={14} />
+                                      </div>
+                                    </li>
+                                  </>
+                                ))}
+                              </div>
+                            </>)
+                            
+                            }
 
                             <div className="flex flex-col  rounded-xl shadow gap-4">
                               <div className="grid grid-cols-1 grid-rows-2 flex-1 min-w-[300px] mt-2 mb-2">
