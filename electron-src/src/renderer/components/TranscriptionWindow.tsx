@@ -6,8 +6,8 @@ export default function TranscriptionWindow() {
   const {audioContext, analyserNode} = useAudioContext();
 
   return (
-    <div className="m-6 p-4 bg-gray-200 rounded-xl">
-      <h1 className="text-2xl font-bold text-gray-900">Transcript type shit.</h1>
+    <div className="m-6 p-4 bg-blue-200 rounded-xl">
+      <h1 className="text-2xl font-bold text-gray-900">Meeting Transcript</h1>
       <p>
         My transcript
       </p>

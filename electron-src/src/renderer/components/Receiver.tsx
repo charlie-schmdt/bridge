@@ -93,21 +93,21 @@ function Process() {
   );
 }
 
-function AGCValue({index, value}) {
+function AGCValue({index}) {
+
+  const { agcValues } = useAudioContext();
   let title=`agcValue${index}`
-  console.log("AGC set", index, value)
 
   return (
     <div className="flex pl-8 gap-4 items-center">
       <input
         id={title}
         type="range"
-        min="0"
-        max="1"
-        step="0.01"
-        value={value}
+        min="0.05"
+        max="0.4"
+        step="0.001"
+        value={agcValues[index]}
         className="w-full rotate-90 origin-left"
-        readOnly
       />
     </div>
   );
@@ -183,11 +183,11 @@ export default function Receiver() {
             </div>
           </div>
           <div className="flex flex-row rounded-xl mb-30">
-            <AGCValue index={0} value={agcValues[0]}/>
-            <AGCValue index={1} value={agcValues[1]}/>
-            <AGCValue index={2} value={agcValues[2]}/>
-            <AGCValue index={3} value={agcValues[3]}/>
-            <AGCValue index={4} value={agcValues[4]}/>
+            <AGCValue index={0}/>
+            <AGCValue index={1}/>
+            <AGCValue index={2}/>
+            <AGCValue index={3}/>
+            <AGCValue index={4}/>
           </div>
         </div>
         <div className="flex-[1] min-w-[300px]">

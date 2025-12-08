@@ -1,5 +1,6 @@
 import { input } from '@heroui/react';
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { data } from 'react-router';
 import { v4 as uuidv4 } from 'uuid';
 
 
@@ -83,6 +84,9 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [agcGainNodes, setAgcGainNodes] = useState<Array<GainNode> | null>([null, null, null, null, null]);
   const [agcMuteNodes, setAgcMuteNodes] = useState<Array<GainNode> | null>([null, null, null, null, null]);
   const [agcValues, setAgcValues] = useState<Array<number> | null>([0.5,0.5,0.5,0.5,0.5]);
+
+  //Production AGC-------------
+  //TODO: make sure these are properly typed
 
   interface RemoteTrack {
   id: string | null;
@@ -228,7 +232,7 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
           let post = context.createGain();
           post.gain.value = 0.1;
           let gain = context.createGain();
-          gain.gain.value = 1;
+          gain.gain.value = 0.5;
           let mute = context.createGain();
           mute.gain.value = 1;
 
@@ -444,10 +448,21 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
   function calculateRMS(dataArray) {
     let sum = 0;
     for (let i = 0; i < dataArray.length; i++) {
-      sum += Math.pow(dataArray[i] - 128, 2);
+      let sample = (dataArray[i] - 128) / 128;
+      sum += sample * sample;
     }
     const rms = Math.sqrt(sum / dataArray.length)
-    return rms / 128; // Normalize RMS value between 0 and 1
+    return rms; // Normalize RMS value between 0 and 1
+  }
+
+  function linearToDbfs(value: number): number {
+    const noiseFloor = 1e-8; //noise floor
+    let rms = Math.max(value, noiseFloor);
+    return 20 * Math.log10(rms);
+  }
+
+  function dbfsToLinear(db: number): number {
+    return Math.pow(10, db / 20);
   }
 
 //TODO: in production this needs to be running right when the audio context starts
@@ -461,21 +476,18 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
   ) {
   let rafId: number | null = null;
   let running = false;
-  const TARGET_DB = -18;
 
-  // Hard limits on how much the AGC can boost/cut
-  const MIN_GAIN_DB = -12;
-  const MAX_GAIN_DB = 18;
+  // limits on how much the AGC can change increase or decrease gain per update
+  const dbStep = 2.0
+  const maxDbIncrease = dbStep;
+  const maxDbDecrease = -dbStep;
+  const minGain = 0.01;
+  const maxGain = 10;
+  const alphaUp = 0.3;   // slow boost
+  const alphaDown = 0.7; // fast cut
+  let targetDB = -20.0;
+  let prevGain = [1.0,1.0,1.0,1.0,1.0];
 
-  function linearToDb(value: number): number {
-    const min = 1e-8;            // prevent log(0)
-    const safe = Math.max(value, min);
-    return 20 * Math.log10(safe);
-  }
-
-  function dbToLinear(db: number): number {
-    return Math.pow(10, db / 20);
-  }
 
   function update() {
     if (!running) return;
@@ -487,35 +499,46 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
       const gainNode = agcGainNodes[i];
       if (!analyser || !gainNode) continue;
 
-      const bufferLength = analyser.frequencyBinCount;
+      // Get RMS
+      const bufferLength = analyser.fftSize;
       const dataArray = new Uint8Array(bufferLength);
       analyser.getByteTimeDomainData(dataArray);
-      const rms = calculateRMS(dataArray)
-      const currentDb = rms > 0 ? 20 * Math.log10(rms) : -100;
+      const rms = calculateRMS(dataArray);
 
+      const rmsFloor = 0.001; // avoid -Infinity
+      const effectiveRms = gainNode.gain.value * Math.max(rms, rmsFloor);
+      const currentDB = linearToDbfs(effectiveRms);
 
-      const desiredGainDb = Math.max(
-        MIN_GAIN_DB,
-        Math.min(MAX_GAIN_DB, TARGET_DB - currentDb)
-      );
+      // Compute dB difference to target
+      let dbChange = targetDB - currentDB;
 
-      // 2. Where are we right now (in dB)?
-      const currentGain = gainNode.gain.value || 1; // fallback to 1 if 0
-      const currentGainDb = linearToDb(currentGain);
+      // Clip max increase/decrease per frame
+      dbChange = Math.max(Math.min(dbChange, maxDbIncrease), maxDbDecrease);
 
-      // 3. Smoothly move partway toward the desired gain (0.0–1.0)
-      const SMOOTHING = 0.2; // 20% of the way each frame
-      const targetGainDb =
-        currentGainDb + (desiredGainDb - currentGainDb) * SMOOTHING;
+      // Smooth separately for up/down
+      const alpha = dbChange > 0 ? alphaUp : alphaDown;
 
-      // 4. Convert back to linear
-      const targetGainLinear = dbToLinear(targetGainDb);
+      // Current gain in dB
+      const currentGainDB = linearToDbfs(gainNode.gain.value);
 
-      gainNode.gain.setTargetAtTime(targetGainLinear, now, 0.05);
+      // Smoothed new gain in dB
+      const smoothedGainDB = currentGainDB + dbChange * alpha;
+
+      // Convert back to linear
+      let newGain = dbfsToLinear(smoothedGainDB);
+
+      // Clamp to min/max linear gain
+      newGain = Math.min(Math.max(newGain, minGain), maxGain);
+
+      // Apply gain
+      gainNode.gain.setTargetAtTime(newGain, now, 0.05);
+
+      prevGain[i] = newGain;
+        console.log(`AGC Track ${i}: RMS=${rms.toFixed(4)} CurrentDB=${currentDB.toFixed(2)} dBChange=${dbChange.toFixed(2)} FinalGain=${newGain.toFixed(4)}`);
 
       setAgcValues(prev => {
         const next = [...prev];
-        next[i] = targetGainLinear;
+        next[i] = newGain;
         return next;
       });
     }
@@ -523,22 +546,22 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
       rafId = requestAnimationFrame(update);
   }
 
-  function start() {
-    if (!running) {
-      running = true;
-      rafId = requestAnimationFrame(update);
+    function start() {
+      if (!running) {
+        running = true;
+        rafId = requestAnimationFrame(update);
+      }
     }
-  }
 
-  function stop() {
-    running = false;
-    if (rafId !== null) {
-      cancelAnimationFrame(rafId);
-      rafId = null;
+    function stop() {
+      running = false;
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
     }
-  }
 
-  return { start, stop };
+    return { start, stop };
   }
 
   //Function to load files into loadAudio
@@ -568,6 +591,8 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
           // connect into your AGC chain
           src.connect(inputNode);
 
+          const agcLoop = createAGCLoop(audioContext, agcAnalyzerNodes, agcGainNodes, setAgcValues);
+
           src.onended = () => {
             console.log(`Track ${index} finished`);
             agcLoop.stop(); 
@@ -578,7 +603,6 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
 
           //set up the AGC Loop
           console.log("AGC Loop Started");
-          const agcLoop = createAGCLoop(audioContext, agcAnalyzerNodes, agcGainNodes, setAgcValues);
           agcLoop.start();        
         } catch (error) {
           reject(error);
