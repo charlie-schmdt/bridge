@@ -1,5 +1,8 @@
 import { Button } from '@/renderer/components/ui/Button';
+import WaitingRoom from '@/renderer/components/WaitingRoom';
+import { supabase } from '@/renderer/lib/supabase';
 import { CallStatus } from '@/renderer/types/roomTypes';
+import { Endpoints } from '@/utils/endpoints';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { v4 as uuid } from 'uuid';
@@ -8,10 +11,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { RoomConnectionManager, RoomConnectionManagerCallbacks } from './RoomConnectionManager';
 import { useRoomMediaContext } from './RoomMediaContext';
 import { RoomSettingsFooter } from './RoomSettingsFooter';
+import { ScreenSelector } from './ScreenSelector';
 import { VideoGrid } from './VideoGrid';
-import WaitingRoom from '@/renderer/components/WaitingRoom';
-import { supabase } from '@/renderer/lib/supabase';
-import { Endpoints } from '@/utils/endpoints';
 
 export interface RoomFeedProps {
   roomId: string | undefined;
@@ -24,10 +25,14 @@ export function RoomFeed({roomId}: RoomFeedProps) {
 
   const [callStatus, setCallStatus] = useState<CallStatus>("inactive");
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
   // map streamId/peerId (implemented as the same in the SFU) to its MediaStream
   const [remoteStreams, setRemoteStreams] = useState<Map<String, MediaStream>>(new Map());
   const [isAdmitted, setIsAdmitted] = useState(false);
   const [userRole, setUserRole] = useState("");
+
+  const [isScreenSelectorOpen, setIsScreenSelectorOpen] = useState(false);
+  const [screenIsShared, setScreenIsShared] = useState(false);
 
   const roomConnectionManagerRef = useRef<RoomConnectionManager | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -333,10 +338,46 @@ export function RoomFeed({roomId}: RoomFeedProps) {
       localStream.getTracks().forEach(track => track.stop());
       setLocalStream(null);
     }
+    if (screenStream) {
+      screenStream.getTracks().forEach(track => track.stop());
+      setScreenStream(null);
+    }
 
     tearDownAudioGraph()
 
     setCallStatus("inactive");
+  };
+
+  const handleScreenSelected = async (stream: MediaStream) => {
+    if (stream) {
+      setScreenStream(stream);
+      setScreenIsShared(true);
+      toast("Sharing screen");
+    }
+    else {
+      toast.error("Could not access screen for sharing");
+    }
+    setIsScreenSelectorOpen(false);
+  };
+
+  const handleCancelScreenSelect = () => {
+    setIsScreenSelectorOpen(false);
+  }
+  
+  const stopShare = () => {
+    if (screenStream) {
+      screenStream.getTracks().forEach(track => track.stop());
+      setScreenStream(null);
+      toast("Stopped sharing screen");
+    }
+    else {
+      console.error("No screen stream to stop");
+    }
+    setScreenIsShared(false);
+  }
+
+  const shareScreen = () => {
+    setIsScreenSelectorOpen(true);
   };
 
   const allStreams = useMemo(() => {
@@ -345,15 +386,26 @@ export function RoomFeed({roomId}: RoomFeedProps) {
       // The local video is always muted for the user to avoid feedback
       streams.push({ stream: localStream, isMuted: true });
     }
+    if (screenStream) {
+      // local screen share is always muted for the user to avoid feedback
+      streams.push({ stream: screenStream, isMuted: true });
+    }
     Array.from(remoteStreams.values()).forEach(stream => {
       // Remote streams are not muted
       streams.push({ stream, isMuted: false });
     });
     return streams;
-  }, [localStream, remoteStreams]);
+  }, [localStream, screenStream, remoteStreams]);
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center min-h-0">
+      {isScreenSelectorOpen && (
+        <ScreenSelector
+          onScreenSelected={handleScreenSelected}
+          onCancel={handleCancelScreenSelect}
+          isOpen={isScreenSelectorOpen}
+        />
+      )}
       { callStatus === "inactive" ? (
         <>
           {/*
@@ -376,7 +428,13 @@ export function RoomFeed({roomId}: RoomFeedProps) {
           <div className="flex-1 w-full min-h-0">
             <VideoGrid streams={allStreams} />
           </div>
-          <RoomSettingsFooter roomId={roomId} onLeave={exitRoom} />
+          <RoomSettingsFooter
+            roomId={roomId}
+            onLeave={exitRoom}
+            screenIsShared={screenIsShared}
+            onShare={shareScreen}
+            stopShare={stopShare}
+          />
         </>
       )}
     </div>

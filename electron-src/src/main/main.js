@@ -1,15 +1,43 @@
-const { app, BrowserWindow } = require('electron');
+const { app, session, ipcMain, desktopCapturer, BrowserWindow } = require('electron');
 const path = require('path');
+
+// IPC handler to listen for React request to get desktop thumbnails (for screen sharing selector)
+async function handleGetScreenSources() {
+  const sources = await desktopCapturer.getSources({
+    types: ['window', 'screen'],
+    thumbnailSize: { width: 300, height: 300 } // Fetch a preview image
+  });
+
+  // Serialize the data to send it back through the IPC channel to the React renderer
+  return sources.map(source => ({
+    id: source.id,
+    name: source.name,
+    thumbnail: source.thumbnail.toDataURL() // Convert thumbnail to data URL
+  }));
+}
 
 const createWindow = () => {
   const win = new BrowserWindow({
     width: 800,
     height: 600,
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
       webSecurity: false, 
     }
+  });
+
+  // Allow sharing screen
+  session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+    desktopCapturer.getSources({ types: ['screen'] }).then((sources) => {
+      // Grant access to the first screen found.
+      callback({ video: sources[0], audio: 'loopback' })
+    });
+    // If true, use the system picker if available.
+    // Note: this is currently experimental. If the system picker
+    // is available, it will be used and the media request handler
+    // will not be invoked.
   });
 
   const indexPath = path.join('dist', 'index.html');
@@ -169,6 +197,7 @@ win.webContents.on('will-redirect', (event, navigationUrl) => {
 };
 
 app.whenReady().then(() => {
+  ipcMain.handle('get-screen-sources', handleGetScreenSources); // IPC handler to receive screen share thumbnail requests
   createWindow();
 }).catch((err) => {
   console.error('❌ App failed to start:', err);

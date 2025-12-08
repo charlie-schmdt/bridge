@@ -9,10 +9,13 @@ import { useRoomMediaContext } from "./RoomMediaContext";
 
 export interface RoomSettingsFooterProps {
   onLeave: () => void;
+  onShare: () => void;
+  stopShare: () => void;
   roomId: string;
+  screenIsShared: boolean;
 }
 
-export function RoomSettingsFooter({ roomId, onLeave }: RoomSettingsFooterProps) {
+export function RoomSettingsFooter({ roomId, screenIsShared, onLeave, onShare, stopShare }: RoomSettingsFooterProps) {
   const VF = useRoomMediaContext();
   const {isOpen, onOpen, onOpenChange} = useDisclosure();
 
@@ -48,6 +51,21 @@ export function RoomSettingsFooter({ roomId, onLeave }: RoomSettingsFooterProps)
         >
           Menu
         </Button>
+        {screenIsShared ? (
+          <Button
+            className="text-gray-500 hover:text-blue-600 cursor-pointer"
+            onPress={stopShare}
+          >
+            Stop Sharing
+          </Button>
+        ) : (
+          <Button
+            className="text-gray-500 hover:text-blue-600 cursor-pointer"
+            onPress={onShare}
+          >
+            Share Screen
+          </Button>
+        )}
         <UserFeaturesModal roomId={roomId} isOpen={isOpen} onOpen={onOpen} onOpenChange={onOpenChange}/>
       </div>
 
