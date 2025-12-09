@@ -21,7 +21,7 @@ const Header: React.FC = () => {
           <button className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer">
             Calls
           </button>
-          <button className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer">
+          <button onClick={() => navigate("/calendar")} className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer">
             Calendar
           </button>
           <button onClick={() => navigate("/audiosandbox")} className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer">

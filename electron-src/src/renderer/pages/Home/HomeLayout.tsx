@@ -1,5 +1,5 @@
 import { Button, Card } from "@heroui/react";
-import { Search } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import Banner from "../../components/Banner";
 import CreateWorkspaceCard from "./CreateWorskpaceCard";
@@ -23,6 +23,15 @@ interface Workspace {
   isFavorite: boolean;
 }
 
+interface PaginationData {
+  page: number;
+  limit: number;
+  totalCount: number;
+  totalPages: number;
+}
+
+const WORKSPACES_PER_PAGE = 8;
+
 export const homeLoader = async () => {
   return { message: "Home Page" };
 };
@@ -39,6 +48,20 @@ export const HomeLayout = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
+  const normalizedSearchTerm = searchTerm.toLowerCase();
+  
+  // Pagination state
+  const [userWorkspacesPage, setUserWorkspacesPage] = useState(1);
+  const [publicWorkspacesPage, setPublicWorkspacesPage] = useState(1);
+  const [userWorkspacesPagination, setUserWorkspacesPagination] = useState<PaginationData | null>(null);
+  const [publicWorkspacesPagination, setPublicWorkspacesPagination] = useState<PaginationData | null>(null);
+  // track backend totals so we can recalc pagination when user workspace totals arrive
+  const [publicBackendTotal, setPublicBackendTotal] = useState<number | null>(null);
+  const [publicFetchedAll, setPublicFetchedAll] = useState(false);
+  // Joinable (invitations) pagination state
+  const [joinableAll, setJoinableAll] = useState<Workspace[]>([]); // full list fetched from backend
+  const [joinableWorkspacesPage, setJoinableWorkspacesPage] = useState(1);
+  const [joinableWorkspacesPagination, setJoinableWorkspacesPagination] = useState<PaginationData | null>(null);
 
   const handleFavoriteToggle = (workspaceId: string, isFavorite: boolean) => {
     setUserWorkspaces((prevWorkspaces) => {
@@ -75,12 +98,17 @@ export const HomeLayout = () => {
 
       try {
         const token = localStorage.getItem("bridge_token");
-        const response = await fetch(Endpoints.WORKSPACES_USER, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
+        // Reserve one slot for CreateWorkspaceCard when user is present
+        const userLimit = user ? Math.max(1, WORKSPACES_PER_PAGE - 1) : WORKSPACES_PER_PAGE;
+        const response = await fetch(
+          `${Endpoints.WORKSPACES_USER}?page=${userWorkspacesPage}&limit=${userLimit}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
         if (!response.ok) {
           throw new Error("Failed to fetch user workspaces");
@@ -88,8 +116,9 @@ export const HomeLayout = () => {
 
         const data = await response.json();
         console.log(data);
-        setUserWorkspaces(data);
-        console.log("✅ Fetched user workspaces:", data.length);
+        setUserWorkspaces(data.workspaces || []);
+        setUserWorkspacesPagination(data.pagination || null);
+        console.log("✅ Fetched user workspaces:", data.workspaces?.length);
       } catch (err) {
         console.error("❌ Error fetching user workspaces:", err);
         setError(
@@ -103,27 +132,57 @@ export const HomeLayout = () => {
     fetchUserWorkspaces();
 
     // (Joinable workspaces are fetched by the dedicated fetchJoinable function below)
-  }, [user]); // Re-fetch when user changes (login/logout)
+  }, [user, userWorkspacesPage]); // Re-fetch when user changes or page changes
 
   // Fetch public workspaces (for discovery)
   useEffect(() => {
     const fetchPublicWorkspaces = async () => {
       try {
         const token = localStorage.getItem("bridge_token");
-        const response = await fetch(Endpoints.WORKSPACES_PUBLIC, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const limit = WORKSPACES_PER_PAGE;
+        const requiredItems = publicWorkspacesPage * limit; // need enough items to fill pages up to requested page
+        let collected: Workspace[] = [];
+        let backendTotal = 0;
+        let currentPage = 1; // always accumulate from backend page 1 to avoid overlaps
+        let fetchedAll = false;
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch public workspaces");
+        while (collected.length < requiredItems && !fetchedAll) {
+          const response = await fetch(
+            `${Endpoints.WORKSPACES_PUBLIC}?page=${currentPage}&limit=${limit}`,
+            {
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch public workspaces");
+          }
+
+          const data = await response.json();
+          const items: Workspace[] = data.workspaces || [];
+          backendTotal = data.pagination?.totalCount || backendTotal;
+
+          // Filter out workspaces the user already joined
+          const filtered = items.filter((w) => !(user && (w.authorizedUsers || []).includes(user.id)));
+
+          collected = collected.concat(filtered);
+
+          const totalPages = data.pagination?.totalPages || 1;
+          if (currentPage >= totalPages) fetchedAll = true;
+          else currentPage++;
         }
 
-        const data = await response.json();
-        setPublicWorkspaces(data);
-        console.log("✅ Fetched public workspaces:", data.length);
+        // Slice out the requested client page
+        const start = (publicWorkspacesPage - 1) * limit;
+        const pageItems = collected.slice(start, start + limit);
+        setPublicWorkspaces(pageItems);
+        // store backend totals so pagination can be recalculated when user info arrives
+        setPublicBackendTotal(backendTotal);
+        setPublicFetchedAll(fetchedAll);
+        console.log("✅ Fetched public workspaces (filled):", pageItems.length);
       } catch (err) {
         console.error("❌ Error fetching public workspaces:", err);
         setError(
@@ -137,7 +196,22 @@ export const HomeLayout = () => {
     };
 
     fetchPublicWorkspaces();
-  }, []);
+  }, [publicWorkspacesPage]); // Re-fetch when page changes
+
+  // Recompute public pagination when backend totals or user workspace totals change
+  useEffect(() => {
+    const limit = WORKSPACES_PER_PAGE;
+    if (publicBackendTotal == null) return; // not ready yet
+
+    const joinedCount = user ? (userWorkspacesPagination?.totalCount || 0) : 0;
+    const availableTotal = Math.max(0, publicBackendTotal - joinedCount);
+
+    // If we fetched all backend pages already, prefer the exact availableTotal
+    const totalCount = publicFetchedAll ? availableTotal : Math.max(availableTotal, publicWorkspaces.length);
+    const totalPages = Math.max(1, Math.ceil(totalCount / limit));
+
+    setPublicWorkspacesPagination({ page: publicWorkspacesPage, limit, totalCount, totalPages });
+  }, [publicBackendTotal, publicFetchedAll, userWorkspacesPagination, publicWorkspacesPage, publicWorkspaces, user]);
 
   // Refresh both workspace lists (called after joining a workspace)
   const refreshWorkspaces = async () => {
@@ -148,7 +222,9 @@ export const HomeLayout = () => {
       setUserWorkspacesLoading(true);
       try {
         const token = localStorage.getItem("bridge_token");
-        const response = await fetch(Endpoints.WORKSPACES_USER, {
+        // Use same pagination strategy when refreshing
+        const userLimit = user ? Math.max(1, WORKSPACES_PER_PAGE - 1) : WORKSPACES_PER_PAGE;
+        const response = await fetch(`${Endpoints.WORKSPACES_USER}?page=${userWorkspacesPage}&limit=${userLimit}`, {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
@@ -157,7 +233,8 @@ export const HomeLayout = () => {
 
         if (response.ok) {
           const data = await response.json();
-          setUserWorkspaces(data);
+          setUserWorkspaces(data.workspaces || []);
+          setUserWorkspacesPagination(data.pagination || null);
         }
       } catch (err) {
         console.error("Error refreshing user workspaces:", err);
@@ -168,11 +245,33 @@ export const HomeLayout = () => {
 
     // Refresh public workspaces
     try {
-      const response = await fetch(Endpoints.WORKSPACES_PUBLIC);
-      if (response.ok) {
+      // Re-run the public fetch logic for current page - keep fill behavior
+      const limit = WORKSPACES_PER_PAGE;
+      let collected: Workspace[] = [];
+      let backendTotal = 0;
+      let currentPage = publicWorkspacesPage;
+      let fetchedAll = false;
+      const token = localStorage.getItem("bridge_token");
+
+      while (collected.length < limit && !fetchedAll) {
+        const response = await fetch(`${Endpoints.WORKSPACES_PUBLIC}?page=${currentPage}&limit=${limit}`, {
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        });
+        if (!response.ok) break;
         const data = await response.json();
-        setPublicWorkspaces(data);
+        const items: Workspace[] = data.workspaces || [];
+        backendTotal = data.pagination?.totalCount || backendTotal;
+        const filtered = items.filter((w) => !(user && (w.authorizedUsers || []).includes(user.id)));
+        collected = collected.concat(filtered);
+        const totalPages = data.pagination?.totalPages || 1;
+        if (currentPage >= totalPages) fetchedAll = true;
+        else currentPage++;
       }
+      setPublicWorkspaces(collected.slice(0, limit));
+      const joinedCount = user ? (userWorkspacesPagination?.totalCount || 0) : 0;
+      const availableTotal = Math.max(0, backendTotal - joinedCount);
+      const totalPages = Math.max(1, Math.ceil(availableTotal / limit));
+      setPublicWorkspacesPagination({ page: publicWorkspacesPage, limit, totalCount: availableTotal, totalPages });
     } catch (err) {
       console.error("Error refreshing public workspaces:", err);
     }
@@ -189,7 +288,9 @@ export const HomeLayout = () => {
         });
         if (res.ok) {
           const json = await res.json();
-          setJoinableWorkspaces(json.workspaces || []);
+          // store full joinable set so frontend can filter+paginate
+          setJoinableAll(json.workspaces || []);
+          setJoinableWorkspacesPage(1);
         }
       } catch (err) {
         console.error("Error refreshing joinable workspaces:", err);
@@ -205,7 +306,9 @@ export const HomeLayout = () => {
     console.log('[HomeLayout] fetchJoinable called, user=', user?.id || null);
     if (!user) {
       console.log('[HomeLayout] fetchJoinable: no user, clearing joinableWorkspaces');
-      return setJoinableWorkspaces([]);
+      setJoinableAll([]);
+      setJoinableWorkspaces([]);
+      return;
     }
     try {
       const token = localStorage.getItem('bridge_token');
@@ -217,15 +320,20 @@ export const HomeLayout = () => {
       });
       if (resp.ok) {
         const data = await resp.json();
-        console.log('[HomeLayout] Fetched joinable workspaces:', data.workspaces?.length || 0, data.workspaces || []);
-        setJoinableWorkspaces(data.workspaces || []);
+        console.log('[HomeLayout] Fetched joinable workspaces (all):', data.workspaces?.length || 0);
+        // Store the full set — we'll filter then paginate on the frontend
+        setJoinableAll(data.workspaces || []);
+        // Reset page to 1 when data changes
+        setJoinableWorkspacesPage(1);
       } else {
         const text = await resp.text().catch(() => '<no body>');
         console.warn('[HomeLayout] fetchJoinable non-OK response', resp.status, resp.statusText, text);
+        setJoinableAll([]);
         setJoinableWorkspaces([]);
       }
     } catch (err) {
       console.error('[HomeLayout] Error fetching joinable workspaces:', err);
+      setJoinableAll([]);
       setJoinableWorkspaces([]);
     }
   };
@@ -234,6 +342,42 @@ export const HomeLayout = () => {
   useEffect(() => {
     fetchJoinable();
   }, [user]);
+
+  // Apply filters (search + type) to the full joinable list BEFORE paginating
+  const filteredJoinableWorkspaces = useMemo(() => {
+    return joinableAll.filter((workspace) => {
+      // apply type filter (Private/Public/All)
+      if (activeFilter === "Private" && !workspace.isPrivate) return false;
+      if (activeFilter === "Public" && workspace.isPrivate) return false;
+
+      // apply search term
+      const name = (workspace.name || "").toLowerCase();
+      const desc = (workspace.description || "").toLowerCase();
+      const search = normalizedSearchTerm;
+      if (search && !name.includes(search) && !desc.includes(search)) return false;
+
+      return true;
+    });
+  }, [joinableAll, activeFilter, normalizedSearchTerm]);
+
+  // Reset joinable page when filters/search change
+  useEffect(() => {
+    setJoinableWorkspacesPage(1);
+  }, [activeFilter, normalizedSearchTerm]);
+
+  // Paginate the filtered joinable list and set the displayed page
+  useEffect(() => {
+    const limit = WORKSPACES_PER_PAGE;
+    const totalCount = filteredJoinableWorkspaces.length;
+    const totalPages = Math.max(1, Math.ceil(totalCount / limit));
+    let page = joinableWorkspacesPage;
+    if (page > totalPages) page = totalPages;
+    if (page < 1) page = 1;
+
+    setJoinableWorkspacesPagination({ page, limit, totalCount, totalPages });
+    const start = (page - 1) * limit;
+    setJoinableWorkspaces(filteredJoinableWorkspaces.slice(start, start + limit));
+  }, [filteredJoinableWorkspaces, joinableWorkspacesPage]);
 
   const acceptInvite = async (workspaceId: number) => {
     try {
@@ -330,7 +474,6 @@ export const HomeLayout = () => {
     return true; // 'All' selected
   };
 
-  const normalizedSearchTerm = searchTerm.toLowerCase();
   const filterWorkspace = (workspace: Workspace) =>
     workspace.name?.toLowerCase().includes(normalizedSearchTerm) ||
     workspace.description?.toLowerCase().includes(normalizedSearchTerm);
@@ -345,19 +488,23 @@ export const HomeLayout = () => {
     return filteredUserWorkspaces.filter(filterOwnWorkspace);
   }, [filteredUserWorkspaces, activeFilter]);
 
+  // Ensure the displayed user workspaces fit into the page slots (counting CreateWorkspaceCard as one slot)
+  const displayedUserWorkspaces = useMemo(() => {
+    const slots = user ? Math.max(1, WORKSPACES_PER_PAGE - 1) : WORKSPACES_PER_PAGE;
+    return userWorkspacesFilteredByView.slice(0, slots);
+  }, [userWorkspacesFilteredByView, user]);
+
   // Filter public workspaces (exclude ones user already joined)
   const filteredPublicWorkspaces = useMemo(() => {
-    const userWorkspaceIds = userWorkspaces.map((ws) => ws.id);
-
     return publicWorkspaces.filter((workspace) => {
-      // Exclude workspaces user already joined
-      const notAlreadyJoined = !userWorkspaceIds.includes(workspace.id);
+      // Determine membership from the workspace's authorizedUsers field
+      const isMember = user ? (workspace.authorizedUsers || []).includes(user.id) : false;
       // Apply search filter
       const matchesSearch = filterWorkspace(workspace);
 
-      return notAlreadyJoined && matchesSearch;
+      return !isMember && matchesSearch;
     });
-  }, [publicWorkspaces, userWorkspaces, normalizedSearchTerm]);
+  }, [publicWorkspaces, normalizedSearchTerm, user]);
 
   return (
     <Card>
@@ -398,7 +545,7 @@ export const HomeLayout = () => {
               </h1>
               <p className="mt-2 text-gray-600 text-lg">
                 {user
-                  ? `Workspaces you're a member of (${userWorkspaces.length})`
+                  ? `Workspaces you're a member of (${userWorkspacesPagination?.totalCount || userWorkspaces.length})`
                   : "Login to see your workspaces"}
               </p>
             </div>
@@ -441,6 +588,9 @@ export const HomeLayout = () => {
           </div>
 
           <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {/* Always show Create Card if user is logged in - first slot */}
+            {user && <CreateWorkspaceCard />}
+
             {!user ? (
               <p className="col-span-full text-gray-500 text-center py-8">
                 Please log in to view your workspaces.
@@ -450,7 +600,7 @@ export const HomeLayout = () => {
                 Loading your workspaces...
               </div>
             ) : userWorkspacesFilteredByView.length > 0 ? (
-              userWorkspacesFilteredByView.map((workspace) => (
+              displayedUserWorkspaces.map((workspace) => (
                 <WorkspaceCard
                   key={workspace.id}
                   id={workspace.id}
@@ -473,10 +623,32 @@ export const HomeLayout = () => {
                   : "You haven't joined any workspaces yet. Discover some below!"}
               </p>
             )}
-
-            {/* Always show Create Card if user is logged in */}
-            {user && <CreateWorkspaceCard />}
           </div>
+
+          {/* Pagination Controls for User Workspaces */}
+          {user && userWorkspacesPagination && userWorkspacesPagination.totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-8">
+              <button
+                onClick={() => setUserWorkspacesPage(Math.max(1, userWorkspacesPage - 1))}
+                disabled={userWorkspacesPage === 1}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition"
+              >
+                <ChevronLeft size={20} />
+                Previous
+              </button>
+              <span className="px-4 py-2 text-gray-700 font-medium">
+                Page {userWorkspacesPage} of {userWorkspacesPagination.totalPages}
+              </span>
+              <button
+                onClick={() => setUserWorkspacesPage(Math.min(userWorkspacesPagination.totalPages, userWorkspacesPage + 1))}
+                disabled={userWorkspacesPage === userWorkspacesPagination.totalPages}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition"
+              >
+                Next
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          )}
         </section>
 
         {/* Pending Invites Section (shows joinable workspaces invited to) */}
@@ -509,6 +681,31 @@ export const HomeLayout = () => {
                 </div>
               ))}
             </div>
+
+              {/* Pagination Controls for Joinable/Invitations */}
+              {joinableWorkspacesPagination && joinableWorkspacesPagination.totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-6">
+                  <button
+                    onClick={() => setJoinableWorkspacesPage(Math.max(1, joinableWorkspacesPage - 1))}
+                    disabled={joinableWorkspacesPage === 1}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition"
+                  >
+                    <ChevronLeft size={20} />
+                    Previous
+                  </button>
+                  <span className="px-4 py-2 text-gray-700 font-medium">
+                    Page {joinableWorkspacesPage} of {joinableWorkspacesPagination.totalPages}
+                  </span>
+                  <button
+                    onClick={() => setJoinableWorkspacesPage(Math.min(joinableWorkspacesPagination.totalPages, joinableWorkspacesPage + 1))}
+                    disabled={joinableWorkspacesPage === joinableWorkspacesPagination.totalPages}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition"
+                  >
+                    Next
+                    <ChevronRight size={20} />
+                  </button>
+                </div>
+              )}
           </section>
         )}
 
@@ -520,7 +717,7 @@ export const HomeLayout = () => {
               Discover Workspaces
             </h2>
             <p className="mt-2 text-gray-600 text-lg">
-              Find and join new workspaces ({filteredPublicWorkspaces.length}{" "}
+              Find and join new workspaces ({publicWorkspacesPagination?.totalCount || 0}{" "}
               available)
             </p>
           </div>
@@ -543,33 +740,33 @@ export const HomeLayout = () => {
                 if (workspace.isPrivate && !isMember) {
                   return (
                     <div key={workspace.id} className="w-full min-w-0 min-h-[15rem] bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-200 p-4 flex flex-col justify-between border border-orange-100">
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <div className="text-orange-600 bg-orange-50 rounded-full p-2">
-                              🔒
-                            </div>
-                            <span className="text-lg font-semibold text-gray-900">{workspace.name}</span>
-                            <span className="ml-2 text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">Private</span>
+                      {/* Header with icon and privacy indicator */}
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2">     
+                          <div className="text-orange-600 bg-orange-50 rounded-full p-2">
+                            🔒
                           </div>
+                          <span className="text-lg font-semibold text-gray-900">{workspace.name}</span>
+                          <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">Private</span>
                         </div>
-
-                        <p className="text-sm text-gray-600 mb-4 flex-grow">{workspace.description}</p>
                       </div>
 
-                      <div className="mt-3 pt-3 border-t border-orange-50 flex flex-col gap-3 items-stretch">
-                        <div className="flex justify-between text-xs text-gray-500">
-                          <div className="flex items-center gap-1">
-                            <span>{workspace.authorizedUsers?.length || 0} members</span>
-                          </div>
-                        </div>
+                      {/* Description */}
+                      <p className="text-sm text-gray-600 mb-4 flex-grow">{workspace.description}</p>
 
-                        <button
-                          onClick={() => requestJoinWorkspace(workspace.id)}
-                          className="w-full px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors duration-150 font-medium"
-                        >
-                          Request to Join
-                        </button>
+                      {/* Request button */}
+                      <button
+                        onClick={() => requestJoinWorkspace(workspace.id)}
+                        className="w-full px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors duration-150 font-medium mb-3"
+                      >
+                        Request to Join
+                      </button>
+
+                      {/* Footer info with member count */}
+                      <div className="pt-3 border-t border-orange-50 flex justify-between text-xs text-gray-500">
+                        <div className="flex items-center gap-1">
+                          <span>{workspace.authorizedUsers?.length || "?"} members</span>
+                        </div>
                       </div>
                     </div>
                   );
@@ -600,6 +797,31 @@ export const HomeLayout = () => {
               </div>
             )}
           </div>
+
+          {/* Pagination Controls for Public Workspaces */}
+          {publicWorkspacesPagination && publicWorkspacesPagination.totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-8">
+              <button
+                onClick={() => setPublicWorkspacesPage(Math.max(1, publicWorkspacesPage - 1))}
+                disabled={publicWorkspacesPage === 1}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition"
+              >
+                <ChevronLeft size={20} />
+                Previous
+              </button>
+              <span className="px-4 py-2 text-gray-700 font-medium">
+                Page {publicWorkspacesPage} of {publicWorkspacesPagination.totalPages}
+              </span>
+              <button
+                onClick={() => setPublicWorkspacesPage(Math.min(publicWorkspacesPagination.totalPages, publicWorkspacesPage + 1))}
+                disabled={publicWorkspacesPage === publicWorkspacesPagination.totalPages}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition"
+              >
+                Next
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          )}
         </section>
       </div>
     </Card>
