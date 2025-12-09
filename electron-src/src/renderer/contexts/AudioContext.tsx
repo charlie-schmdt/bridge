@@ -1,5 +1,5 @@
 import { input } from '@heroui/react';
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef} from 'react';
 import { data } from 'react-router';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -39,6 +39,7 @@ const WebAudioContext = createContext<{
   agcAnalyzerNodes : Array<AnalyserNode | null>;
   remoteTracks: Map<string, RemoteTrack | null>;
   agcValues: Array<number>;
+  transcript: string[] | null;
   setMicInput: (deviceId: string, context:AudioContext) => Promise<MediaStreamAudioSourceNode | undefined>;
   initializeAudioGraph: () => Promise<void>;
   tearDownAudioGraph: () => Promise<void>;
@@ -50,6 +51,8 @@ const WebAudioContext = createContext<{
   loadAudioFiles: (files: Array<string>) => Promise<void>;
   playAudioFiles: () => Promise<void>;
   resetAudioFiles: () => Promise<void>;
+  startTranscription: () => Promise<void>;
+  stopTranscription: () => Promise<void>;
 } | null>(null);
 
 // Hook to use AudioContext
@@ -88,6 +91,14 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
   //Production AGC-------------
   //TODO: make sure these are properly typed
 
+  //Transcript
+  const[transcript, setTranscript] = useState<string[] | null>([]);
+  const ws = useRef<WebSocket | null>(null);
+  const wsURL = "ws://localhost:3001/transcribe";
+  const lastFinalRef = useRef(""); // persist across renders
+
+
+
   interface RemoteTrack {
   id: string | null;
   input: GainNode | null;
@@ -97,7 +108,6 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
   muteNode: GainNode | null;
   output: GainNode | null;
 }
-
 
   //Reciever in Production-------------
 
@@ -183,7 +193,9 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
 
         console.log("Creating AudioContext");
         // Create a All neccesary graph objects
-        const context = new AudioContext();
+        const context = new AudioContext({
+          sampleRate: 44100
+        });
         const micInput = await setMicInput('default', context);
         const volumeSensitivityGainNode = context.createGain();
         volumeSensitivityGainNode.gain.value = gainStage;
@@ -198,6 +210,7 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
         //Connect the nodes
         console.log("Connecting audio nodes");
         micInput.connect(volumeSensitivityGainNode);
+        //TODO: plug in transcription processing node here
         volumeSensitivityGainNode.connect(preProcessingGainNode);
         preProcessingGainNode.connect(analyser);
         analyser.connect(postProcessingGainNode);
@@ -568,7 +581,6 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
   const playAudioFiles = async () => {
   return new Promise<void>(async (resolve, reject) => {
     try {
-
       const allPromises = audioInputBuffers.map((buffer, index) => {
       return new Promise<void>((resolve, reject) => {
         try {
@@ -595,7 +607,7 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
 
           src.onended = () => {
             console.log(`Track ${index} finished`);
-            agcLoop.stop(); 
+            agcLoop.stop();
             resolve();
           };
 
@@ -632,6 +644,103 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
   });
   };
 
+  async function startAudioWorkletPipeline(ws: WebSocket) {
+
+    /*const audioContext = new AudioContext({
+      sampleRate: 16000,   // Required for Google Speech
+    });*/
+    console.log("Starting AudioWorklet Pipeline.with websocket..", ws);
+    if (!audioContext) {
+      console.error("AudioContext not initialized");
+      return;
+    }
+
+    console.log("AudioContext:", audioContext);
+    await audioContext.audioWorklet.addModule("http://localhost:3001/transcription-worklet-processor.js");
+
+    const workletNode = new AudioWorkletNode(audioContext, "pcm-processor");
+    micInput.connect(workletNode);
+    console.log("worklet Node", workletNode)
+
+    workletNode.port.onmessage = (event) => {
+      if (ws.readyState !== WebSocket.OPEN) return;
+      //console.log("Received audio data from worklet", event.data);
+
+      const floatSamples: Float32Array = event.data;
+      const pcm16 = floatTo16BitPCM(floatSamples);
+
+      ws.send(pcm16);
+    };
+
+    const silentGain = audioContext.createGain();
+    silentGain.gain.value = 0;
+    workletNode.connect(silentGain);
+    silentGain.connect(audioContext.destination); // required to keep alive
+
+    console.log("AudioWorklet pipeline running.");
+}
+
+
+// Convert Float32 → Int16 PCM
+function floatTo16BitPCM(float32: Float32Array) {
+  const buffer = new ArrayBuffer(float32.length * 2);
+  const view = new DataView(buffer);
+
+  let offset = 0;
+  for (let i = 0; i < float32.length; i++, offset += 2) {
+    let s = Math.max(-1, Math.min(1, float32[i]));
+    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+  }
+
+  return buffer;
+}
+
+  //Function to start transcribing from audio
+  const startTranscription = async () => {
+  const t0 = Date.now();
+  return new Promise<void>(async (resolve, reject) => {
+    try {
+      console.log("Starting Transcription...")
+      console.log("Opening WebSocket to ", wsURL);
+      ws.current = new WebSocket(wsURL);
+      ws.current.binaryType = "arraybuffer";
+
+      ws.current.onopen = () => {
+        console.log("WebSocket connection opened for transcription");
+        startAudioWorkletPipeline(ws.current);
+        resolve();
+      };
+
+      ws.current.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        let transcript = message.transcript;
+        let isFinal = message.isFinal;
+        let tcurr = Date.now();
+        let elapsed = (tcurr - t0)/1000.0;
+        transcript = `[${elapsed.toFixed(2)}s]: ${transcript}`;
+        if (isFinal) {
+          setTranscript(prev => [...prev, transcript]);
+        }      
+      }
+      resolve();
+    } catch (err) {
+      reject(err);
+    }
+  });
+  };
+
+  //Function to start transcribing from audio
+  const stopTranscription = async () => {
+  return new Promise<void>(async (resolve, reject) => {
+    try {
+      console.log("Stopping Transcription...")
+      resolve();
+    } catch (err) {
+      reject(err);
+    }
+  });
+  };
+
 
   // Provide the context values to children components
   return (
@@ -647,6 +756,7 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
       agcAnalyzerNodes,
       remoteTracks, 
       agcValues,
+      transcript,
       setMicInput,
       initializeAudioGraph,
       tearDownAudioGraph,
@@ -657,7 +767,9 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
       setNoiseSuppression,
       loadAudioFiles,
       playAudioFiles,
-      resetAudioFiles
+      resetAudioFiles,
+      startTranscription,
+      stopTranscription
     }}>
       {children}
     </WebAudioContext.Provider>
