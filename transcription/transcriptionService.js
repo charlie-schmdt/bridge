@@ -3,7 +3,7 @@
 // const languageCode = 'en-US';
 // const streamingLimit = 10000; // ms - set to low number for demo purposes
 
-process.env.GOOGLE_APPLICATION_CREDENTIALS = '/Users/tylerptak/Documents/Class/Fall_25/407/bridge/electron-src/src/assets/timejump.json';
+//process.env.GOOGLE_APPLICATION_CREDENTIALS = '/Users/tylerptak/Documents/Class/Fall_25/407/bridge/electron-src/src/assets/timejump.json';
 
 
 const speech = require('@google-cloud/speech');
