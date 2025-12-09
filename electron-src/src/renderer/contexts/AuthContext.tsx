@@ -19,6 +19,7 @@ interface User {
   isVerified?: boolean;
   createdAt?: string;
   onboarding_completed?: boolean;
+  timezone?: string;
 }
 
 interface AuthContextType {
