@@ -32,6 +32,11 @@ export function SettingsLayout() {
     allowDirectMessages: true,
   });
 
+  const [appearance, setAppearance] = useState({
+    theme: "light",
+    timezone: user?.timezone || "UTC",
+  });
+
   // Retrieve user settings from backend 
   const getSettings = async () => {
     try {
@@ -59,6 +64,13 @@ export function SettingsLayout() {
       if (data.success) {
         setNotifications(data.data.notifications);
         setPrivacy(data.data.privacy);
+        if (data.data.appearance) {
+          setAppearance(data.data.appearance);
+        }
+        // Update user timezone in context if available
+        if (data.data.user?.timezone) {
+          updateUser({ timezone: data.data.user.timezone });
+        }
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
@@ -96,6 +108,11 @@ const updateSettings = async (section: string, data: any) => {
       // Update auth context if profile section was updated
       if (section === 'profile') {
         updateUser(data);
+      }
+      
+      // Update auth context with timezone if appearance section includes timezone
+      if (section === 'appearance' && data.timezone) {
+        updateUser({ timezone: data.timezone });
       }
       
       // Show success banner
@@ -369,12 +386,15 @@ useEffect(() => {
                   <label className="text-sm font-medium text-neutral-700">Theme</label>
                   <Select
                     aria-label="Theme"
-                    defaultSelectedKeys={["light"]}
+                    selectedKeys={[appearance.theme]}
+                    onSelectionChange={(keys) =>
+                      setAppearance({ ...appearance, theme: Array.from(keys)[0] as string })
+                    }
                     variant="bordered"
                     className="max-w-[200px]"
                     classNames={{
-                      trigger: "bg-neutral-50 border border-neutral-200 focus:border-primary rounded-lg shadow-sm transition-colors flex justify-between items-center cursor-pointer",
-                      value: "text-neutral-900",
+                      trigger: "bg-neutral-50 border border-neutral-200 focus:border-primary rounded-lg shadow-sm transition-colors flex justify-between items-center cursor-pointer h-14 px-4 py-3",
+                      value: "text-neutral-900 text-sm leading-normal ml-6",
                       popoverContent: "shadow-lg border border-neutral-200 rounded-lg bg-white w-fit",
                     }}
                   >
@@ -383,15 +403,49 @@ useEffect(() => {
                     <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="system">System Default</SelectItem>
                   </Select>
                 </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-neutral-700">Timezone</label>
+                  <p className="text-xs text-neutral-500 mb-2">Meeting times will be displayed in your selected timezone</p>
+                  <Select
+                    aria-label="Timezone"
+                    selectedKeys={[appearance.timezone || user?.timezone || "UTC"]}
+                    onSelectionChange={(keys) =>
+                      setAppearance({ ...appearance, timezone: Array.from(keys)[0] as string })
+                    }
+                    variant="bordered"
+                    className="max-w-md"
+                    classNames={{
+                      trigger: "bg-neutral-50 border border-neutral-200 focus:border-primary rounded-lg shadow-sm transition-colors flex justify-between items-center cursor-pointer h-14 px-4 py-3",
+                      value: "text-neutral-900 text-sm leading-normal ml-6",
+                      popoverContent: "shadow-lg border border-neutral-200 rounded-lg bg-white max-h-60 overflow-auto",
+                    }}
+                  >
+                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="UTC">UTC (Coordinated Universal Time)</SelectItem>
+                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="America/New_York">Eastern Time (ET)</SelectItem>
+                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="America/Chicago">Central Time (CT)</SelectItem>
+                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="America/Denver">Mountain Time (MT)</SelectItem>
+                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="America/Los_Angeles">Pacific Time (PT)</SelectItem>
+                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="America/Anchorage">Alaska Time (AKT)</SelectItem>
+                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="Pacific/Honolulu">Hawaii Time (HST)</SelectItem>
+                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="Europe/London">London (GMT/BST)</SelectItem>
+                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="Europe/Paris">Central European Time (CET)</SelectItem>
+                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="Europe/Athens">Eastern European Time (EET)</SelectItem>
+                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="Asia/Dubai">Dubai (GST)</SelectItem>
+                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="Asia/Kolkata">India (IST)</SelectItem>
+                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="Asia/Shanghai">China (CST)</SelectItem>
+                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="Asia/Tokyo">Japan (JST)</SelectItem>
+                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="Australia/Sydney">Sydney (AEDT/AEST)</SelectItem>
+                    <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="Pacific/Auckland">New Zealand (NZDT/NZST)</SelectItem>
+                  </Select>
+                </div>
               <div className="flex justify-end w-full">
                 <Button
                   color="primary"
                   size="md"
                   className="h-9 px-4 text-sm font-medium shadow-sm w-fit inline-flex self-start rounded-lg bg-blue-600 text-white py-2"
                   fullWidth={false}
-                  onClick={() => updateSettings('appearance', {
-                    theme: 'system' // You might want to add a state for this
-                  })}
+                  onClick={() => updateSettings('appearance', appearance)}
                 >
                   Save Appearance Settings
                 </Button>

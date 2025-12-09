@@ -8,6 +8,7 @@ const { getWorkspaces, createWorkspace, joinWorkspace, getUserWorkspaces, getWor
 const { createUser, loginUser, getSettings, updateSettings, oauthLogin, deleteAccount, setOnboarding, getUsers } = require('../controllers/userController');
 const { getRooms, createRoom, getRoomMembers, updateRoomMembers, addRoomMember, removeRoomMember, editRoom, deleteRoom, updateStatusRoomMember, getRoom} = require('../controllers/roomController');
 const { submitQuestion } = require('../controllers/questionController');
+const { getQAQuestions, submitQuestion: submitQAQuestion, updateQuestionStatus } = require('../controllers/qaController');
 // Import middleware
 const { auth, authenticateToken } = require('../middleware/auth');
 
@@ -83,9 +84,18 @@ router.post('/workspace/:workspaceId/reject-invite', authenticateToken, require(
 
 // Room routes would go here
 router.get('/workspace/:workspaceId/rooms', authenticateToken, getRooms);
+router.get('/rooms/:roomId', authenticateToken, getRoom);
 router.post('/rooms/create', authenticateToken, createRoom);
 router.put('/rooms/edit/:roomId', authenticateToken, editRoom);
 router.delete('/rooms/delete/:roomId', authenticateToken, deleteRoom);
+
+router.get('/rooms/:roomId/getRoomMembers', authenticateToken, getRoomMembers);
+router.put('/rooms/:roomId/updateRoomMembers', authenticateToken, updateRoomMembers);
+
+// Q&A routes for rooms
+router.get('/rooms/:roomId/qa', authenticateToken, getQAQuestions);
+router.post('/rooms/:roomId/qa', authenticateToken, submitQAQuestion);
+router.patch('/rooms/:roomId/qa/:questionId/status', authenticateToken, updateQuestionStatus);
 
 router.get('/rooms/getRoomMembers/:roomId', authenticateToken, getRoomMembers);
 router.put('/rooms/updateRoomMembers/:roomId', authenticateToken, updateRoomMembers);

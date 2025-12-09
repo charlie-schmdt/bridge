@@ -1,6 +1,7 @@
 import { useAuth } from '@/renderer/contexts/AuthContext';
 import { supabase } from '@/renderer/lib/supabase';
 import { useEffect, useRef, useState } from 'react';
+import QAPanel from './QAPanel';
 
 interface Message {
   id: string;
@@ -15,13 +16,15 @@ interface Message {
 interface ChatProps {
   onClose: () => void;
   roomId: string | undefined;
+  roomOwnerId?: string | null; // For Q&A ownership check
 }
 
-export default function Chat({ onClose, roomId }: ChatProps) {
+export default function Chat({ onClose, roomId, roomOwnerId }: ChatProps) {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'chat' | 'qa'>('chat');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const effectiveRoomId = roomId || "00000000-0000-0000-0000-000000000000";
@@ -179,19 +182,50 @@ export default function Chat({ onClose, roomId }: ChatProps) {
   return (
     <div className="w-80 bg-white shadow-lg z-50 flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b">
-        <h1 className="text-lg font-semibold">Chat</h1>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-gray-500 hover:text-gray-700 p-2 rounded hover:bg-gray-100"
-        >
-          ✕
-        </button>
+      <div className="border-b">
+        <div className="flex items-center justify-between p-4">
+          <h1 className="text-lg font-semibold">
+            {activeTab === 'chat' ? 'Chat' : 'Q&A'}
+          </h1>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 p-2 rounded hover:bg-gray-100"
+          >
+            ✕
+          </button>
+        </div>
+        
+        {/* Tabs */}
+        <div className="flex border-t">
+          <button
+            onClick={() => setActiveTab('chat')}
+            className={`flex-1 py-3 text-sm font-medium transition ${
+              activeTab === 'chat'
+                ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            }`}
+          >
+            💬 Chat
+          </button>
+          <button
+            onClick={() => setActiveTab('qa')}
+            className={`flex-1 py-3 text-sm font-medium transition ${
+              activeTab === 'qa'
+                ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            }`}
+          >
+            ❓ Q&A
+          </button>
+        </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      {/* Tab Content */}
+      {activeTab === 'chat' ? (
+        <>
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {loading ? (
           <div className="flex justify-center items-center h-full">
             <p className="text-gray-500">Loading messages...</p>
@@ -294,6 +328,10 @@ export default function Chat({ onClose, roomId }: ChatProps) {
           Send
         </button>
       </form>
+        </>
+      ) : (
+        <QAPanel roomId={effectiveRoomId} roomOwnerId={roomOwnerId || null} />
+      )}
     </div>
   );
 }
