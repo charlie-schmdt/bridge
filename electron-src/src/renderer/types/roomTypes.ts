@@ -48,9 +48,7 @@ export interface Join {
 }
 
 // Used to request a screen share from the server
-export interface ScreenShareRequest {
-  streamId: string;
-}
+export interface ScreenShareRequest {}
 
 // Used to receive notice about a peer starting a screen share
 export interface PeerScreenShare {

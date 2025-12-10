@@ -41,7 +41,7 @@ const initSignalingSocket = (wss) => {
           clientRegistry.removeClientFromRoom(data.clientId);
           break;
         case SignalMessageTypes.SCREEN_SHARE_REQUEST:
-          console.log(`Client ${data.clientId} sharing screen with stream ID ${data.payload.streamId}`);
+          console.log(`Client ${data.clientId} sharing screen`);
           // Propagate screen share notice to all other clients in the room
           const sharedRoomId = clientRegistry.getRoomFromClient(data.clientId);
           if (!sharedRoomId) {
@@ -59,7 +59,7 @@ const initSignalingSocket = (wss) => {
                   roomId: sharedRoomId,
                   payload: {
                     peerId: data.clientId,
-                    streamId: data.payload.streamId
+                    streamId: data.clientId+"-screen" // Use the convention of clientId-screen for screen share stream IDs
                   }
                 }));
               }

@@ -111,8 +111,8 @@ export class RoomConnectionManager {
       return;
     }
     await this.screenShareVideoTransceiver.sender.replaceTrack(stream.getVideoTracks()[0]);
-    this.sendMessage("screenShareRequest", { streamId: stream.id});
-    console.log("Started screen share with stream ID: ", stream.id);
+    //this.pc.addTrack(stream.getVideoTracks()[0], stream);
+    this.sendMessage("screenShareRequest", {});
   }
 
   public stopScreenShare(streamId: string): void {
@@ -247,6 +247,8 @@ export class RoomConnectionManager {
           if (transceivers.length >= 4) {
             this.screenShareVideoTransceiver = transceivers[2];
             this.screenShareAudioTransceiver = transceivers[3];
+            this.screenShareAudioTransceiver.direction = "sendonly";
+            this.screenShareVideoTransceiver.direction = "sendonly";
           }
           else {
             console.warn(`Expected at least 4 transceivers, found ${transceivers.length}, no screen share transceivers stored`);
