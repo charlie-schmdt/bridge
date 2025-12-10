@@ -7,6 +7,7 @@ const helmet = require('helmet');
 const { sequelize, testConnection } = require('./config/database');
 const sfuClient = require('./services/sfuClient');
 const signalingSocket = require('./websocket/signalingSocket');
+const transcriptionClient = require('./services/transcriptionService')
 const http = require('http');
 const ws = require('ws');
 
@@ -18,6 +19,7 @@ const fs = require('fs');
 
 
 // Middleware
+
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
@@ -35,6 +37,7 @@ testConnection();
 // Routes
 const routes = require('./routes');
 app.use('/api', routes);
+
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -67,6 +70,7 @@ app.use((err, req, res, next) => {
   });
 });
 
+
 // 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({
@@ -77,9 +81,31 @@ app.use('*', (req, res) => {
 
 // Add websocket handler to the server
 const server = http.createServer(app);
-const wss = new ws.WebSocketServer({ server, path: '/ws' });
+
+const wssTranscribe = new ws.WebSocketServer({ noServer: true });
+const wssSignaling = new ws.WebSocketServer({ noServer: true });
+
+// Handle upgrade requests manually
+server.on('upgrade', (req, socket, head) => {
+  if (req.url.startsWith('/transcribe')) {
+    wssTranscribe.handleUpgrade(req, socket, head, (ws) => {
+      wssTranscribe.emit('connection', ws, req);
+    });
+  } else if (req.url.startsWith('/ws')) {
+    wssSignaling.handleUpgrade(req, socket, head, (ws) => {
+      wssSignaling.emit('connection', ws, req);
+    });
+  } else {
+    socket.destroy(); // reject unknown WS paths
+  }
+});
+
+// Initialize your WS clients
+transcriptionClient.initTranscriptionClient(wssTranscribe);
+signalingSocket.initSignalingSocket(wssSignaling);
+
 sfuClient.initSfuConnection();
-signalingSocket.initSignalingSocket(wss);
+
 
 // Start server and listen on PORT
 server.listen(PORT, () => {

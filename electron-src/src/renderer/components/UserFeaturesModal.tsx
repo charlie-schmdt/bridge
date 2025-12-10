@@ -33,6 +33,7 @@ export default function UserFeaturesModal({roomId, isOpen, onOpen, onOpenChange}
 
   const [user_status, setUserStatus] = useState("");
   const { user } = useAuth();
+  const {analyserNode} = useAudioContext()
 
   const getUserStatus = async () => {
     try {
@@ -290,7 +291,10 @@ export default function UserFeaturesModal({roomId, isOpen, onOpen, onOpenChange}
                               </div>
                               <div className="flex flex-row flex-[2] min-w-[300px] mt-2 mb-2">
                                 <div className="p-4">
-                                <AudioMeter/>
+                                <AudioMeter
+                                  title="File 1"
+                                  analyzerNode={analyserNode}
+                                  size={0.5}/>
                               </div>
                               <div className="p-4">
                                 <label>Echo Cancellation</label>

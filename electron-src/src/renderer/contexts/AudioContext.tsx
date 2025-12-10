@@ -1,3 +1,4 @@
+import { Endpoints } from '@/utils/endpoints';
 import { input } from '@heroui/react';
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef} from 'react';
 import { data } from 'react-router';
@@ -80,7 +81,6 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
   //Transcript
   const[transcript, setTranscript] = useState<string[] | null>([]);
   const ws = useRef<WebSocket | null>(null);
-  const wsURL = "ws://localhost:3001/transcribe";
   const lastFinalRef = useRef(""); // persist across renders
 
 
@@ -227,7 +227,9 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
                 
               }
       }
-      setAudioContext(null)
+      stopTranscription();
+      agcLoop.stop();
+      
       
       micInput?.disconnect();
       //("mic disconnected")
@@ -239,8 +241,7 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
       analyserNode?.disconnect();
       postProcessingGainNode?.disconnect();
 
-      agcLoop.stop();
-
+      setAudioContext(null);
       resolve();
     } catch (err) {
       reject(err);
@@ -565,11 +566,11 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
     }
 
     //console.log("AudioContext:", audioContext);
-    await audioContext.audioWorklet.addModule("http://localhost:3001/transcription-worklet-processor.js");
-
+    console.log("Trying for", Endpoints.TRANSCRIPTION_SRC)
+    await audioContext.audioWorklet.addModule(Endpoints.TRANSCRIPTION_SRC);
     const workletNode = new AudioWorkletNode(audioContext, "pcm-processor");
+    console.log("workletNode", workletNode)
     micInput.connect(workletNode);
-    //console.log("worklet Node", workletNode)
 
     workletNode.port.onmessage = (event) => {
       if (ws.readyState !== WebSocket.OPEN) return;
@@ -609,9 +610,9 @@ function floatTo16BitPCM(float32: Float32Array) {
   const t0 = Date.now();
   return new Promise<void>(async (resolve, reject) => {
     try {
-      //console.log("Starting Transcription...")
-      //console.log("Opening WebSocket to ", wsURL);
-      ws.current = new WebSocket(wsURL);
+      console.log("Starting Transcription...")
+      ws.current = new WebSocket("ws://localhost:3000/transcribe");
+      console.log("open websocket", ws.current)
       ws.current.binaryType = "arraybuffer";
 
       ws.current.onopen = () => {
@@ -643,6 +644,8 @@ function floatTo16BitPCM(float32: Float32Array) {
   return new Promise<void>(async (resolve, reject) => {
     try {
       console.log("Stopping Transcription...")
+      ws.current.close()
+      await setMicInput('default', audioContext);
       resolve();
     } catch (err) {
       reject(err);

@@ -1,5 +1,6 @@
-import { CallStatus, Exit, IceCandidate, Join, PeerExit, SdpAnswer, SdpOffer, SignalMessage, SignalMessageType } from "@/renderer/types/roomTypes";
+import { CallStatus, Exit, IceCandidate, Join, PeerExit, PeerScreenShare, PeerScreenShareStop, SdpAnswer, SdpOffer, SignalMessage, SignalMessageType } from "@/renderer/types/roomTypes";
 import { WebSocketURL } from "@/utils/endpoints";
+import { validate as isValidUUID } from "uuid";
 
 // Define React callbacks for the RoomFeed renderer to provide
 export interface RoomConnectionManagerCallbacks {
@@ -7,6 +8,8 @@ export interface RoomConnectionManagerCallbacks {
   onRemoteStream: (stream: MediaStream) => void;
   onRemoteStreamStopped: () => void;
   onPeerExit: (peerId: string, peerName: string) => void;
+  onPeerScreenShare: (peerId: string, stream: MediaStream) => void;
+  onPeerScreenShareStopped: (peerId: string) => void;
   onError: (message: string) => void;
 }
 
@@ -19,8 +22,16 @@ export class RoomConnectionManager {
   private userName: string;
   private callbacks: RoomConnectionManagerCallbacks;
 
+  private screenShareVideoTransceiver: RTCRtpTransceiver | null = null;
+  private screenShareAudioTransceiver: RTCRtpTransceiver | null = null;
+
   // Internal state
   private exited = true;
+
+  // streamId -> MediaStream
+  private pendingStreams: Map<string, MediaStream> = new Map();
+  // streamId -> peerId
+  private pendingScreenShareIds: Map<string, string> = new Map();
 
   constructor(
     roomId: string,
@@ -94,6 +105,20 @@ export class RoomConnectionManager {
     }
   }
 
+  public async startScreenShare(stream: MediaStream): Promise<void> {
+    if (!this.screenShareVideoTransceiver) {
+      console.error("No screen share video transceiver available");
+      return;
+    }
+    await this.screenShareVideoTransceiver.sender.replaceTrack(stream.getVideoTracks()[0]);
+    //this.pc.addTrack(stream.getVideoTracks()[0], stream);
+    this.sendMessage("screenShareRequest", {});
+  }
+
+  public stopScreenShare(streamId: string): void {
+    this.sendMessage("peerScreenShareStop", { streamId });
+  }
+
   public disconnect(): void {
     if (this.exited) {
       return; // Already disconnected
@@ -118,6 +143,7 @@ export class RoomConnectionManager {
       this.pc.onicecandidate = null;
       this.pc.onconnectionstatechange = null;
       this.pc.ontrack = null;
+      this.pc.onnegotiationneeded = null;
       this.pc.close();
       this.pc = null;
     }
@@ -169,10 +195,39 @@ export class RoomConnectionManager {
     if (!remoteStream) {
       return;
     }
-    this.callbacks.onRemoteStream(remoteStream);
+    if (this.pendingScreenShareIds.has(remoteStream.id)) {
+      this.callbacks.onPeerScreenShare(this.pendingScreenShareIds.get(remoteStream.id), remoteStream);
+      this.pendingScreenShareIds.delete(remoteStream.id)
+    }
+    else {
+      // Check if stream ID is a valid uuid
+      if (isValidUUID(remoteStream.id)) {
+        // Peer ID, call remote stream callback
+        this.callbacks.onRemoteStream(remoteStream);
+      }
+      else if (remoteStream.id.includes("screen")) {
+        // Assume screen share, add to pending screen shares
+        this.pendingStreams.set(remoteStream.id, remoteStream);
+      }
+      else {
+        console.warn("Received remote stream with unrecognized ID: ", remoteStream.id);
+      }
+    }
 
     // Request a key frame to start decoding video frames
     this.sendMessage("pli", {})
+  }
+
+  // This will run when adding a new track 
+  private handleNegotiationNeeded = async () => {
+    if (!this.pc) return;
+    try {
+      const offer = await this.pc.createOffer();
+      await this.pc.setLocalDescription(offer);
+      this.sendMessage("offer", this.pc.localDescription);
+    } catch (err) {
+      console.error("Error during negotiationneeded handling: ", err);
+    }
   }
 
   private handleWsMessage = async (event: MessageEvent) => {
@@ -186,9 +241,24 @@ export class RoomConnectionManager {
         case "offer":
           const offer = msg.payload as SdpOffer;
           await this.pc.setRemoteDescription(new RTCSessionDescription({type: "offer", sdp: offer.sdp}));
+
+          // Find and store screen share transceivers
+          const transceivers = this.pc.getTransceivers();
+          if (transceivers.length >= 4) {
+            this.screenShareVideoTransceiver = transceivers[2];
+            this.screenShareAudioTransceiver = transceivers[3];
+            this.screenShareAudioTransceiver.direction = "sendonly";
+            this.screenShareVideoTransceiver.direction = "sendonly";
+          }
+          else {
+            console.warn(`Expected at least 4 transceivers, found ${transceivers.length}, no screen share transceivers stored`);
+          }
+
           const ans = await this.pc.createAnswer();
           await this.pc.setLocalDescription(ans);
           this.sendMessage("answer", this.pc.localDescription)
+          // After setting remote description, set the handler for onnegotiationneeded
+          this.pc.onnegotiationneeded = this.handleNegotiationNeeded;
           break;
         case "answer":
           const answer = msg.payload as SdpAnswer;
@@ -202,6 +272,34 @@ export class RoomConnectionManager {
           const peerExit = msg.payload as PeerExit;
           this.callbacks.onPeerExit(peerExit.peerId, peerExit.peerName);
           this.callbacks.onRemoteStreamStopped();
+          break;
+        case "peerScreenShare":
+          const peerScreenShare = msg.payload as PeerScreenShare;
+          // Check if we have the stream already
+          if (this.pendingStreams.has(peerScreenShare.streamId)) {
+            const screenStream = this.pendingStreams.get(peerScreenShare.streamId);
+            this.pendingStreams.delete(peerScreenShare.streamId);
+            this.callbacks.onPeerScreenShare(peerScreenShare.peerId, screenStream!);
+          }
+          else {
+            // Add to pending screen share ids
+            this.pendingScreenShareIds.set(peerScreenShare.streamId, peerScreenShare.peerId);
+          }
+          break;
+        case "peerScreenShareStop":
+          const peerScreenShareStop = msg.payload as PeerScreenShareStop;
+          if (this.pendingStreams.has(peerScreenShareStop.peerId)) {
+            this.pendingStreams.delete(peerScreenShareStop.peerId);
+          }
+          else if (this.pendingScreenShareIds.has(peerScreenShareStop.peerId)) {
+            this.pendingScreenShareIds.delete(peerScreenShareStop.peerId);
+          }
+          else {
+            this.callbacks.onPeerScreenShareStopped(peerScreenShareStop.peerId);
+          }
+          break;
+        default:
+          console.warn("Unhandled WS message type: ", msg.type);
           break;
       }
     } catch (err) {
