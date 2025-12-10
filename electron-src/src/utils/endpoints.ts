@@ -11,6 +11,8 @@ export const Endpoints = {
   WORKSPACES_USER: BACKEND + "/api/workspaces/user",
   WORKSPACES_PUBLIC: BACKEND + "/api/workspaces/public",
   ROOMS: BACKEND + "/api/rooms",
+  SESSIONS: BACKEND + "/api/sessions",
+  ATTENDANCE: BACKEND + "/api/attendance",
   AUTH_DELETE: BACKEND + "/api/auth/delete-account",
   AUTH_OAUTH: BACKEND + "/api/auth/oauth",
   AUTH_LOGIN: BACKEND + "/api/auth/login",

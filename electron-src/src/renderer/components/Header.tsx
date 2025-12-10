@@ -18,40 +18,24 @@ const Header: React.FC = () => {
             className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer">
             Workspaces
           </button>
-          <button className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer">
-            Calls
-          </button>
           <button onClick={() => navigate("/calendar")} className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer">
             Calendar
           </button>
+
+          {/*
           <button onClick={() => navigate("/audiosandbox")} className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer">
             Audio Sandbox
-          </button>
-          {/*
-          <button onClick={() => navigate("/video")}
-            className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer">
-            Video
-          </button>
-          */}
-          <button onClick={() => navigate("/TestRoom")}
-            className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer">
-            Test Room
           </button>
            <button onClick={() => navigate("/TestWaitingRoom")}
             className="text-gray-700 font-medium hover:text-blue-600 cursor-pointer">
             Test Waiting Room
           </button>
+          */}
         </nav>
       </div>
 
       {/* Right side: Notifications + Profile */}
       <div className="flex items-center gap-4">
-        <button
-          className="text-gray-500 hover:text-blue-600 cursor-pointer"
-          aria-label="Notifications"
-        >
-          🔔
-        </button>
         <ProfileMenuButton />
       </div>
     </header>

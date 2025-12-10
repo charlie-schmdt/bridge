@@ -422,10 +422,10 @@ export function RoomFeed({roomId}: RoomFeedProps) {
               Host option to start room instead of default waiting room
           */}
           
-          {/*!isAdmitted && (<WaitingRoom 
+          {!isAdmitted && (<WaitingRoom 
             room_id={roomId}
             callStatus={callStatus}
-          />)*/}
+          />)}
           {userRole==="Host" && <Button color="primary" onPress={hostStartCall}>Start Call</Button>}
           <Button color="primary" onPress={joinRoom}>(BYPASS ADMITTED) Join Call</Button>
         </>

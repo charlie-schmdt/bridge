@@ -165,12 +165,13 @@ export function RoomSettingsFooter({ roomId, screenIsShared, onLeave, onShare, s
       }
      
 
-
+      {/*
       <div className="flex flex-1 justify-end">
         <UIButton color="red" onPress={onLeave}>
           (BYPASS REDIRECT) Call Out
         </UIButton>
       </div>
+      */}
     </footer>
   );
 };
