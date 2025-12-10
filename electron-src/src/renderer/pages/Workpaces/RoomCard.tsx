@@ -2,7 +2,7 @@ import { useDisclosure } from "@heroui/react";
 import { Button } from "@/renderer/components/ui/Button";
 import { useNavigate } from "react-router-dom";
 import WaitingRoom from "../../components/WaitingRoom";
-import { SquarePen, Trash2 } from "lucide-react";
+import { ListOrderedIcon, SquarePen, Trash2 } from "lucide-react";
 import React, { useState } from "react";
 import EditRoomModal from "./EditRoomModal";
 import { useNotification } from "@/hooks/useNotification";
@@ -29,7 +29,7 @@ export interface RoomCardProps {
   description: string;
   categories?: string[];
   status: "active" | "scheduled" | "offline";
-  meetings:  string | Meeting[];
+  meetings:  Meeting[];
   editMode?: boolean;
   isOwner?: boolean;
 }
@@ -63,9 +63,9 @@ export function RoomCard({
 
   useEffect(() => {
     const parsedMeetings = parseMeetings(meetings); // room.meetings is JSON
-    const next = formatNextMeeting(getNextMeeting(parsedMeetings));
+    const next = formatNextMeeting(getNextMeeting(parsedMeetings), user?.timezone);
     setNextMeeting(next);
-  }, [meetings]); // re-run if meetings prop changes
+  }, [meetings, user?.timezone]); // re-run if meetings or user timezone changes
 
 
 
@@ -162,7 +162,20 @@ export function RoomCard({
       )}
       <div className="flex justify-between items-center">
         <h3 className="font-semibold">{title}</h3>
+          
+        {!editMode && isOwner && (<div>
+            <Button
+              size="sm"
+              radius="md"
+              variant="flat"
+              onPress={()=>{}}
+              className="text-xs bg-white-100 text-blue-700 hover:bg-blue-200 flex items-center gap-1"
+            >
+              <ListOrderedIcon size={16} />
+              Attendance
+            </Button>
 
+          </div>)}
         <span className={`text-sm font-medium ${statusColors[status]}`}>
           {status.charAt(0).toUpperCase() + status.slice(1)}
         </span>
@@ -236,14 +249,13 @@ export function RoomCard({
       <p className="text-xs text-gray-400 mt-2">Next Meeting: {nextMeeting}</p>
 
       {/* EDIT ROOM MODAL */}
-      {/*
+      
       <EditRoomModal
         isOpen={isEditModalOpen}
         onOpenChange={setIsEditModalOpen}
         room={{ id, title, description, categories, status, meetings: meetings }}
         onSuccess={() => showNotification("Room updated successfully", "success")}
       />
-      */}
       
     </div>
   );

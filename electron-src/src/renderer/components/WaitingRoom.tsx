@@ -26,9 +26,12 @@ import { supabase } from "../lib/supabase";
 interface WaitingRoomProps{
     room_id: string;
     callStatus: string;
+    isOpen: boolean;
+    onOpen: ()=> void;
+    onOpenChange: () => void;
 }
 
-export default function WaitingRoom({room_id , callStatus}: WaitingRoomProps){ 
+export default function WaitingRoom({room_id, callStatus, isOpen, onOpen, onOpenChange}: WaitingRoomProps){ 
     const navigate = useNavigate();
     const { user } = useAuth();
     const [videoSource, setVideoSource] = useState(

@@ -1,4 +1,4 @@
-const { app, session, ipcMain, desktopCapturer, BrowserWindow } = require('electron');
+const { app, protocol, session, ipcMain, desktopCapturer, BrowserWindow } = require('electron');
 const path = require('path');
 
 // IPC handler to listen for React request to get desktop thumbnails (for screen sharing selector)
