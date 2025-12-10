@@ -12,12 +12,14 @@ async function createSession(req, res) {
 
     try {
       console.log("🔥 Starting session backend...")
+        /*
         const lastSession = await Session.findOne({
             where: {room_id: roomId},
             order: [['session_number', 'DESC']]
         });
         const nextSession = lastSession ? lastSession.session_number + 1 : 1;
-
+        */
+       const nextSession = 1;
         const room = await Room.findByPk();
         if (!room) {
             return res.status(404).json({success: false, message: 'Workspace not found'})
