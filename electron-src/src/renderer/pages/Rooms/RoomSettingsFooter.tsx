@@ -147,12 +147,13 @@ export function RoomSettingsFooter({ roomId, onLeave }: RoomSettingsFooterProps)
       }
      
 
-
+      {/*
       <div className="flex flex-1 justify-end">
         <UIButton color="red" onPress={onLeave}>
           (BYPASS REDIRECT) Call Out
         </UIButton>
       </div>
+      */}
     </footer>
   );
 };

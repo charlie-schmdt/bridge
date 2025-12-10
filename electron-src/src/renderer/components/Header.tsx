@@ -46,12 +46,6 @@ const Header: React.FC = () => {
 
       {/* Right side: Notifications + Profile */}
       <div className="flex items-center gap-4">
-        <button
-          className="text-gray-500 hover:text-blue-600 cursor-pointer"
-          aria-label="Notifications"
-        >
-          🔔
-        </button>
         <ProfileMenuButton />
       </div>
     </header>
