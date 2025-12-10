@@ -13,7 +13,7 @@ const initTranscriptionClient = (wss) => {
 
   console.log("initiating transcription client");
 
-  process.env.GOOGLE_APPLICATION_CREDENTIALS = path.join(__dirname, '../../config/bridge-477216-0017e94d6565.json');
+  //I need to find another way to run the google speech
 
   const speech = require('@google-cloud/speech');
   const client = new speech.SpeechClient();
