@@ -11,6 +11,7 @@ const { createSession, addAttendee } = require('../controllers/sessionController
 const { createAttendance, updateAttendance } = require('../controllers/attendanceController');
 const { submitQuestion } = require('../controllers/questionController');
 const { getQAQuestions, submitQuestion: submitQAQuestion, updateQuestionStatus } = require('../controllers/qaController');
+const { getSource } = require ('../controllers/transcriptionController');
 // Import middleware
 const { auth, authenticateToken } = require('../middleware/auth');
 
@@ -119,5 +120,9 @@ router.delete('/auth/delete-account', authenticateToken, deleteAccount);
 
 // FAQ route for submitting questions
 router.post('/faq/question', submitQuestion);
+
+// Route to serve the transcription Audio Worklet
+
+router.get('/transcription/get-source-code', getSource);
 
 module.exports = router;

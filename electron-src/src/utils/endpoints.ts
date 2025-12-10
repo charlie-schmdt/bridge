@@ -15,5 +15,6 @@ export const Endpoints = {
   AUTH_OAUTH: BACKEND + "/api/auth/oauth",
   AUTH_LOGIN: BACKEND + "/api/auth/login",
   AUTH_REGISTER: BACKEND + "/api/auth/register",
-  AUTH_ACCOUNT: BACKEND + "/api/auth/account"
+  AUTH_ACCOUNT: BACKEND + "/api/auth/account",
+  TRANSCRIPTION_SRC: BACKEND + "/api/transcription/get-source-code",
 };

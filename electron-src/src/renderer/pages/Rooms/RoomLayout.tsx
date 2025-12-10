@@ -3,6 +3,7 @@ import { Endpoints } from '@/utils/endpoints';
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Chat from "../../components/Chat";
+import TranscriptionWindow from '@/renderer/components/TranscriptionWindow';
 import { useAudioContext } from "../../contexts/AudioContext";
 import { RoomFeed } from "./RoomFeed";
 import { RoomMediaProvider } from "./RoomMediaProvider";
@@ -23,6 +24,11 @@ export const RoomLayout = ({}: RoomLayoutProps) => {
   const closeChat = () => setIsChatOpen(false);
   const { tearDownAudioGraph } = useAudioContext();
   const toggleChat = () => setIsChatOpen(prevIsChatOpen => !prevIsChatOpen);
+
+  const [isTranscriptOpen, setIsTranscriptOpen ] = useState(false);
+  const openTranscript = () => setIsTranscriptOpen(true);
+  const closeTranscript = () => setIsTranscriptOpen(false);
+  const toggleTranscript = () => setIsTranscriptOpen(prevIsTranscriptOpen => !prevIsTranscriptOpen);
 
   const navigate = useNavigate();
 
@@ -96,6 +102,9 @@ export const RoomLayout = ({}: RoomLayoutProps) => {
             Test Room
           </div>
           <div className="flex flex-1 justify-end">
+            <button className="text-gray-500 hover:text-blue-600 cursor-pointer" onClick={toggleTranscript}>Transcript</button>
+          </div>
+          <div className="flex flex-1 justify-end">
             <button className="text-gray-500 hover:text-blue-600 cursor-pointer" onClick={toggleChat}>Chat</button>
           </div>
         </header>
@@ -106,6 +115,12 @@ export const RoomLayout = ({}: RoomLayoutProps) => {
             />
         </RoomMediaProvider>
       </div>
+      {isTranscriptOpen && roomId && (
+        <div className="w-80 flex-col-1 border-l">
+          <TranscriptionWindow 
+          />
+        </div>
+      )}
       {isChatOpen && roomId && (
         <div className="w-80 flex-col-1 border-l">
           <Chat 

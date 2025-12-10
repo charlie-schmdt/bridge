@@ -18,14 +18,7 @@ export default function TranscriptionWindow() {
             startTranscription();
             console.log("Transcription set in state.");
           }}
-        >Start Transcription
-        </Button>
-        <Button
-          onPress={async ()=>{
-            stopTranscription();
-            console.log("Transcription set in state.");
-          }}
-        >Stop Transcription
+        >Enable Transcription
         </Button>
       <div className="flex flex-col h-80 bg-gray-100 p-4 rounded-lg shadow-inner overflow-y-auto">
         {transcript.map((msg, i) => (
