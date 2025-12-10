@@ -22,6 +22,9 @@ export class RoomConnectionManager {
   private userName: string;
   private callbacks: RoomConnectionManagerCallbacks;
 
+  private screenShareVideoTransceiver: RTCRtpTransceiver | null = null;
+  private screenShareAudioTransceiver: RTCRtpTransceiver | null = null;
+
   // Internal state
   private exited = true;
 
@@ -102,9 +105,14 @@ export class RoomConnectionManager {
     }
   }
 
-  public startScreenShare(stream: MediaStream): void {
-    this.pc.addTrack(stream.getVideoTracks()[0], stream);
+  public async startScreenShare(stream: MediaStream): Promise<void> {
+    if (!this.screenShareVideoTransceiver) {
+      console.error("No screen share video transceiver available");
+      return;
+    }
+    await this.screenShareVideoTransceiver.sender.replaceTrack(stream.getVideoTracks()[0]);
     this.sendMessage("screenShareRequest", { streamId: stream.id});
+    console.log("Started screen share with stream ID: ", stream.id);
   }
 
   public stopScreenShare(streamId: string): void {
@@ -233,6 +241,17 @@ export class RoomConnectionManager {
         case "offer":
           const offer = msg.payload as SdpOffer;
           await this.pc.setRemoteDescription(new RTCSessionDescription({type: "offer", sdp: offer.sdp}));
+
+          // Find and store screen share transceivers
+          const transceivers = this.pc.getTransceivers();
+          if (transceivers.length >= 4) {
+            this.screenShareVideoTransceiver = transceivers[2];
+            this.screenShareAudioTransceiver = transceivers[3];
+          }
+          else {
+            console.warn(`Expected at least 4 transceivers, found ${transceivers.length}, no screen share transceivers stored`);
+          }
+
           const ans = await this.pc.createAnswer();
           await this.pc.setLocalDescription(ans);
           this.sendMessage("answer", this.pc.localDescription)
