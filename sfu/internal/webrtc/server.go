@@ -17,8 +17,9 @@ var upgrader = websocket.Upgrader{
 }
 
 type session struct {
-	writer  Writer
-	routers map[string]sfu.Router
+	writer                  Writer
+	routers                 map[string]sfu.Router
+	screenShareTransceivers map[string]*webrtc.RTPTransceiver
 }
 
 func HandleSession(w http.ResponseWriter, r *http.Request) {
@@ -94,14 +95,17 @@ func HandleSession(w http.ResponseWriter, r *http.Request) {
 			if err := json.Unmarshal(msg.Payload, &offer); err != nil {
 				panic(fmt.Sprintf("failed to unmarshal offer: %s, %v", msg.Payload, err))
 			}
-			pc, err := sess.handleOffer(writer, msg.ClientID, msg.RoomID, &offer)
+			pc, isNew, err := sess.handleOffer(writer, msg.ClientID, msg.RoomID, &offer)
 			if err != nil {
 				panic(fmt.Sprintf("failed to handle offer: %v", err))
 			}
 			// Register the PeerConnection with the router
-			err = roomRouter.AddPeerConnection(msg.ClientID, "UNKNOWN", pc)
-			if err != nil {
-				panic(fmt.Sprintf("failed to add PeerConnection to router: %v", err))
+			if isNew {
+				// This shouldn't happen, the only time client would offer first is when renegotiating an existing PeerConnection
+				err = roomRouter.AddPeerConnection(msg.ClientID, "UNKNOWN", pc)
+				if err != nil {
+					panic(fmt.Sprintf("failed to add PeerConnection to router: %v", err))
+				}
 			}
 
 		case signaling.SignalMessageTypeAnswer:
@@ -138,8 +142,9 @@ func HandleSession(w http.ResponseWriter, r *http.Request) {
 
 func createSession(writer Writer) *session {
 	return &session{
-		writer:  writer,
-		routers: make(map[string]sfu.Router),
+		writer:                  writer,
+		routers:                 make(map[string]sfu.Router),
+		screenShareTransceivers: make(map[string]*webrtc.RTPTransceiver),
 	}
 }
 
@@ -159,11 +164,7 @@ func (s *session) handleJoin(writer Writer, roomId string, id string) (*webrtc.P
 		return nil, fmt.Errorf("failed to create PeerConnection: %w", err)
 	}
 
-	//for range 1 {
-	//	pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo, webrtc.RTPTransceiverInit{
-	//		Direction: webrtc.RTPTransceiverDirectionSendonly,
-	//	})
-	//}
+	// Add the transceivers to receive audio and video from the client
 	pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo, webrtc.RTPTransceiverInit{
 		Direction: webrtc.RTPTransceiverDirectionRecvonly,
 	})
@@ -171,24 +172,20 @@ func (s *session) handleJoin(writer Writer, roomId string, id string) (*webrtc.P
 		Direction: webrtc.RTPTransceiverDirectionRecvonly,
 	})
 
-	//offer, err := pc.CreateOffer(nil)
-	//if err != nil {
-	//	return nil, fmt.Errorf("failed to create offer: %w", err)
-	//}
-
-	//err = pc.SetLocalDescription(offer)
-	//if err != nil {
-	//	return nil, fmt.Errorf("failed to set local description: %w", err)
-	//}
+	// Pre-allocate transceivers for screen sharing from the client
+	tVideo, err := pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo, webrtc.RTPTransceiverInit{
+		Direction: webrtc.RTPTransceiverDirectionRecvonly,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to add video transceiver for screen share: %w", err)
+	}
+	s.screenShareTransceivers[id] = tVideo
+	pc.AddTransceiverFromKind(webrtc.RTPCodecTypeAudio, webrtc.RTPTransceiverInit{
+		Direction: webrtc.RTPTransceiverDirectionRecvonly,
+	})
 
 	s.registerConnectionHandlers(id, roomId, pc)
 
-	//payload, _ := json.Marshal(signaling.SdpOffer{SDP: offer.SDP})
-	//writer.WriteJSON(signaling.SignalMessage{
-	//	Type:     signaling.SignalMessageTypeOffer,
-	//	ClientID: id,
-	//	Payload:  payload,
-	//})
 	return pc, nil
 }
 
@@ -219,12 +216,18 @@ func (s *session) handleExit(id, roomId, name string) {
 	}
 }
 
-func (s *session) handleOffer(writer Writer, id string, roomId string, offer *signaling.SdpOffer) (*webrtc.PeerConnection, error) {
-	// Create a new PeerConnection
-	config := webrtc.Configuration{}
-	pc, err := webrtc.NewPeerConnection(config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create PeerConnection: %w", err)
+func (s *session) handleOffer(writer Writer, id string, roomId string, offer *signaling.SdpOffer) (*webrtc.PeerConnection, bool, error) {
+	// Create a new PeerConnection if one does not exist for the user
+	isNew := false
+	pc := s.routers[roomId].GetPeerConnection(id)
+	if pc == nil {
+		isNew = true
+		config := webrtc.Configuration{}
+		newPc, err := webrtc.NewPeerConnection(config)
+		if err != nil {
+			return nil, isNew, fmt.Errorf("failed to create PeerConnection: %w", err)
+		}
+		pc = newPc
 	}
 
 	// Set the remote description using the provided SDP offer
@@ -232,30 +235,27 @@ func (s *session) handleOffer(writer Writer, id string, roomId string, offer *si
 		Type: webrtc.SDPTypeOffer,
 		SDP:  offer.SDP,
 	}
-	err = pc.SetRemoteDescription(sessionDescription)
+	err := pc.SetRemoteDescription(sessionDescription)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set remote description: %w", err)
-	}
-
-	for range 5 {
-		pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo, webrtc.RTPTransceiverInit{
-			Direction: webrtc.RTPTransceiverDirectionSendonly,
-		})
+		return nil, isNew, fmt.Errorf("failed to set remote description: %w", err)
 	}
 
 	// Create an answer
 	answer, err := pc.CreateAnswer(nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create answer: %w", err)
+		return nil, isNew, fmt.Errorf("failed to create answer: %w", err)
 	}
 
 	// Set the local description
 	err = pc.SetLocalDescription(answer)
 	if err != nil {
-		return nil, fmt.Errorf("failed to set local description: %w", err)
+		return nil, isNew, fmt.Errorf("failed to set local description: %w", err)
 	}
 
-	s.registerConnectionHandlers(id, roomId, pc)
+	// Register connection handlers only if PeerConnection is new
+	if isNew {
+		s.registerConnectionHandlers(id, roomId, pc)
+	}
 
 	// Send the answer back to the client
 	payload, _ := json.Marshal(signaling.SdpAnswer{SDP: answer.SDP})
@@ -265,7 +265,7 @@ func (s *session) handleOffer(writer Writer, id string, roomId string, offer *si
 		Payload:  payload,
 	})
 
-	return pc, nil
+	return pc, isNew, nil
 }
 
 func (s *session) handleAnswer(id string, roomId string, answer *signaling.SdpAnswer) error {
@@ -339,15 +339,21 @@ func (s *session) registerConnectionHandlers(id string, roomId string, pc *webrt
 			pc.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
 				fmt.Printf("New incoming track: kind=%s, ssrc=%d\n", track.Kind(), track.SSRC())
 
+				isScreenShare := false
+				if receiver.RTPTransceiver() == s.screenShareTransceivers[id] {
+					fmt.Println("Handling screen share track")
+					isScreenShare = true
+				}
+
 				if track.Kind() == webrtc.RTPCodecTypeVideo {
 					// Forward video track to all other clients
-					err := s.routers[roomId].ForwardVideoTrack(id, track)
+					err := s.routers[roomId].ForwardVideoTrack(id, track, isScreenShare)
 					if err != nil {
 						panic(fmt.Sprintf("failed to forward video track: %v", err))
 					}
 				} else if track.Kind() == webrtc.RTPCodecTypeAudio {
 					// Forward audio track to all other clients
-					err := s.routers[roomId].ForwardAudioTrack(id, track)
+					err := s.routers[roomId].ForwardAudioTrack(id, track, isScreenShare)
 					if err != nil {
 						panic(fmt.Sprintf("failed to forward audio track: %v", err))
 					}

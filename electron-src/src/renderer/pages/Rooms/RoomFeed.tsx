@@ -1,5 +1,8 @@
 import { Button } from '@/renderer/components/ui/Button';
-import { CallStatus } from '@/renderer/types/roomTypes';
+import WaitingRoom from '@/renderer/components/WaitingRoom';
+import { supabase } from '@/renderer/lib/supabase';
+import { CallStatus, VideoLayout } from '@/renderer/types/roomTypes';
+import { Endpoints } from '@/utils/endpoints';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { v4 as uuid } from 'uuid';
@@ -8,10 +11,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { RoomConnectionManager, RoomConnectionManagerCallbacks } from './RoomConnectionManager';
 import { useRoomMediaContext } from './RoomMediaContext';
 import { RoomSettingsFooter } from './RoomSettingsFooter';
+import { ScreenSelector } from './ScreenSelector';
 import { VideoGrid } from './VideoGrid';
-import WaitingRoom from '@/renderer/components/WaitingRoom';
-import { supabase } from '@/renderer/lib/supabase';
-import { Endpoints } from '@/utils/endpoints';
 
 export interface RoomFeedProps {
   roomId: string | undefined;
@@ -25,10 +26,17 @@ export function RoomFeed({roomId}: RoomFeedProps) {
 
   const [callStatus, setCallStatus] = useState<CallStatus>("inactive");
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+
+  const [screenShare, setScreenShare] = useState<{ stream: MediaStream, peerId: string } | null>(null);
   // map streamId/peerId (implemented as the same in the SFU) to its MediaStream
   const [remoteStreams, setRemoteStreams] = useState<Map<String, MediaStream>>(new Map());
   const [isAdmitted, setIsAdmitted] = useState(false);
   const [userRole, setUserRole] = useState("");
+
+  const [isScreenSelectorOpen, setIsScreenSelectorOpen] = useState(false);
+  const [screenIsShared, setScreenIsShared] = useState(false);
+  const [currentLayout, setCurrentLayout] = useState<VideoLayout>("grid");
+  const [speakerLayoutOverride, setSpeakerLayoutOverride] = useState<boolean>(false);
 
   const roomConnectionManagerRef = useRef<RoomConnectionManager | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -96,7 +104,7 @@ export function RoomFeed({roomId}: RoomFeedProps) {
 
   useEffect(() => {
     getUserRole();
-    console.log("ROOM FEED CHANNEL  STARTED")
+    console.log("ROOM FEED CHANNEL STARTED")
     const channel = supabase.channel("room-feed-members")
     .on("postgres_changes",
       {
@@ -124,7 +132,6 @@ export function RoomFeed({roomId}: RoomFeedProps) {
     return () => {
       supabase.removeChannel(channel);
       cleanUpRoomExit();
-      
     };
   }, [])
     
@@ -176,6 +183,34 @@ export function RoomFeed({roomId}: RoomFeedProps) {
           }
         });
       },
+      onPeerScreenShare: (peerId, stream) => {
+        toast(`${peerId} has started screen sharing`);
+        setSpeakerLayoutOverride(true);
+        setScreenShare(prevScreenShare => {
+          if (prevScreenShare && prevScreenShare.stream) {
+            prevScreenShare.stream.getTracks().forEach(track => track.stop());
+          }
+          return { stream: stream, peerId: peerId };
+        });
+      },
+      onPeerScreenShareStopped: (peerId) => {
+        toast(`${peerId} has stopped screen sharing`);
+        setSpeakerLayoutOverride(false);
+        setScreenShare(prevScreenShare => {
+          if (!prevScreenShare) {
+            console.error("No active screen share to stop");
+            return null;
+          }
+          if (prevScreenShare.peerId !== peerId) {
+            console.error("Screen share peerId does not match active screen share");
+            return prevScreenShare;
+          }
+          if (prevScreenShare.stream) {
+            prevScreenShare.stream.getTracks().forEach(track => track.stop());
+          }
+          return null;
+        });
+      },
       onError: (message) => toast.error(message),
     };
 
@@ -222,37 +257,6 @@ export function RoomFeed({roomId}: RoomFeedProps) {
       audioTrack.enabled = localRoomMedia.isAudioEnabled;
     }
   }, [micAudioStream, localRoomMedia.isAudioEnabled])
-
-  //// Handle remote video component changes
-  //useEffect(() => {
-  //  if (!remoteVideoRef.current) {
-  //    // Ref points to nothing yet, do nothing
-  //    return;
-  //  }
-
-  //  if (remoteStream) {
-  //    if (remoteVideoRef.current.srcObject !== remoteStream) {
-  //      remoteVideoRef.current.srcObject = remoteStream;
-  //      remoteVideoRef.current.play()
-  //        .then(_ => {
-  //          console.log("Playing remote stream")
-  //        })
-  //        .catch(error => {
-  //          if (error.name === 'NotAllowedError') {
-  //            console.error("Autoplay was prevented. User must interact with the page")
-  //          }
-  //          else if (error.name !== 'AbortError') { // AbortError occurs on unmount
-  //            console.error("Video play() failed:", error);
-  //          }
-  //        });
-  //    }
-  //  }
-  //  else {
-  //    // remoteStream is null, remove video reference
-  //    console.log("Remote stream is null, clearing srcObject");
-  //    remoteVideoRef.current.srcObject = null;
-  //  }
-  //}, [remoteVideoRef, remoteStream]) // videoRef inclusion does nothing, satisfies ESLint
 
   // Handle local video component changes
   useEffect(() => {
@@ -337,10 +341,56 @@ export function RoomFeed({roomId}: RoomFeedProps) {
       localStream.getTracks().forEach(track => track.stop());
       setLocalStream(null);
     }
+    if (screenShare && screenShare.stream) {
+      screenShare.stream.getTracks().forEach(track => track.stop());
+      setScreenShare(null);
+    }
 
     tearDownAudioGraph()
 
     setCallStatus("inactive");
+  };
+
+  const handleScreenSelected = async (stream: MediaStream) => {
+    if (stream) {
+      if (roomConnectionManagerRef.current) {
+        roomConnectionManagerRef.current.startScreenShare(stream);
+      }
+      setScreenShare({ stream: stream, peerId: clientId.current });
+      setScreenIsShared(true);
+      setSpeakerLayoutOverride(true);
+      toast("Sharing screen");
+    }
+    else {
+      toast.error("Could not access screen for sharing");
+    }
+    setIsScreenSelectorOpen(false);
+  };
+
+  const handleCancelScreenSelect = () => {
+    setIsScreenSelectorOpen(false);
+  }
+  
+  const stopShare = () => {
+    setScreenShare(prevScreenShare => {
+      if (prevScreenShare && prevScreenShare.stream) {
+        prevScreenShare.stream.getTracks().forEach(track => track.stop());
+        if (roomConnectionManagerRef.current) {
+          roomConnectionManagerRef.current.stopScreenShare(clientId.current);
+        }
+        toast("Stopped sharing screen");
+        setSpeakerLayoutOverride(false);
+      }
+      else {
+        console.error("No screen stream to stop");
+      }
+      return null;
+    });
+    setScreenIsShared(false);
+  }
+
+  const shareScreen = () => {
+    setIsScreenSelectorOpen(true);
   };
 
   const allStreams = useMemo(() => {
@@ -354,10 +404,17 @@ export function RoomFeed({roomId}: RoomFeedProps) {
       streams.push({ stream, isMuted: false });
     });
     return streams;
-  }, [localStream, remoteStreams]);
+  }, [localStream, screenShare, remoteStreams]);
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center min-h-0">
+      {isScreenSelectorOpen && (
+        <ScreenSelector
+          onScreenSelected={handleScreenSelected}
+          onCancel={handleCancelScreenSelect}
+          isOpen={isScreenSelectorOpen}
+        />
+      )}
       { callStatus === "inactive" ? (
         <>
           {/*
@@ -372,15 +429,24 @@ export function RoomFeed({roomId}: RoomFeedProps) {
           {userRole==="Host" && <Button color="primary" onPress={hostStartCall}>Start Call</Button>}
           <Button color="primary" onPress={joinRoom}>(BYPASS ADMITTED) Join Call</Button>
         </>
-
       )
         :
       (
         <>
           <div className="flex-1 w-full min-h-0">
-            <VideoGrid streams={allStreams} />
+            <VideoGrid
+              layout={speakerLayoutOverride ? "speaker" : currentLayout}
+              streams={allStreams}
+              screenStream={{stream: screenShare?.stream, isMuted: true}}
+            />
           </div>
-          <RoomSettingsFooter roomId={roomId} onLeave={exitRoom} />
+          <RoomSettingsFooter
+            roomId={roomId}
+            onLeave={exitRoom}
+            screenIsShared={screenIsShared}
+            onShare={shareScreen}
+            stopShare={stopShare}
+          />
         </>
       )}
     </div>

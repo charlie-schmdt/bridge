@@ -11,8 +11,8 @@ import (
 type Router interface {
 	AddPeerConnection(id string, name string, pc *webrtc.PeerConnection) error
 	RemovePeerConnection(id string, closeSubscriber func(id string)) error
-	ForwardVideoTrack(id string, track *webrtc.TrackRemote) error
-	ForwardAudioTrack(id string, track *webrtc.TrackRemote) error
+	ForwardVideoTrack(id string, track *webrtc.TrackRemote, isScreenShare bool) error
+	ForwardAudioTrack(id string, track *webrtc.TrackRemote, isScreenShare bool) error
 	GetPeerConnection(id string) *webrtc.PeerConnection
 	GetName(id string) string
 	RequestKeyFrames(id string) error
@@ -100,7 +100,7 @@ func (r *defaultRouter) RemovePeerConnection(id string, closeSubscriber func(id 
 	return nil
 }
 
-func (r *defaultRouter) ForwardAudioTrack(id string, remote *webrtc.TrackRemote) error {
+func (r *defaultRouter) ForwardAudioTrack(id string, remote *webrtc.TrackRemote, isScreenShare bool) error {
 	rpc, exists := r.connections[id]
 	if !exists {
 		return fmt.Errorf("PeerConnection with id %s does not exist", id)
@@ -114,7 +114,7 @@ func (r *defaultRouter) ForwardAudioTrack(id string, remote *webrtc.TrackRemote)
 		broadcaster = r.broadcasters[id]
 		broadcaster.SetAudioSource(remote)
 	} else {
-		broadcaster = InitBroadcaster(id, rpc, nil, remote)
+		broadcaster = InitBroadcaster(id, rpc, nil, remote, nil)
 		r.broadcasters[id] = broadcaster
 	}
 
@@ -128,7 +128,7 @@ func (r *defaultRouter) ForwardAudioTrack(id string, remote *webrtc.TrackRemote)
 
 }
 
-func (r *defaultRouter) ForwardVideoTrack(id string, remote *webrtc.TrackRemote) error {
+func (r *defaultRouter) ForwardVideoTrack(id string, remote *webrtc.TrackRemote, isScreenShare bool) error {
 	//forwardedPc, exists := r.connections[id]
 	rpc, exists := r.connections[id]
 	if !exists {
@@ -141,9 +141,17 @@ func (r *defaultRouter) ForwardVideoTrack(id string, remote *webrtc.TrackRemote)
 	var broadcaster Broadcaster
 	if _, exists := r.broadcasters[id]; exists {
 		broadcaster = r.broadcasters[id]
-		broadcaster.SetVideoSource(remote)
+		if isScreenShare {
+			broadcaster.SetScreenSource(remote)
+		} else {
+			broadcaster.SetVideoSource(remote)
+		}
 	} else {
-		broadcaster = InitBroadcaster(id, rpc, remote, nil)
+		if isScreenShare {
+			broadcaster = InitBroadcaster(id, rpc, nil, nil, remote)
+		} else {
+			broadcaster = InitBroadcaster(id, rpc, remote, nil, nil)
+		}
 		r.broadcasters[id] = broadcaster
 	}
 
@@ -167,7 +175,7 @@ func (r *defaultRouter) RequestKeyFrames(id string) error {
 	log.Printf("Requesting keyframes for id %s", id)
 	for rid, rbd := range r.broadcasters {
 		if rid != id {
-			rbd.SendPublisherPli()
+			rbd.SendAllPublisherPli()
 		}
 	}
 	return nil
