@@ -1,4 +1,4 @@
-import { Endpoints } from '@/utils/endpoints';
+import { Endpoints, WebSocketURL } from '@/utils/endpoints';
 import { input } from '@heroui/react';
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef} from 'react';
 import { data } from 'react-router';
@@ -611,7 +611,9 @@ function floatTo16BitPCM(float32: Float32Array) {
   return new Promise<void>(async (resolve, reject) => {
     try {
       console.log("Starting Transcription...")
-      ws.current = new WebSocket("ws://localhost:3000/transcribe");
+      console.log(WebSocketURL)
+      let transcribeWS = WebSocketURL.replace(/\/ws$/, "/transcribe");
+      ws.current = new WebSocket(transcribeWS);
       console.log("open websocket", ws.current)
       ws.current.binaryType = "arraybuffer";
 

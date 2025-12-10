@@ -9,14 +9,24 @@ const request = {
 
 const path = require('path');
 
+const transcriptionSecret = process.env.TRANSCRIPTION_SECRET;
+const credentials = JSON.parse(transcriptionSecret);
+
 const initTranscriptionClient = (wss) => {
 
   console.log("initiating transcription client");
 
+  if (!transcriptionSecret) {
+    throw new Error("TRANSCRIPTION_SECRET environment variable not set");
+  }
+
   //I need to find another way to run the google speech
 
   const speech = require('@google-cloud/speech');
-  const client = new speech.SpeechClient();
+  const client = new speech.SpeechClient({
+    credentials,
+    projectId: credentials.project_id,
+  });
 
   wss.on('connection', (socket, req) => {
     console.log('Client connected for transcription');
