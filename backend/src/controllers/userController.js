@@ -465,17 +465,18 @@ const setOnboarding = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Forbidden' });
     }
 
-    await user.update({ onboarding_completed: !!completed });
+    // Update and get the fresh user instance so we return the persisted state
+    const updatedUser = await user.update({ onboarding_completed: !!completed });
 
     const userData = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      picture: user.picture,
-      provider: user.provider,
-      isVerified: user.isVerified,
-      onboarding_completed: user.onboarding_completed,
-      createdAt: user.createdAt
+      id: updatedUser.id,
+      email: updatedUser.email,
+      name: updatedUser.name,
+      picture: updatedUser.picture,
+      provider: updatedUser.provider,
+      isVerified: updatedUser.isVerified,
+      onboarding_completed: updatedUser.onboarding_completed,
+      createdAt: updatedUser.createdAt
     };
 
     res.json({ success: true, message: 'Onboarding updated', data: { user: userData } });
