@@ -6,6 +6,7 @@ const User = require('../models/User');
 
 module.exports = {
     getRooms,
+    getRoom,
     createRoom,
     editRoom,
     deleteRoom,
@@ -44,6 +45,40 @@ async function getRooms(req, res) {
   } catch (error) {
     console.error('❌ Error fetching rooms:', error);
     return res.status(500).json({ success: false, message: 'Server error fetching rooms' });
+  }
+}
+
+async function getRoom(req, res) {
+  const { roomId } = req.params;
+
+  try {
+    const room = await Room.findByPk(roomId);
+
+    if (!room) {
+      return res.status(404).json({ success: false, message: 'Room not found' });
+    }
+
+    return res.status(200).json(room);
+  } catch (error) {
+    console.error('❌ Error fetching room:', error);
+    return res.status(500).json({ success: false, message: 'Server error fetching room' });
+  }
+}
+
+async function getRoom(req, res) {
+  const { roomId } = req.params;
+
+  try {
+    const room = await Room.findByPk(roomId);
+
+    if (!room) {
+      return res.status(404).json({ success: false, message: 'Room not found' });
+    }
+
+    return res.status(200).json(room);
+  } catch (error) {
+    console.error('❌ Error fetching room:', error);
+    return res.status(500).json({ success: false, message: 'Server error fetching room' });
   }
 }
 

@@ -935,26 +935,41 @@ export const WorkspaceLayout = () => {
 
             {/* Add the CreateRoomCard at the end of the grid */}
             {/* <CreateRoomCard /> */}
-            <div
+            
+            {/* Only show Create Room option to workspace owners */}
+            {isCurrentUserOwner ? (
+              <div
+                onClick={setShowRoomModal.bind(null, true)}
+                className="group border-2 border-dashed border-blue-300 hover:border-blue-500 bg-white 
+                  rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer 
+                  p-6 sm:p-8 w-full flex flex-col items-center text-center space-y-3"
+                role="button"
+                tabIndex={0}
+              >
+                <PlusCircle className="w-10 h-10 text-blue-500 group-hover:text-blue-600 transition duration-200" />
+                <p className="text-lg font-semibold text-gray-800">Create New Room</p>
+                <p className="text-sm text-gray-500">
+                  Quickly set up a new meeting room for your team.
+                </p>
+                <button
                   onClick={setShowRoomModal.bind(null, true)}
-                  className="group border-2 border-dashed border-blue-300 hover:border-blue-500 bg-white 
-                    rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer 
-                    p-6 sm:p-8 w-full flex flex-col items-center text-center space-y-3"
-                  role="button"
-                  tabIndex={0}
+                  className="mt-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition cursor-pointer"
                 >
-                  <PlusCircle className="w-10 h-10 text-blue-500 group-hover:text-blue-600 transition duration-200" />
-                  <p className="text-lg font-semibold text-gray-800">Create New Room</p>
-                  <p className="text-sm text-gray-500">
-                    Quickly set up a new meeting room for your team.
-                  </p>
-                  <button
-                    onClick={setShowRoomModal.bind(null, true)}
-                    className="mt-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition cursor-pointer"
-                  >
-                    Get Started
-                  </button>
-                </div>
+                  Get Started
+                </button>
+              </div>
+            ) : (
+              <div
+                className="border-2 border-gray-200 bg-gray-50 rounded-xl shadow p-6 sm:p-8 w-full 
+                  flex flex-col items-center text-center space-y-3"
+              >
+                <PlusCircle className="w-10 h-10 text-gray-400" />
+                <p className="text-lg font-semibold text-gray-600">Create New Room</p>
+                <p className="text-sm text-gray-500">
+                  Only workspace owners can create new rooms.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Right: Members list (25%) */}

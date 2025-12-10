@@ -105,15 +105,34 @@ export function getNextMeeting(meetings: Meeting[]): Date | null {
 }
 
 /**
- * Formats next meeting nicely
+ * Formats next meeting nicely with timezone support
+ * @param date - The date to format
+ * @param timezone - IANA timezone string (e.g., 'America/New_York', 'UTC'). Defaults to UTC if not provided.
  */
-export function formatNextMeeting(date: Date | null): string {
+export function formatNextMeeting(date: Date | null, timezone?: string): string {
   if (!date) return "TBD";
-  return date.toLocaleString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  
+  // Default to UTC if no timezone provided
+  const tz = timezone || "UTC";
+  
+  try {
+    return date.toLocaleString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: tz,
+    });
+  } catch (error) {
+    console.error(`Invalid timezone '${tz}', falling back to UTC:`, error);
+    return date.toLocaleString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: "UTC",
+    });
+  }
 }

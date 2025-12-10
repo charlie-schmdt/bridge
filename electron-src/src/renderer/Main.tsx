@@ -79,6 +79,10 @@ const router = createHashRouter([
         element: <AudioSandbox />,
       },
       {
+        path: "calendar",
+        element: React.createElement(require('./pages/Calendar/CalendarLayout').default),
+      },
+      {
         path: "workspace/:workspaceId",
         element: <WorkspaceLayout />,
       },

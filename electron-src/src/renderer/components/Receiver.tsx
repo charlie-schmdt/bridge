@@ -1,5 +1,8 @@
 import { useEffect, useState, useRef } from "react";
-import AudioVisualizers from "./AudioVisualizers";
+import AudioMeter from "./AudioMeter";
+import TranscriptionWindow from "./TranscriptionWindow";
+import {useAudioContext} from "../contexts/AudioContext";
+
 import {
   Tabs, Tab,
   Card, CardHeader, CardBody,
@@ -8,134 +11,201 @@ import {
   Switch
 } from "@heroui/react";
 
-function UploadFile() {
+function Initialize() {
+  const { initializeAudioGraph } = useAudioContext();
+  return(<Button
+  onPress={initializeAudioGraph}
+  >Initialize Audio</Button>)
+  
+}
 
+function Teardown() {
+  const { tearDownAudioGraph } = useAudioContext();
+  return(<Button
+  onPress={tearDownAudioGraph}
+  >TearDown Audio</Button>)
+  
+}
+
+function UploadFile({name, index}) {
   return (
-    <div className="flex w-full flex-wrap md:flex-nowrap gap-4">
+    <div className="flex">
       <Input 
-      placeholder="Upload File"
-      type="file"/>
+      placeholder={name}
+      id={`file${index}`}/>
     </div>
   )
 }
 
-function OutputFile() {
 
-  return (
-    <div className="flex w-full flex-wrap md:flex-nowrap gap-4">
-      <Input placeholder="File"/>
-    </div>
-  )
-}
 
-function ProcessButton() {
+function LoadFiles() {
+  const { loadAudioFiles } = useAudioContext();
+  const load = () => {
+    let files = []
+    for (let i = 0 ; i < 5 ; i++) {
+      const fileRef = document.getElementById(`file${i}`) as HTMLInputElement
+      let val = fileRef.value
+      files.push(val)
+    }
+    loadAudioFiles(files)
+  }
+  
   return (
-    <div className="flex gap-4 items-center">
-      <Button isIconOnly aria-label="Process">
-        <img
-          src="/Users/tylerptak/Documents/Class/Fall_25/407/bridge/electron-src/src/assets/record.avif" // Replace with the path to your image
-          alt="Record Icon"
-          className="w-8 h-8" // You can adjust the size here
-        />
-      </Button>
-    </div>
+    <Button onPress={load}>
+      Load Files
+    </Button>
   );
 }
 
-function PlayInputsButton() {
+function ResetFiles() {
+  const { resetAudioFiles } = useAudioContext();
+  const reset = () => {
+    for (let i = 0 ; i < 5 ; i++) {
+      const fileRef = document.getElementById(`file${i}`) as HTMLInputElement
+      fileRef.value = '';
+    }
+    resetAudioFiles()
+  }
+
   return (
-    <div className="flex gap-4 items-center">
-      <Button isIconOnly aria-label="Play Inputs">
-        <img
-          src="/Users/tylerptak/Documents/Class/Fall_25/407/bridge/electron-src/src/assets/play.png" // Replace with the path to your image
-          alt="Record Icon"
-          className="w-8 h-8" // You can adjust the size here
-        />
-      </Button>
-    </div>
+    <Button onPress={reset}>
+      Reset Files
+    </Button>
   );
 }
 
-function PlayOutputsButton() {
+function PlayUnprocessed() {
+  const { playAudioFiles } = useAudioContext();
+
   return (
-    <div className="flex gap-4 items-center">
-      <Button isIconOnly aria-label="Play Outputs">
-        <img
-          src="/Users/tylerptak/Documents/Class/Fall_25/407/bridge/electron-src/src/assets/play.png" // Replace with the path to your image
-          alt="Play Outputs Icon"
-          className="w-8 h-8" // You can adjust the size here
-        />
-      </Button>
-    </div>
+    <Button onPress={playAudioFiles}>
+      Play Unprocessed
+    </Button>
   );
 }
 
-function VisualizeButton() {
+function Process() {
   return (
-    <div className="flex gap-4 items-center">
-      <Button isIconOnly aria-label="Play">
-        <img
-          src="/Users/tylerptak/Documents/Class/Fall_25/407/bridge/electron-src/src/assets/play.png" // Replace with the path to your image
-          alt="Visualize Icon"
-          className="w-8 h-8" // You can adjust the size here
-        />
-      </Button>
+    <Button>
+      Process
+    </Button>
+  );
+}
+
+function AGCValue({trackID}) {
+
+  const { remoteTracks, agcGains } = useAudioContext();
+  const [agcGain, setAgcGain] = useState<number>(0.2);
+  let title=`agcValue${trackID}`
+
+  useEffect(()=>{
+    //(agcGains)
+    //console.log("trackID", trackID)
+    //console.log("myagcgain", agcGains.get(trackID))
+    if (agcGains.has(trackID)) {
+      setAgcGain(agcGains.get(trackID));
+    }
+},[agcGains])
+
+  return (
+    <div className="flex pl-8 gap-4 items-center">
+      <input
+        id={title}
+        type="range"
+        min="0.05"
+        max="0.4"
+        step="0.001"
+        value={agcGain}
+        className="w-full rotate-90 origin-left"
+      />
     </div>
   );
 }
 
 export default function Receiver() {
+
+  const { analyserNode, remoteTracks } = useAudioContext();
   return (
     <div>
+      <Initialize/>
+      <Teardown/>
       <div className="flex flex-row  rounded-xl shadow gap-4">
-        <div className="flex-2  min-w-[150px] mt-2 mb-2">
-          <UploadFile/>
-          <UploadFile/>
-          <UploadFile/>
-          <UploadFile/>
-          <UploadFile/>
-        </div>
         <div className="flex-1  min-w-[150px] mt-2 mb-2">
-          <label className="mb-2">Output File</label>
+          <UploadFile name="File 1..." index={0}/>
+          <UploadFile name="File 2..." index={1}/>
+          <UploadFile name="File 3..." index={2}/>
+          <UploadFile name="File 4..." index={3}/>
+          <UploadFile name="File 5..." index={4}/>
         </div>
-        <div className="flex-1  min-w-[150px] mt-2 mb-2">
-          <OutputFile/>
-        </div>
-      </div>
-      <hr/>
-      <div className="flex flex-row  rounded-xl shadow gap-4">
-        <div className="flex-1  min-w-[100px] mt-2 mb-2">
-          <label className="mb-2">Process:</label>
-        </div>
-        <div className="flex-1  min-w-[50px] mt-2 mb-2">
-          <ProcessButton/>
-        </div>
-        <div className="flex-1  min-w-[100px] mt-2 mb-2">
-          <label className="mb-2">Play Inputs</label>
-        </div>
-        <div className="flex-1  min-w-[50px] mt-2 mb-2">
-          <PlayInputsButton/>
-        </div>
-        <div className="flex-1  min-w-[100px] mt-2 mb-2">
-          <label className="mb-2">Play Outputs</label>
-        </div>
-        <div className="flex-1  min-w-[50px] mt-2 mb-2">
-          <PlayOutputsButton/>
-        </div>
-        <div className="flex-1  min-w-[100px] mt-2 mb-2">
-          <label className="mb-2">Visualize Both</label>
-        </div>
-        <div className="flex-1  min-w-[50px] mt-2 mb-2">
-          <VisualizeButton/>
+        <div className="flex-row  min-w-[150px] mt-2 mb-2">
+          <div className="flex-1  min-w-[50px] mt-2 mb-2">
+            <LoadFiles/>
+          </div>
+          <div className="flex-1  min-w-[50px] mt-2 mb-2">
+            <ResetFiles/>
+          </div>
+          <div className="flex-1  min-w-[50px] mt-2 mb-2">
+            <PlayUnprocessed/>
+          </div>
+          <div className="flex-1  min-w-[50px] mt-2 mb-2">
+            <Process/>
+          </div>
         </div>
       </div>
-      <hr/>
-      <div className="flex flex-row  rounded-xl shadow gap-4">
-        <AudioVisualizers/>
-        <AudioVisualizers/>
+      <div className="flex flex-row min-w-[300px] rounded-xl shadow gap-4">
+        <div className ="flex-[1]">
+          <div className="flex flex-row rounded-xl">
+            {/*
+              <div className="flex-1">
+              <AudioMeter
+                title="File 1"
+                analyzerNode={agcAnalyzerNodes[0]}
+                size={0.5}
+              />
+            </div>
+            <div className="flex-1">
+              <AudioMeter
+                title="File 2"
+                analyzerNode={agcAnalyzerNodes[1]}
+                size={0.5}
+              />
+            </div>
+            <div className="flex-1">
+              <AudioMeter
+                title="File 3"
+                analyzerNode={agcAnalyzerNodes[2]}
+                size={0.5}
+              />
+            </div>
+            <div className="flex-1">
+              <AudioMeter
+                title="File 4"
+                analyzerNode={agcAnalyzerNodes[3]}
+                size={0.5}
+              />
+            </div>
+            <div className="flex-1">
+              <AudioMeter
+                title="File 5"
+                analyzerNode={agcAnalyzerNodes[4]}
+                size={0.5}
+              />
+            </div>
+            */}
+          </div>
+          <div className="flex flex-row rounded-xl mb-30">
+            <AGCValue trackID={"Track0"}/>
+            <AGCValue trackID={"Track1"}/>
+            <AGCValue trackID={"Track2"}/>
+            <AGCValue trackID={"Track3"}/>
+            <AGCValue trackID={"Track4"}/>
+          </div>
+        </div>
+        <div className="flex-[1] min-w-[300px]">
+          <TranscriptionWindow/>
+        </div>   
       </div>
-      <hr/>
-      <h2 className="text-1xl font-bold text-gray-900 mt-2">Latency: ______</h2>
     </div>
   );
 }

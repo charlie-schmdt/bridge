@@ -63,9 +63,9 @@ export function RoomCard({
 
   useEffect(() => {
     const parsedMeetings = parseMeetings(meetings); // room.meetings is JSON
-    const next = formatNextMeeting(getNextMeeting(parsedMeetings));
+    const next = formatNextMeeting(getNextMeeting(parsedMeetings), user?.timezone);
     setNextMeeting(next);
-  }, [meetings]); // re-run if meetings prop changes
+  }, [meetings, user?.timezone]); // re-run if meetings or user timezone changes
 
 
 

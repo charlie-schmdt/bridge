@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import AudioVisualizers from "./AudioVisualizers";
+import AudioMeter from "./AudioMeter";
 import {
   Tabs, Tab,
   Card, CardHeader, CardBody,
@@ -21,7 +21,6 @@ function Initialize() {
   return(<Button
   onPress={initializeAudioGraph}
   >Initialize Audio</Button>)
-  
 }
 
 function Teardown() {
@@ -34,11 +33,13 @@ function Teardown() {
 
 export default function Sender() {
 
+  const { analyserNode } = useAudioContext();
+
   return (
     <div>
       <Initialize/>
       <Teardown/>
-      {/*<div className="flex flex-row  rounded-xl shadow gap-4">
+      <div className="flex flex-col  rounded-xl shadow gap-4">
         <div className="grid grid-cols-2 grid-rows-1 gap-4 flex-1 min-w-[300px] mt-2 mb-2">
           <div className="p-4 ">
             <label className="mb-2">Input source:</label>
@@ -82,12 +83,14 @@ export default function Sender() {
             <NoiseSuppressionToggle/>
           </div>
         </div>
+        <div className="flex flex-col flex-[1] min-w-[150px] mt-2 mb-2">
+          <AudioMeter
+            title="Meter"
+            analyzerNode={analyserNode}
+            size={0.8}
+          />
+        </div>
       </div>
-      <hr/>
-      <div className="flex flex-row  rounded-xl shadow gap-4">
-        <AudioVisualizers/>
-      </div>
-      <hr/>*/}
     </div>
   );
 }
