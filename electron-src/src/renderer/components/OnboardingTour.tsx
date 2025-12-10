@@ -198,7 +198,7 @@ const OnboardingTour: React.FC = () => {
     if (!user) return setActive(false);
     try {
       const token = localStorage.getItem('bridge_token');
-      await fetch(`${Endpoints.USERS}${user.id}/onboarding`, {
+      await fetch(`${Endpoints.USERS}/${user.id}/onboarding`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

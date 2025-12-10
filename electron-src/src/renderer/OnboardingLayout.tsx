@@ -33,7 +33,7 @@ const OnboardingLayout: React.FC = () => {
     setSaving(true);
     try {
       const token = localStorage.getItem('bridge_token');
-      const res = await fetch(`${Endpoints.USERS}${user.id}/onboarding`, {
+      const res = await fetch(`${Endpoints.USERS}/${user.id}/onboarding`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
