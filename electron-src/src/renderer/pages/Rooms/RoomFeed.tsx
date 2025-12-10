@@ -19,7 +19,8 @@ export interface RoomFeedProps {
 
 export function RoomFeed({roomId}: RoomFeedProps) {
   const { user } = useAuth()
-  const { initializeAudioGraph, tearDownAudioGraph, micAudioStream } = useAudioContext();
+  const { initializeAudioGraph, tearDownAudioGraph, 
+    setAudioOutputChannel, removeAudioOutputChannel, micAudioStream } = useAudioContext();
   const localRoomMedia = useRoomMediaContext();
 
   const [callStatus, setCallStatus] = useState<CallStatus>("inactive");
@@ -137,6 +138,8 @@ export function RoomFeed({roomId}: RoomFeedProps) {
       onStatusChange: (status: CallStatus) => setCallStatus(status),
       onRemoteStream: (stream: MediaStream) => {
         // New track received, update remoteStreams accordingly
+        const audioStream = new MediaStream(stream.getAudioTracks());
+        setAudioOutputChannel(stream.id, audioStream);
         setRemoteStreams(prevRemoteStreams => {
           console.log("got stream id: " + stream.id);
           if (prevRemoteStreams.has(stream.id)) {
@@ -158,6 +161,7 @@ export function RoomFeed({roomId}: RoomFeedProps) {
         // Close remote stream if the ref still holds tracks
         setRemoteStreams(prevRemoteStreams => {
           if (prevRemoteStreams.has(peerId)) {
+            removeAudioOutputChannel(peerId)
             prevRemoteStreams.get(peerId).getTracks().forEach(track => track.stop());
             prevRemoteStreams.delete(peerId)
             const newRemoteStreams = new Map(prevRemoteStreams);
@@ -361,10 +365,10 @@ export function RoomFeed({roomId}: RoomFeedProps) {
               Host option to start room instead of default waiting room
           */}
           
-          {!isAdmitted && (<WaitingRoom 
+          {/*!isAdmitted && (<WaitingRoom 
             room_id={roomId}
             callStatus={callStatus}
-          />)}
+          />)*/}
           {userRole==="Host" && <Button color="primary" onPress={hostStartCall}>Start Call</Button>}
           <Button color="primary" onPress={joinRoom}>(BYPASS ADMITTED) Join Call</Button>
         </>
