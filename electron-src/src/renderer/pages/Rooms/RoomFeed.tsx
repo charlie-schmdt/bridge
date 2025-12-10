@@ -145,6 +145,7 @@ export function RoomFeed({roomId}: RoomFeedProps) {
       onStatusChange: (status: CallStatus) => setCallStatus(status),
       onRemoteStream: (stream: MediaStream) => {
         // New track received, update remoteStreams accordingly
+        console.log("My stream", stream)
         const audioStream = new MediaStream(stream.getAudioTracks());
         setAudioOutputChannel(stream.id, audioStream);
         setRemoteStreams(prevRemoteStreams => {

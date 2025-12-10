@@ -366,7 +366,7 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
       // Wait for all to finish (or throw if ANY fail)
       const audioBuffers = await Promise.all(allPromises);
       
-      console.log("recieved buffers: ", audioBuffers)
+      //console.log("recieved buffers: ", audioBuffers)
       
       // Set state after all files succeed
       setAudioInputBuffers(audioBuffers);
@@ -565,8 +565,8 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
       return;
     }
 
-    console.log("AudioContext:", audioContext);
-    console.log("Trying for", Endpoints.TRANSCRIPTION_SRC)
+    //console.log("AudioContext:", audioContext);
+    //console.log("Trying for", Endpoints.TRANSCRIPTION_SRC)
     await audioContext.audioWorklet.addModule(Endpoints.TRANSCRIPTION_SRC);
     const workletNode = new AudioWorkletNode(audioContext, "pcm-processor");
     console.log("workletNode", workletNode)
