@@ -35,6 +35,7 @@ export function RoomFeed({roomId}: RoomFeedProps) {
   const [isScreenSelectorOpen, setIsScreenSelectorOpen] = useState(false);
   const [screenIsShared, setScreenIsShared] = useState(false);
   const [currentLayout, setCurrentLayout] = useState<VideoLayout>("grid");
+  const [speakerLayoutOverride, setSpeakerLayoutOverride] = useState<boolean>(false);
 
   const roomConnectionManagerRef = useRef<RoomConnectionManager | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -180,6 +181,7 @@ export function RoomFeed({roomId}: RoomFeedProps) {
       },
       onPeerScreenShare: (peerId, stream) => {
         toast(`${peerId} has started screen sharing`);
+        setSpeakerLayoutOverride(true);
         setScreenShare(prevScreenShare => {
           if (prevScreenShare && prevScreenShare.stream) {
             prevScreenShare.stream.getTracks().forEach(track => track.stop());
@@ -189,6 +191,7 @@ export function RoomFeed({roomId}: RoomFeedProps) {
       },
       onPeerScreenShareStopped: (peerId) => {
         toast(`${peerId} has stopped screen sharing`);
+        setSpeakerLayoutOverride(false);
         setScreenShare(prevScreenShare => {
           if (!prevScreenShare) {
             console.error("No active screen share to stop");
@@ -351,7 +354,7 @@ export function RoomFeed({roomId}: RoomFeedProps) {
       }
       setScreenShare({ stream: stream, peerId: clientId.current });
       setScreenIsShared(true);
-      setCurrentLayout("speaker");
+      setSpeakerLayoutOverride(true);
       toast("Sharing screen");
     }
     else {
@@ -372,6 +375,7 @@ export function RoomFeed({roomId}: RoomFeedProps) {
           roomConnectionManagerRef.current.stopScreenShare(clientId.current);
         }
         toast("Stopped sharing screen");
+        setSpeakerLayoutOverride(false);
       }
       else {
         console.error("No screen stream to stop");
@@ -427,7 +431,7 @@ export function RoomFeed({roomId}: RoomFeedProps) {
         <>
           <div className="flex-1 w-full min-h-0">
             <VideoGrid
-              layout={currentLayout}
+              layout={speakerLayoutOverride ? "speaker" : currentLayout}
               streams={allStreams}
               screenStream={{stream: screenShare?.stream, isMuted: true}}
             />
