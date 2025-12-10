@@ -93,10 +93,20 @@ function Process() {
   );
 }
 
-function AGCValue({index}) {
+function AGCValue({trackID}) {
 
-  const { agcValues } = useAudioContext();
-  let title=`agcValue${index}`
+  const { remoteTracks, agcGains } = useAudioContext();
+  const [agcGain, setAgcGain] = useState<number>(0.2);
+  let title=`agcValue${trackID}`
+
+  useEffect(()=>{
+    //(agcGains)
+    //console.log("trackID", trackID)
+    //console.log("myagcgain", agcGains.get(trackID))
+    if (agcGains.has(trackID)) {
+      setAgcGain(agcGains.get(trackID));
+    }
+},[agcGains])
 
   return (
     <div className="flex pl-8 gap-4 items-center">
@@ -106,7 +116,7 @@ function AGCValue({index}) {
         min="0.05"
         max="0.4"
         step="0.001"
-        value={agcValues[index]}
+        value={agcGain}
         className="w-full rotate-90 origin-left"
       />
     </div>
@@ -115,7 +125,7 @@ function AGCValue({index}) {
 
 export default function Receiver() {
 
-  const { analyserNode, remoteTracks, agcAnalyzerNodes, agcValues } = useAudioContext();
+  const { analyserNode, remoteTracks } = useAudioContext();
   return (
     <div>
       <Initialize/>
@@ -146,7 +156,8 @@ export default function Receiver() {
       <div className="flex flex-row min-w-[300px] rounded-xl shadow gap-4">
         <div className ="flex-[1]">
           <div className="flex flex-row rounded-xl">
-            <div className="flex-1">
+            {/*
+              <div className="flex-1">
               <AudioMeter
                 title="File 1"
                 analyzerNode={agcAnalyzerNodes[0]}
@@ -181,13 +192,14 @@ export default function Receiver() {
                 size={0.5}
               />
             </div>
+            */}
           </div>
           <div className="flex flex-row rounded-xl mb-30">
-            <AGCValue index={0}/>
-            <AGCValue index={1}/>
-            <AGCValue index={2}/>
-            <AGCValue index={3}/>
-            <AGCValue index={4}/>
+            <AGCValue trackID={"Track0"}/>
+            <AGCValue trackID={"Track1"}/>
+            <AGCValue trackID={"Track2"}/>
+            <AGCValue trackID={"Track3"}/>
+            <AGCValue trackID={"Track4"}/>
           </div>
         </div>
         <div className="flex-[1] min-w-[300px]">
