@@ -1,8 +1,5 @@
 import { Endpoints, WebSocketURL } from '@/utils/endpoints';
-import { input } from '@heroui/react';
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef} from 'react';
-import { data } from 'react-router';
-import { v4 as uuidv4 } from 'uuid';
 
 
 //TODO: add guards around everything. if(audioContext)...
@@ -56,42 +53,34 @@ export const useAudioContext = () => {
 export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   //Sender -------------
 
-  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
-  const [micInput, setMicInputState] = useState<MediaStreamAudioSourceNode | null>(null);
-  const [senderInputDevice, setSenderInputDevice] = useState<string | null>('default');
-  const [senderOutputDevice, setSenderOutputDevice] = useState<string | null>('default');
-  const [volumeSensitivityGainNode, setVolumeSensitivityGainNode] = useState<GainNode | null>(null);
-  const [preProcessingGainNode, setPreProcessingGainNode] = useState<GainNode | null>(null);
-  const [gainStage, setGainStage] = useState<number | null>(1.0);
-  const [analyserNode, setAnalyserNode] = useState<AnalyserNode | null>(null);
-  const [postProcessingGainNode, setPostProcessingGainNode] = useState<GainNode | null>(null);
-  const [micAudioStream, setMicAudioStream] = useState<MediaStream | null>(null);
+  const audioContext = useRef<AudioContext | null>(null);
+  const micInput = useRef<MediaStreamAudioSourceNode | null>(null);
+  const senderInputDevice = useRef<string | null>('default');
+  const senderOutputDevice = useRef<string | null>('default');
+  const volumeSensitivityGainNode = useRef<GainNode | null>(null);
+  const preProcessingGainNode = useRef<GainNode | null>(null);
+  const analyserNode = useRef<AnalyserNode | null>(null);
+  const postProcessingGainNode = useRef<GainNode | null>(null);
+  const micAudioStream = useRef<MediaStream | null>(null);
   const [senderMicSensitivity, setSenderMicSensitivity] = useState<number | null>(0.5);
   const [echoCancellation, setEchoCancellation] = useState<boolean | null>(false);
   const [noiseSuppression, setNoiseSuppression] = useState<boolean | null>(false);
 
   //AGC
-  const [mixer, setMixer] = useState<GainNode | null>(null);
-  const [remoteTracks, setRemoteTracks] = useState<Map<string, RemoteTrack>>(new Map());
-  const [agcLoop, setAgcLoop] = useState<{ start: () => void; stop: () => void } | null>(null);
-  const [audioInputBuffers, setAudioInputBuffers] = useState<Array<AudioBuffer> | null>([]);
-  const [agcGains, setAgcGains] = useState<Map<string, number>>(new Map());
-
+  const mixer = useRef<GainNode | null>(null);
+  const remoteTracks = useRef<Map<string, RemoteTrack>>(new Map());
+  const agcLoop = useRef<{ start: () => void; stop: () => void } | null>(null);
+  const audioInputBuffers = useRef<Array<AudioBuffer> | null>([]);
+  const agcGains = useRef<Map<string, number>>(new Map());
 
   //Transcript
   const[transcript, setTranscript] = useState<string[] | null>([]);
   const ws = useRef<WebSocket | null>(null);
-  const lastFinalRef = useRef(""); // persist across renders
 
-
-//Function to set the microphone input source
-  const setMicInput = async (deviceId: string, context:AudioContext) => {
-  return new Promise<MediaStreamAudioSourceNode | null>(async (resolve, reject) => {
+  //Function to set the microphone input source
+  async function setMicInput(deviceId: string, context:AudioContext) {
     try {
-      //Get user media with the selected device ID
-      console.log("Setting mic input to device ID:", deviceId);
-      console.log("Echo Cancellation:", echoCancellation);
-      console.log("Noise Suppression:", noiseSuppression);
+      console.log(`Setting Mic Input to ${deviceId}`)
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           deviceId: deviceId ? { exact: deviceId } : undefined,
@@ -99,15 +88,14 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
           noiseSuppression: noiseSuppression,
         },
       });
-      //Create MediaStreamSource from the stream
-      console.log("Creating MediaStreamAudioSourceNode from stream");
+      console.log("Creating MediaStreamAudioSourceNode from stream", stream);
       const newSource = context.createMediaStreamSource(stream);
-      resolve(newSource);
+      return newSource
     } catch (err) {
-      reject(err);
+      console.log(err)
     }
-  });
-  };
+  }
+
 
    //Effect for mic sensitivity
   useEffect(() => {
@@ -115,10 +103,9 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
     if (volumeSensitivityGainNode === null) return;
     if (senderMicSensitivity === null) return;
 
-    console.log("Setting mic sensitivity to:", gainStage * senderMicSensitivity);
-    volumeSensitivityGainNode.gain.value = gainStage * senderMicSensitivity;
+    console.log("Setting mic sensitivity to:", senderMicSensitivity);
+    volumeSensitivityGainNode.current.gain.value = senderMicSensitivity;
     
-    // Cleanup when the component is unmounted (close AudioContext)
     return () => {
     };
   }, [senderMicSensitivity]);
@@ -131,7 +118,7 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
 
     //Update the mic input source based on the selected device
     const updateInputSource = async () => {
-      micInput?.disconnect();
+      micInput.current?.disconnect();
 
       //Set the mic input to the selected device
       console.log("Setting mic input to device ID:", senderInputDevice);
@@ -145,7 +132,6 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
     }
     updateInputSource();
     }
-    
     
     // Cleanup when the component is unmounted (close AudioContext)
     return () => {
@@ -221,11 +207,11 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
   return new Promise<void>(async (resolve, reject) => {
     try {
       console.log(audioContext)
+
       if (audioContext) {
         if (audioContext.state !== 'closed') {
-                await audioContext.close();
-                
-              }
+          await audioContext.close();   
+        }
       }
       stopTranscription();
       agcLoop.stop();
