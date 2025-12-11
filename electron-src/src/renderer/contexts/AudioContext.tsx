@@ -73,7 +73,8 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
   //AGC
   const [mixer, setMixer] = useState<GainNode | null>(null);
   const [remoteTracks, setRemoteTracks] = useState<Map<string, RemoteTrack>>(new Map());
-  const [agcLoop, setAgcLoop] = useState<{ start: () => void; stop: () => void } | null>(null);
+  const agcRaf = useRef<number | null>(null)
+  const agcRunning = useRef<boolean | null>(true)
   const [audioInputBuffers, setAudioInputBuffers] = useState<Array<AudioBuffer> | null>([]);
   const [agcGains, setAgcGains] = useState<Map<string, number>>(new Map());
 
@@ -197,9 +198,7 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
         console.log("AudioContext created:", context);
 
         //Reciever-side ---------------------------------------------------
-        const agcloop = createAGCLoop(context, remoteTracks);
-        agcloop.start();
-        setAgcLoop(agcloop)
+        const agcloop = startAGCLoop(context, remoteTracks);
 
         const mixer = context.createGain();
         mixer.gain.value = 1;
@@ -228,7 +227,7 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
               }
       }
       stopTranscription();
-      agcLoop.stop();
+      stopAGCLoop();
       
       
       micInput?.disconnect();
@@ -398,7 +397,7 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
     return Math.pow(10, db / 20);
   }
 
-  function createAGCLoop(
+  function startAGCLoop(
     audioContext: AudioContext,
     RemoteTracks: Map<string, RemoteTrack | null>,
   ) {
@@ -418,8 +417,8 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
 
 
   function update() {
-    if (!running) return;
-    console.log(remoteTracks.size)
+    if (!agcRunning.current) return;
+    //console.log(remoteTracks.size)
 
     const now = audioContext.currentTime;
 
@@ -475,25 +474,24 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
     });
 
       rafId = requestAnimationFrame(update);
-  }
+      agcRaf.current = rafId;
+    } 
 
-    function start() {
-      if (!running) {
-        running = true;
-        rafId = requestAnimationFrame(update);
-      }
+    if (agcRunning.current) {
+        agcRunning.current = true;
+        agcRaf.current = requestAnimationFrame(update);
     }
 
-    function stop() {
-      running = false;
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-        rafId = null;
+    return;
+  }
+
+  function stopAGCLoop() {
+      agcRunning.current = false;
+      if (agcRaf.current !== null) {
+        cancelAnimationFrame(agcRaf.current);
+        agcRaf.current = null;
       }
     }
-
-    return { start, stop };
-  }
 
   //Function to load files into loadAudio
   const playAudioFiles = async () => {
