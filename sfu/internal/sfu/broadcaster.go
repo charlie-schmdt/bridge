@@ -130,16 +130,18 @@ func (b *defaultBroadcaster) AddVideoSink(id string, pc *webrtc.PeerConnection) 
 		if err != nil {
 			fmt.Printf("failed to create local track: %s", err)
 		}
-		rtpSender, err := pc.AddTrack(localTrack)
-		fmt.Println("Track added for id: ", id)
+		rtpSender, err := pc.AddTransceiverFromTrack(localTrack, webrtc.RTPTransceiverInit{
+			Direction: webrtc.RTPTransceiverDirectionSendonly,
+		})
 		if err != nil {
 			fmt.Printf("failed to add track to PeerConnection: %s", err)
 		}
+		fmt.Println("Track added for id: ", id)
 		fmt.Println("Adding sink", id)
 		b.vmu.Lock()
 		b.videoSinks[id] = localTrack
 		b.vmu.Unlock()
-		go b.readSubscriberRTCP(rtpSender, b.videoSrc)
+		go b.readSubscriberRTCP(rtpSender.Sender(), b.videoSrc)
 	}
 
 	// Create a new localTrack as a sink for the receiver if screenSrc is not nil
@@ -151,16 +153,18 @@ func (b *defaultBroadcaster) AddVideoSink(id string, pc *webrtc.PeerConnection) 
 		if err != nil {
 			fmt.Printf("failed to create local track: %s", err)
 		}
-		rtpScreenSender, err := pc.AddTrack(localScreenTrack)
-		fmt.Println("Track added for id: ", id)
+		rtpScreenSender, err := pc.AddTransceiverFromTrack(localScreenTrack, webrtc.RTPTransceiverInit{
+			Direction: webrtc.RTPTransceiverDirectionSendonly,
+		})
 		if err != nil {
 			fmt.Printf("failed to add track to PeerConnection: %s", err)
 		}
+		fmt.Println("Track added for id: ", id)
 		fmt.Println("Adding screen sink", id)
 		b.smu.Lock()
 		b.screenSinks[id] = localScreenTrack
 		b.smu.Unlock()
-		go b.readSubscriberRTCP(rtpScreenSender, b.screenSrc)
+		go b.readSubscriberRTCP(rtpScreenSender.Sender(), b.screenSrc)
 	}
 }
 
