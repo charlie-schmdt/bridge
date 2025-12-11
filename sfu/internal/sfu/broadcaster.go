@@ -177,11 +177,13 @@ func (b *defaultBroadcaster) AddAudioSink(id string, pc *webrtc.PeerConnection) 
 		fmt.Printf("failed to create local audio track: %s", err)
 	}
 
-	_, err = pc.AddTrack(localTrack)
-	fmt.Println("Audio track added for id: ", id)
+	_, err = pc.AddTransceiverFromTrack(localTrack, webrtc.RTPTransceiverInit{
+		Direction: webrtc.RTPTransceiverDirectionSendonly,
+	})
 	if err != nil {
 		fmt.Printf("failed to add track to PeerConnection: %s", err)
 	}
+	fmt.Println("Audio track added for id: ", id)
 
 	fmt.Println("Adding sink", id)
 	b.amu.Lock()
