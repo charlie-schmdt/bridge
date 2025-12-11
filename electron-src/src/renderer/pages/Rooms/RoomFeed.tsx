@@ -20,8 +20,7 @@ export interface RoomFeedProps {
 
 export function RoomFeed({roomId}: RoomFeedProps) {
   const { user } = useAuth()
-  const { initializeAudioGraph, tearDownAudioGraph, 
-    setAudioOutputChannel, removeAudioOutputChannel, micAudioStream, audioContext } = useAudioContext();
+  const { initializeAudioGraph, tearDownAudioGraph, micAudioStream } = useAudioContext();
   const localRoomMedia = useRoomMediaContext();
 
   const [callStatus, setCallStatus] = useState<CallStatus>("inactive");
@@ -43,18 +42,18 @@ export function RoomFeed({roomId}: RoomFeedProps) {
   // Synchronous means of checking if room is active or has been exited
   const clientId = useRef<string>(uuid());
 
-  const setAudioOutputChannelRef = useRef(setAudioOutputChannel);
+  //const setAudioOutputChannelRef = useRef(setAudioOutputChannel);
 
   const remoteStreamRef = useRef<MediaStream | null>(null);
 
   const effectiveRoomId = roomId || "testroom";
 
-  console.log("audioContext: ", audioContext);
+  //console.log("audioContext: ", audioContext);
 
   // Update ref when setAudioOutputChannel changes to avoid stale closures -- use ref as proxy
-  useEffect(() => {
-    setAudioOutputChannelRef.current = setAudioOutputChannel;
-  }, [setAudioOutputChannel]);
+  //useEffect(() => {
+  //  setAudioOutputChannelRef.current = setAudioOutputChannel;
+  //}, [setAudioOutputChannel]);
 
   const cleanUpRoomExit = async () => {
     try {//Remove user from room on unmount
@@ -156,8 +155,7 @@ export function RoomFeed({roomId}: RoomFeedProps) {
         // New track received, update remoteStreams accordingly
         console.log("My stream", stream)
         const audioStream = new MediaStream(stream.getAudioTracks());
-        console.log("in handler, audio context: ", audioContext);
-        setAudioOutputChannelRef.current(stream.id, audioStream);
+        //setAudioOutputChannelRef.current(stream.id, audioStream);
         setRemoteStreams(prevRemoteStreams => {
           console.log("got stream id: " + stream.id);
           if (prevRemoteStreams.has(stream.id)) {
@@ -179,7 +177,7 @@ export function RoomFeed({roomId}: RoomFeedProps) {
         // Close remote stream if the ref still holds tracks
         setRemoteStreams(prevRemoteStreams => {
           if (prevRemoteStreams.has(peerId)) {
-            removeAudioOutputChannel(peerId)
+            //removeAudioOutputChannel(peerId)
             prevRemoteStreams.get(peerId).getTracks().forEach(track => track.stop());
             prevRemoteStreams.delete(peerId)
             const newRemoteStreams = new Map(prevRemoteStreams);
