@@ -42,7 +42,8 @@ export const ScreenSelector = ({ onScreenSelected, onCancel, isOpen }: ScreenSel
           mandatory: {
             chromeMediaSource: 'desktop',
             chromeMediaSourceId: source.id,
-          }
+            frameRate: 30,
+          },
         }
       };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
