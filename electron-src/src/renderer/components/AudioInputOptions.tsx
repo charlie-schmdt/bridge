@@ -12,15 +12,14 @@ import {useAudioContext} from "../contexts/AudioContext";
 export default function InputOptions() {
   //Read in the context values
   const {audioContext,
-      senderInputDevice,
-      setSenderInputDevice} = useAudioContext();
+      senderInputDevice} = useAudioContext();
   
   //State to hold list of audio devices
   const [audioInputList, setAudioInputList] = useState([]);
 
   //Effect to fetch audio input devices when component mounts
   useEffect(() => {
-    if (audioContext) {
+    if (audioContext.current) {
       const updateInputs = async () => {
         let inputs = [];
         try {
@@ -44,7 +43,7 @@ export default function InputOptions() {
       };
       updateInputs(); // Call the async function
     }
-  }, [audioContext]);
+  }, [audioContext.current]);
 
   //Function to handle when the input devices selection changes
   const handleInputChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -52,7 +51,7 @@ export default function InputOptions() {
     const selectedDevice = event.target.value;
 
     //Update the state with the selected input source
-    setSenderInputDevice(selectedDevice);
+    senderInputDevice.current = selectedDevice;
   };
 
   //Render the select dropdown with available audio input devices
@@ -60,8 +59,8 @@ export default function InputOptions() {
     <div className="flex flex-col gap-2">
       <Select
         className="w-full max-w-md bg-white text-gray-900"
-        value={senderInputDevice}
-        defaultSelectedKeys={[senderInputDevice]}
+        value={senderInputDevice.current}
+        defaultSelectedKeys={[senderInputDevice.current]}
         onChange={handleInputChange}
         radius="md"
       >

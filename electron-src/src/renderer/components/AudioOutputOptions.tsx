@@ -12,8 +12,7 @@ import {useAudioContext} from "../contexts/AudioContext";
 export default function OutputOptions() {
   //Read in the context values
   const {audioContext,
-      senderOutputDevice,
-      setSenderOutputDevice} = useAudioContext();
+      senderOutputDevice} = useAudioContext();
 
   //State to hold list of audio output devices
   const [audioOutputs, setAudioOutputs] = useState([
@@ -26,7 +25,7 @@ export default function OutputOptions() {
     const selectedDevice = event.target.value; 
     
     // Update the state with the selected output source
-    setSenderOutputDevice(selectedDevice); 
+    senderOutputDevice.current = selectedDevice; 
     console.log(selectedDevice)
   };
 
@@ -34,8 +33,8 @@ export default function OutputOptions() {
     <div className="flex flex-col gap-2">
       <Select
         className="w-full max-w-md bg-white text-gray-900"
-        value={senderOutputDevice}
-        defaultSelectedKeys={[senderOutputDevice]}
+        value={senderOutputDevice.current}
+        defaultSelectedKeys={[senderOutputDevice.current]}
         onChange={handleOutputChange}
         radius="md"
       >

@@ -21,21 +21,18 @@ interface RemoteTrack {
 
 const WebAudioContext = createContext<{
   audioContext: MutableRefObject<AudioContext | null>;
-  senderInputDevice: string | null;
-  senderOutputDevice: string | null;
+  senderInputDevice: MutableRefObject<string | null>;
+  senderOutputDevice: MutableRefObject<string | null>;
+  analyserNode: MutableRefObject<AnalyserNode | null>;
+  micAudioStream: MutableRefObject<MediaStream | null>;
+  remoteTracks: MutableRefObject<Map<string, RemoteTrack | null>>;
+  //agcGains: Map<string, number | null>;
+  transcript: string[] | null;
   echoCancellation: boolean | null;
   noiseSuppression: boolean | null;
-  analyserNode: AnalyserNode | null;
   senderMicSensitivity: number | null;
-  micAudioStream: MediaStream | null;
-  remoteTracks: Map<string, RemoteTrack | null>;
-  agcGains: Map<string, number | null>;
-  transcript: string[] | null;
-  setMicInput: (deviceId: string) => MediaStreamAudioSourceNode | undefined;
   initializeAudioGraph: () => void;
   tearDownAudioGraph: () => void;
-  setSenderInputDevice: (deviceId: string | null) => void;
-  setSenderOutputDevice: (deviceId: string | null) => void;
   setSenderMicSensitivity: (value: number | null) => void;
   setEchoCancellation: (value: boolean | null) => void;
   setNoiseSuppression: (value: boolean | null) => void;
@@ -624,17 +621,14 @@ function floatTo16BitPCM(float32: Float32Array) {
       micAudioStream,
       remoteTracks,
       transcript,
-      setMicInput,
       initializeAudioGraph,
       tearDownAudioGraph,
-      setSenderInputDevice,
-      setSenderOutputDevice,
       setSenderMicSensitivity,
       setEchoCancellation,
       setNoiseSuppression,
-      loadAudioFiles,
-      playAudioFiles,
-      resetAudioFiles,
+      //loadAudioFiles,
+      //playAudioFiles,
+      //resetAudioFiles,
       startTranscription,
       stopTranscription,
       setAudioOutputChannel,
