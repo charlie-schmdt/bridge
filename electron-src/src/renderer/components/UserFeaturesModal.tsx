@@ -293,7 +293,7 @@ export default function UserFeaturesModal({roomId, isOpen, onOpen, onOpenChange}
                                 <div className="p-4">
                                 <AudioMeter
                                   title="File 1"
-                                  analyzerNode={analyserNode}
+                                  analyzerNode={analyserNode.current}
                                   size={0.5}/>
                               </div>
                               <div className="p-4">

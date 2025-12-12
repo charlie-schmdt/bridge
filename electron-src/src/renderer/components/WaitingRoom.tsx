@@ -1,21 +1,14 @@
-import { Card, CardBody, Modal, ModalHeader, ModalContent, ModalBody, ModalFooter, useDisclosure, Select, SelectItem, Button, CardHeader, CardFooter, Divider} from "@heroui/react";
-import { useState, useRef, createRef } from "react";
-import { useEffect } from "react";
-import mic from "@assets/microphone_active.png";
-import micOff from "@assets/microphone_inactive.png";
-import videopng from "@assets/video.png"
-import video_inactivepng from "@assets/video_inactive.png"
-import { useCamera } from "@/hooks/useCamera";
-import {useAudioContext} from "../contexts/AudioContext";
-import AudioInputOptions from "./AudioInputOptions"
-import AudioOutputOptions from "./AudioOutputOptions"
-import MicSensitivity from "./MicSensitivity";
-import AudioMeter from "./AudioMeter";
-import { useNavigate } from "react-router";
-import VF from "./VF";
-import { useAuth } from "../contexts/AuthContext";
 import { Endpoints } from "@/utils/endpoints";
+import { Card, CardBody, CardHeader, Divider } from "@heroui/react";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router";
+import { useAudioContext } from "../contexts/AudioContext";
+import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
+import AudioInputOptions from "./AudioInputOptions";
+import AudioOutputOptions from "./AudioOutputOptions";
+import MicSensitivity from "./MicSensitivity";
+import VF from "./VF";
 /*
 
 - session id redirection
@@ -26,11 +19,9 @@ import { supabase } from "../lib/supabase";
 interface WaitingRoomProps{
     room_id: string;
     callStatus: string;
-    /*
     isOpen: boolean;
     onOpen: ()=> void;
     onOpenChange: () => void;
-    */
 }
 
 export default function WaitingRoom({room_id, callStatus}:  WaitingRoomProps){ //, isOpen, onOpen, onOpenChange}: WaitingRoomProps){ 

@@ -22,7 +22,6 @@ const initSignalingSocket = (wss) => {
         console.error("Invalid WS message:", err);
         return;
       }
-      console.log("Client Message Received: %s", data)
 
       clientId = data.clientId;
       if (clientRegistry.getClientById(data.clientId) === undefined) {

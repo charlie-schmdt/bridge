@@ -16,7 +16,7 @@ export default function AudioMeter({title, analyzerNode, size}) {
   const {audioContext} = useAudioContext();
 
   useEffect(() => {
-    if (audioContext) {
+    if (audioContext.current) {
       //set the dimensions of the canvas
       const winWidth = 150 * size;
       const winHeight = 250 * size;
@@ -192,7 +192,7 @@ export default function AudioMeter({title, analyzerNode, size}) {
         canvasRef.current.innerHTML = ''; // Clear the div
       }
     };
-  }, [audioContext]);
+  }, [audioContext.current]);
 
   return (
     <div ref={canvasRef}>

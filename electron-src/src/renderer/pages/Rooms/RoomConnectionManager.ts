@@ -110,7 +110,20 @@ export class RoomConnectionManager {
       console.error("No screen share video transceiver available");
       return;
     }
-    await this.screenShareVideoTransceiver.sender.replaceTrack(stream.getVideoTracks()[0]);
+    const screenTrack = stream.getVideoTracks()[0];
+    if ("contentHint" in screenTrack) {
+      screenTrack.contentHint = "detail";
+    }
+    await this.screenShareVideoTransceiver.sender.replaceTrack(screenTrack);
+    try {
+      const params = this.screenShareVideoTransceiver.sender.getParameters();
+      params.degradationPreference = "maintain-resolution";
+      await this.screenShareVideoTransceiver.sender.setParameters(params);
+      console.log("Screen share configured for high resolution");
+    }
+    catch (err) {
+      console.log("Failed to get screen share encoding parameters");
+    }
     //this.pc.addTrack(stream.getVideoTracks()[0], stream);
     this.sendMessage("screenShareRequest", {});
   }
