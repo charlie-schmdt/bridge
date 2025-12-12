@@ -427,19 +427,21 @@ export function RoomFeed({roomId}: RoomFeedProps) {
         />
       )}
       { callStatus === "inactive" ? (
-        <>
+          <div className="flex-1 w-full min-h-0 grid place-items-center">
+
           {/*
             TODO:
               Host option to start room instead of default waiting room
           */}
-          
-          {!isAdmitted && (<WaitingRoom 
+
+          {!isAdmitted && (
+            <WaitingRoom 
             room_id={roomId}
             callStatus={callStatus}
           />)}
           {userRole==="Host" && <Button color="primary" onPress={hostStartCall}>Start Call</Button>}
           <Button color="primary" onPress={joinRoom}>(BYPASS ADMITTED) Join Call</Button>
-        </>
+        </div>
       )
         :
       (
