@@ -44,6 +44,7 @@ export function RoomFeed({roomId}: RoomFeedProps) {
   const clientId = useRef<string>(uuid());
 
   const setAudioOutputChannelRef = useRef(setAudioOutputChannel);
+  const removeAudioOutputChannelRef = useRef(removeAudioOutputChannel);
 
   const remoteStreamRef = useRef<MediaStream | null>(null);
 
@@ -55,6 +56,11 @@ export function RoomFeed({roomId}: RoomFeedProps) {
   useEffect(() => {
     setAudioOutputChannelRef.current = setAudioOutputChannel;
   }, [setAudioOutputChannel]);
+
+  // Update ref when removeAudioOutputChannel changes to avoid stale closures -- use ref as proxy
+  useEffect(() => {
+    removeAudioOutputChannelRef.current = removeAudioOutputChannel;
+  }, [removeAudioOutputChannel]);
 
   const cleanUpRoomExit = async () => {
     try {//Remove user from room on unmount

@@ -31,6 +31,7 @@ const WebAudioContext = createContext<{
   echoCancellation: boolean | null;
   noiseSuppression: boolean | null;
   senderMicSensitivity: number | null;
+  audioContextState : AudioContext | null;
   initializeAudioGraph: () => void;
   tearDownAudioGraph: () => void;
   setSenderMicSensitivity: (value: number | null) => void;
@@ -64,6 +65,7 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
   const analyserNode = useRef<AnalyserNode | null>(null);
   const postProcessingGainNode = useRef<GainNode | null>(null);
   const micAudioStream = useRef<MediaStream | null>(null);
+  const [audioContextState, setAudioContextState] = useState<AudioContext | null>(null);
   const [senderInputDevice, setSenderInputDevice] = useState<string | null>('default');
   const [senderOutputDevice, setSenderOutputDevice] = useState<string | null>('default');
   const [senderMicSensitivity, setSenderMicSensitivity] = useState<number | null>(0.5);
@@ -123,6 +125,7 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
         mixer.current = audioContext.current.createGain();
         mixer.current.gain.value = 1;
         mixer.current?.connect(context.destination);
+        setAudioContextState(context)
       }
       else {
         console.log("Audio Graph already exists")
@@ -623,6 +626,7 @@ function floatTo16BitPCM(float32: Float32Array) {
       micAudioStream,
       remoteTracks,
       transcript,
+      audioContextState,
       initializeAudioGraph,
       tearDownAudioGraph,
       setSenderMicSensitivity,
