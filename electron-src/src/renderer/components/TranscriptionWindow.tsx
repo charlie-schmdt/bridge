@@ -8,7 +8,7 @@ import {
 export default function TranscriptionWindow() {
   
   const canvasRef = useRef(null);
-  const {transcript, startTranscription, stopTranscription} = useAudioContext();
+  const {transcript, startTranscription} = useAudioContext();
 
   return (
     <div className="m-6 p-4 bg-blue-200 rounded-xl">

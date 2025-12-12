@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef } from "react";
-import AudioVisualizers from "./AudioVisualizers";
 import {
   Tabs, Tab,
   Card, CardHeader, CardBody,

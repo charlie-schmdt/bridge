@@ -97,6 +97,21 @@ func (r *defaultRouter) RemovePeerConnection(id string, closeSubscriber func(id 
 		return fmt.Errorf("failed to close PeerConnection: %w", err)
 	}
 
+	// Remove the sink tracks from other PeerConnections
+	for _, pc := range r.connections {
+		senders := pc.GetSenders()
+		for _, sender := range senders {
+			track := sender.Track()
+			if track != nil && track.StreamID() == id || track.StreamID() == id+"-screen" {
+				err := pc.RemoveTrack(sender)
+				if err != nil {
+					fmt.Printf("failed to remove track for id %s: %s", id, err)
+				}
+				log.Println("Removed track for id: ", id)
+			}
+		}
+	}
+
 	return nil
 }
 

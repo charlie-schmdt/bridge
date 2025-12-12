@@ -1,25 +1,25 @@
-import { Button as UIButton } from "@/renderer/components/ui/Button";
+import { useAuth } from "@/renderer/contexts/AuthContext";
+import { Endpoints } from "@/utils/endpoints";
 import mic from "@assets/microphone_active.png";
 import micOff from "@assets/microphone_inactive.png";
 import videopng from "@assets/video.png";
 import video_inactivepng from "@assets/video_inactive.png";
 import { Button, useDisclosure } from "@heroui/react";
-import UserFeaturesModal from "../../components/UserFeaturesModal";
-import { useRoomMediaContext } from "./RoomMediaContext";
 import { Hand, HandGrab } from "lucide-react";
 import { useState } from "react";
-import { Endpoints } from "@/utils/endpoints";
-import { useAuth } from "@/renderer/contexts/AuthContext";
+import UserFeaturesModal from "../../components/UserFeaturesModal";
+import { useRoomMediaContext } from "./RoomMediaContext";
 
 export interface RoomSettingsFooterProps {
   onLeave: () => void;
   onShare: () => void;
   stopShare: () => void;
+  toggleView: () => void;
   roomId: string;
   screenIsShared: boolean;
 }
 
-export function RoomSettingsFooter({ roomId, screenIsShared, onLeave, onShare, stopShare }: RoomSettingsFooterProps) {
+export function RoomSettingsFooter({ roomId, screenIsShared, onLeave, onShare, stopShare, toggleView }: RoomSettingsFooterProps) {
   const VF = useRoomMediaContext();
   const {isOpen, onOpen, onOpenChange} = useDisclosure();
   const [handStatus, setHandStatus] = useState("Raise Hand");
@@ -135,6 +135,12 @@ export function RoomSettingsFooter({ roomId, screenIsShared, onLeave, onShare, s
             Share Screen
           </Button>
         )}
+        <Button
+          className="text-gray-500 hover:text-blue-600 cursor-pointer"
+          onPress={toggleView}
+        >
+          Change View
+        </Button>
         <UserFeaturesModal roomId={roomId} isOpen={isOpen} onOpen={onOpen} onOpenChange={onOpenChange}/>
       </div>
 
@@ -163,15 +169,6 @@ export function RoomSettingsFooter({ roomId, screenIsShared, onLeave, onShare, s
         {handStatus}
       </Button>)
       }
-     
-
-      {/*
-      <div className="flex flex-1 justify-end">
-        <UIButton color="red" onPress={onLeave}>
-          (BYPASS REDIRECT) Call Out
-        </UIButton>
-      </div>
-      */}
     </footer>
   );
 };

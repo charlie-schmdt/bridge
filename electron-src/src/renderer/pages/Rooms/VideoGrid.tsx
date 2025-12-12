@@ -59,16 +59,17 @@ const renderGrid = (streams: VideoPlayerProps[]) => {
   );
 };
 
-const renderSpeaker = (streams: VideoPlayerProps[], screenStream?: VideoPlayerProps) => {
+const renderSpeaker = (streams: VideoPlayerProps[], screenStream: VideoPlayerProps) => {
   if (streams.length === 0) { // No streams, render nothing
     return null;
   }
-  if (!screenStream) {
+  const displayStreams = [...streams];
+  if (!screenStream.stream) {
     if (streams.length === 1) {
       return renderGrid(streams);
     }
-    screenStream = streams[0];
-    streams.splice(0, 1);
+    screenStream = displayStreams[0];
+    displayStreams.splice(0, 1);
   }
 
   return (
@@ -76,7 +77,7 @@ const renderSpeaker = (streams: VideoPlayerProps[], screenStream?: VideoPlayerPr
       {/* Horizontally scrollable bar for other participants at the top */}
       <div className="flex-shrink-0 w-full overflow-x-auto flex justify-center">
         <div className="flex space-x-2 h-22"> {/* Fixed height for the top bar */}
-          {streams.map(({ stream, isMuted }) => (
+          {displayStreams.map(({ stream, isMuted }) => (
             <div key={stream.id} className="h-full aspect-video rounded-md overflow-hidden bg-black">
               <VideoPlayer stream={stream} isMuted={isMuted} />
             </div>

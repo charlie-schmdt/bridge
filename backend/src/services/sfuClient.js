@@ -14,7 +14,7 @@ const initSfuConnection = () => {
         console.log('Received message from SFU server:', data);
         try {
             const msg = JSON.parse(data.toString());
-            console.log('SFU Message received:', msg);
+            console.log('SFU Message parsed');
 
             handleSfuMessage(msg);
         } catch (err) {
