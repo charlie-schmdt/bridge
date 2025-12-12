@@ -402,6 +402,17 @@ export function RoomFeed({roomId}: RoomFeedProps) {
     setIsScreenSelectorOpen(true);
   };
 
+  const toggleView = () => {
+    setCurrentLayout((currentLayout) => {
+      if (currentLayout == "speaker") {
+        return "grid";
+      }
+      else {
+        return "speaker";
+      }
+    })
+  }
+
   const allStreams = useMemo(() => {
     const streams = [];
     if (localStream) {
@@ -455,6 +466,7 @@ export function RoomFeed({roomId}: RoomFeedProps) {
             screenIsShared={screenIsShared}
             onShare={shareScreen}
             stopShare={stopShare}
+            toggleView={toggleView}
           />
         </>
       )}
