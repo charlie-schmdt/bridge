@@ -14,6 +14,7 @@ interface Room {
   room_id: string;
   name: string;
   created_by: string;
+  attendeeId: string;
   // ... other fields
 }
 
@@ -64,6 +65,84 @@ export const RoomLayout = ({}: RoomLayoutProps) => {
     fetchRoom();
   }, [roomId]);
 
+    const [attendeeId, setAttendeeId] = useState(null);
+
+    const getUserTimes = async (attId) => {
+    try {
+        const token = localStorage.getItem("bridge_token");
+        const response = await fetch(`${Endpoints.ATTENDANCE}/${attId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+        });
+        if (!response.ok) {
+            throw new Error("Failed to fetch user attendance entry");
+        }
+        const data = await response.json();
+        if (data) {
+            console.log("GETTING USER TIMES RESPONSE: ", data)
+            return [data.last_entered, data.total_time]
+        }
+    } catch (error) {
+        
+    }
+    };
+    const minutesInCall = async (start, end) => {
+        const start_date = new Date(start);
+        const end_date = new Date(end);
+        const start_time = start_date.getTime();
+        const end_time = end_date.getTime();
+        const mins = (end_time - start_time) / 1000 /60;
+        console.log("rounded: ", Math.round(mins))
+        return Math.round(mins);
+    };
+    const userExitedSession = async (attId, len, time) => {
+      const lastExited = new Date().toISOString();
+      const curr_time = await minutesInCall(len, lastExited);
+      const total_time = Number(time) + Number(curr_time);
+      console.log("totalling time: ", total_time)
+      try {
+          const token = localStorage.getItem("bridge_token");
+          const response = await fetch(`${Endpoints.ATTENDANCE}/updateAttendance/${attId}`, {
+              method: "PUT",
+              headers: {
+              'Authorization': `Bearer ${token}`,
+              "Content-Type": "application/json",
+              },
+              body:  JSON.stringify({
+                  update_type: "left",
+                  last_exited: lastExited,
+                  total_time: total_time
+              })
+          });
+          const data = await response.json();
+          if (data.success) {
+              console.log("✅ Updated attendance entry successfully:", data);
+          } else {
+  
+          }
+      } catch (error) {
+          console.log("ERROR: ",error)
+      }
+  
+    };
+    const data_exit = async (attendee_id) => {
+      console.log("Attempting to exit here's the id ", attendee_id);
+    
+      if (attendee_id) {
+          const [len, time] = await getUserTimes(attendee_id)
+          await userExitedSession(attendee_id, len, time);
+      }
+    };
+    const handleAdmitted = async (attendanceId) => {
+      console.log("RL~ HERE SHE IS: ", attendanceId)
+      setAttendeeId(attendanceId);
+    };
+
+          console.log("RL~ HERE SHE IS: (within)", attendeeId)
+
+
   // If no roomId, show error state
   if (!roomId) {
     return (
@@ -90,6 +169,7 @@ export const RoomLayout = ({}: RoomLayoutProps) => {
             <Button
               color="red"
               onClick={() => {
+                data_exit(attendeeId);
                 navigate("/");
                 tearDownAudioGraph();
               }}
@@ -112,6 +192,7 @@ export const RoomLayout = ({}: RoomLayoutProps) => {
         <RoomMediaProvider>
             <RoomFeed 
               roomId={roomId}
+              updateAttendeeId={handleAdmitted}
             />
         </RoomMediaProvider>
       </div>

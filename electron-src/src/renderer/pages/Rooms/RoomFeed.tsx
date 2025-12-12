@@ -16,9 +16,11 @@ import { VideoGrid } from './VideoGrid';
 
 export interface RoomFeedProps {
   roomId: string | undefined;
+  updateAttendeeId: (data: string) => void;
+
 }
 
-export function RoomFeed({roomId}: RoomFeedProps) {
+export function RoomFeed({roomId, updateAttendeeId}: RoomFeedProps) {
   const { user } = useAuth()
   const { initializeAudioGraph, tearDownAudioGraph, 
     setAudioOutputChannel, removeAudioOutputChannel, micAudioStream, audioContext } = useAudioContext();
@@ -130,6 +132,7 @@ export function RoomFeed({roomId}: RoomFeedProps) {
             const curr_state = user_entry.state;
             if (curr_state === "user_admitted") {
               joinRoom();
+              
               console.log("ADMITTING USER");
             }
           }
@@ -141,6 +144,7 @@ export function RoomFeed({roomId}: RoomFeedProps) {
     return () => {
       supabase.removeChannel(channel);
       cleanUpRoomExit();
+
     };
   }, [])
     
@@ -331,8 +335,37 @@ export function RoomFeed({roomId}: RoomFeedProps) {
     // Initiate P2P connection with the SFU
     await manager.connect(stream, micAudioStream);
   };
+
+  const updateRoomForSession = async (roomId, sessionId) => {
+    console.log("Updating room for session ", sessionId)
+            try {
+            const token = localStorage.getItem("bridge_token");
+            const response = await fetch(`${Endpoints.ROOMS}/startSessionInRoom/${roomId}`, {
+                method: "PUT",
+                headers: {
+                'Authorization': `Bearer ${token}`,
+                "Content-Type": "application/json",
+                },
+                body:  JSON.stringify({
+                  session_id: sessionId
+                })
+            });
+            const data = await response.json();
+            if (data.success) {
+                console.log("✅ Updated to session successfully:", data);
+            } else {
+
+            }
+        } catch (error) {
+            console.log("ERROR: ",error)
+        }
+    
+  }
   const hostStartCall = async () => {
     joinRoom();
+    const session_id = await hostStartSession(roomId);
+    await updateRoomForSession(roomId, session_id)
+    
     /*
       TODO: Host starting call tasks
     */
@@ -417,6 +450,36 @@ export function RoomFeed({roomId}: RoomFeedProps) {
     return streams;
   }, [localStream, screenShare, remoteStreams]);
 
+  const hostStartSession = async (roomId) => {
+    try {
+        const token = localStorage.getItem("bridge_token");
+        const response = await fetch(`${Endpoints.SESSIONS}/createSession/${roomId}`, {
+            method: "POST",
+            headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+            },
+            body:  JSON.stringify({
+                
+            })
+        });
+        const data = await response.json();
+        if (data.success) {
+            console.log("✅ Session started successfully:", data.session);
+            return data.session.id;
+        } else {
+
+        }
+    } catch (error) {
+        console.log("ERROR: ",error)
+                
+    }
+  };
+
+
+
+
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center min-h-0">
       {isScreenSelectorOpen && (
@@ -438,9 +501,10 @@ export function RoomFeed({roomId}: RoomFeedProps) {
             <WaitingRoom 
             room_id={roomId}
             callStatus={callStatus}
+            updateAttId={updateAttendeeId}
           />)}
           {userRole==="Host" && <Button color="primary" onPress={hostStartCall}>Start Call</Button>}
-          <Button color="primary" onPress={joinRoom}>(BYPASS ADMITTED) Join Call</Button>
+          {/*<Button color="primary" onPress={joinRoom}>(BYPASS ADMITTED) Join Call</Button>*/}
         </div>
       )
         :

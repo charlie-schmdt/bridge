@@ -11,6 +11,7 @@ import { Endpoints } from "@/utils/endpoints";
 import { useEffect } from "react";
 import { parseMeetings, getNextMeeting, formatNextMeeting, Meeting } from "../../../utils/meetingUtils";
 import { useAuth } from "@/renderer/contexts/AuthContext";
+import AttendanceList from "@/renderer/components/AttendanceList";
 
 
 //import { handleDeleteRoom, handleEditRoom } from "@/renderer/utils/roomActions";
@@ -49,7 +50,10 @@ export function RoomCard({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { notification, showNotification } = useNotification(); // inside the exported component function
   const [nextMeeting, setNextMeeting] = useState("TBD");
+  const {isOpen, onOpen, onOpenChange} = useDisclosure();
+
   const {user}= useAuth();
+
 
   
     const waiting_user = {
@@ -168,12 +172,14 @@ export function RoomCard({
               size="sm"
               radius="md"
               variant="flat"
-              onPress={()=>{}}
+              onPress={onOpen}
               className="text-xs bg-white-100 text-blue-700 hover:bg-blue-200 flex items-center gap-1"
             >
               <ListOrderedIcon size={16} />
               Attendance
             </Button>
+
+            <AttendanceList isOpen={isOpen} onOpenChange={onOpenChange} room_id={room_id} />
 
           </div>)}
         <span className={`text-sm font-medium ${statusColors[status]}`}>

@@ -1,4 +1,4 @@
-const { DataTypes } = require('sequelize');
+const { DataTypes, DATE } = require('sequelize');
 const { sequelize } = require('../config/database');
 
 const Attendance = sequelize.define('Attendance', {
@@ -16,24 +16,29 @@ const Attendance = sequelize.define('Attendance', {
             key: 'id',
         },
     },
-    user_info: {
-        type: DataTypes.JSONB,
-        allowNull: false,
-    },
     last_entered: {
-      type: DataTypes.TIME,
+      type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
     last_exited: {
-      type: DataTypes.TIME,
+      type: DataTypes.DATE,
       allowNull: true,
-      defaultValue: DataTypes.NOW,
     },
     total_time: { //in minutes
         type:DataTypes.INTEGER,
         allowNull: true
+    },
+    user_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+    },
+    user_name: {
+        type: DataTypes.STRING
     }
 
+},{
+    tableName: 'attendance', 
+    timestamps: false,
 })
 module.exports = Attendance;

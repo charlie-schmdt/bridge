@@ -6,9 +6,9 @@ const { getWorkspaces, createWorkspace, joinWorkspace, getUserWorkspaces, getWor
   removeUserFromWorkspace, updateWorkspace, setPermissions, getPermissions, toggleWorkspaceFavorite, getUserFavoriteWorkspaces, 
   requestJoinWorkspace, getPendingRequests, acceptJoinRequest, denyJoinRequest, inviteUserToWorkspace, getJoinableWorkspaces, acceptInvite, setUserRole } = require('../controllers/workspaceController');
 const { createUser, loginUser, getSettings, updateSettings, oauthLogin, deleteAccount, setOnboarding, getUsers } = require('../controllers/userController');
-const { getRooms, createRoom, getRoomMembers, updateRoomMembers, addRoomMember, removeRoomMember, editRoom, deleteRoom, updateStatusRoomMember, getRoom} = require('../controllers/roomController');
-const { createSession, addAttendee } = require('../controllers/sessionController');
-const { createAttendance, updateAttendance } = require('../controllers/attendanceController');
+const { getRooms, createRoom, getRoomMembers, updateRoomMembers, addRoomMember, removeRoomMember, editRoom, deleteRoom, updateStatusRoomMember, getRoom, startSessionInRoom} = require('../controllers/roomController');
+const { createSession, addAttendee, getSession, getSessionsByRoom } = require('../controllers/sessionController');
+const { createAttendance, updateAttendance, getAttendance, getAllSession, findByUS } = require('../controllers/attendanceController');
 const { submitQuestion } = require('../controllers/questionController');
 const { getQAQuestions, submitQuestion: submitQAQuestion, updateQuestionStatus } = require('../controllers/qaController');
 const { getSource } = require ('../controllers/transcriptionController');
@@ -106,14 +106,22 @@ router.put('/rooms/addRoomMember/:roomId', authenticateToken, addRoomMember);
 router.put('/rooms/removeRoomMember/:roomId', authenticateToken, removeRoomMember)
 router.put('/rooms/updateStatusRoomMember/:roomId', authenticateToken, updateStatusRoomMember);
 router.get('/rooms/getRoom/:roomId', authenticateToken, getRoom)
+router.put('/rooms/startSessionInRoom/:roomId', authenticateToken, startSessionInRoom)
 
 // Session routes go here
 router.post('/sessions/createSession/:roomId', authenticateToken, createSession);
 router.put('/sessions/addAttendee/:sessionId', authenticateToken, addAttendee);
+router.get('/sessions/:sessionId', authenticateToken, getSession);
+router.get('/sessions/getSessionsByRoom/:roomId', authenticateToken, getSessionsByRoom);
+
 
 // Attendance routes go here
 router.post('/attendance/createAttendance/:sessionId', authenticateToken, createAttendance);
 router.put('/attendance/updateAttendance/:attendanceId', authenticateToken, updateAttendance);
+router.get('/attendance/:attendanceId', authenticateToken, getAttendance);
+router.get('/attendance/getAllSession/:sessionId', authenticateToken, getAllSession);
+router.get('/attendance/findByUS/:sessionId/:userId', authenticateToken, findByUS);
+
 
 // Protected routes (require authentication)
 router.delete('/auth/delete-account', authenticateToken, deleteAccount);

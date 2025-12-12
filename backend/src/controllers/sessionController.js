@@ -5,29 +5,29 @@ const Session = require('../models/Session');
 
 module.exports = {
     createSession,
-    addAttendee
+    addAttendee,
+    getSession,
+    getSessionsByRoom
 };
 async function createSession(req, res) {
     const {roomId} = req.params;
 
-    try {
-      console.log("🔥 Starting session backend...")
-        /*
+    try {        
         const lastSession = await Session.findOne({
             where: {room_id: roomId},
             order: [['session_number', 'DESC']]
         });
-        const nextSession = lastSession ? lastSession.session_number + 1 : 1;
-        */
-       const nextSession = 1;
-        const room = await Room.findByPk();
+        const nextSession = lastSession ? Number(lastSession.session_number) + 1 : 1;
+        
+       //const nextSession = 1;
+        const room = await Room.findByPk(roomId);
         if (!room) {
-            return res.status(404).json({success: false, message: 'Workspace not found'})
+          return res.status(404).json({success: false, message: 'Room not found'})
         }
         const newSession = await Session.create({
             //id created by generated uuid
             room_id: roomId,
-            session_number: nextSession
+            session_number: nextSession,
         });
 
         return res.status(201).json({success: true, session: newSession});
@@ -43,7 +43,7 @@ async function addAttendee(req, res) {
     /* json created in front end for user */
     const attendee = req.body.attendee; //UUID
 
-    const session = await Room.findByPk(sessionId);
+    const session = await Session.findByPk(sessionId);
 
     if (!session) {
       return res.status(404).json({
@@ -56,8 +56,6 @@ async function addAttendee(req, res) {
     await session.update({
         attendees: attendees
     });
-
-    console.log(`✅ Attendee data added to session ${sessionId} attendance successfully`);
 
     return res.status(201).json({
       sucess: true,
@@ -75,4 +73,47 @@ async function addAttendee(req, res) {
       error: error.message
     });
   }
+}
+
+async function getSession(req, res) {
+      try{
+        const { sessionId } = req.params;
+
+        const session = await Session.findByPk(sessionId);
+
+        if (!session) {
+            return res.status(404).json({
+                success: false,
+                message: 'Session Entry not found'
+            });
+        }
+
+        return res.status(200).json(session);
+
+    } catch (error) {
+        return res.status(500).json({ success: false, message: 'Server error fetching attendance entry' });
+    }
+}
+async function getSessionsByRoom(req, res) {
+      try{
+        const { roomId } = req.params;
+
+        const sessions = await Session.findAll({
+            where: {
+                room_id: roomId
+            }
+        });
+
+        if (!sessions) {
+            return res.status(404).json({
+                success: false,
+                message: 'Session Entry not found'
+            });
+        }
+
+        return res.status(200).json(sessions);
+
+    } catch (error) {
+        return res.status(500).json({ success: false, message: 'Server error fetching attendance entry' });
+    }
 }

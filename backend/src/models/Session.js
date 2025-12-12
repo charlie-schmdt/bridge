@@ -31,7 +31,8 @@ const Session = sequelize.define('Session', {
       defaultValue: []
     }
 }, {
-    tableName: 'sessions',
+    tableName: 'sessions', 
+    timestamps: false,
     indexes: [
       {
         unique: true,

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Button } from "@/renderer/components/ui/Button";
 import { Endpoints } from "@/utils/endpoints";
+import Toggle from "@/renderer/components/Toggle";
 
 const defaultMeetings: {
   date: string;
@@ -45,6 +46,7 @@ export default function EditRoomModal({
   const [categories, setCategories] = useState(room.categories || []);
   const [status, setStatus] = useState<Room["status"]>(room.status);
   const [meetings, setMeetings] = useState<RecurringMeeting[]>([]);
+  const [isAttSelected, setIsAttSelected] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -151,6 +153,10 @@ export default function EditRoomModal({
 
   const removeMeeting = (index: number) => {
     setMeetings(meetings.filter((_, i) => i !== index));
+  };
+
+  const onAttChange = () => {
+    setIsAttSelected(!isAttSelected);
   };
 
   if (!isOpen) return null;
@@ -306,6 +312,12 @@ export default function EditRoomModal({
           >
             + Add Meeting
           </Button>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+          Track Attendance?
+        </label>
+          <Toggle checked={isAttSelected} onChange={onAttChange} />
         </div>
 
         {/* Footer buttons */}

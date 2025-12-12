@@ -15,7 +15,8 @@ module.exports = {
     addRoomMember, 
     removeRoomMember,
     updateStatusRoomMember,
-    getRoom
+    getRoom, 
+    startSessionInRoom
 };
 
 async function getRooms(req, res) {
@@ -413,5 +414,48 @@ async function deleteRoom(req, res) {
   } catch (error) {
     console.error('Error deleting room:', error);
     return res.status(500).json({ success: false, message: 'Server error deleting room' });
+  }
+}
+
+async function startSessionInRoom(req, res) {
+   try {
+    const { roomId } = req.params;
+    const sessionId = req.body.session_id;
+        console.log("ADDING SESSION %s TO ROOM %s", sessionId, roomId)
+
+
+    
+    const room = await Room.findByPk(roomId);
+
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: 'Room not found'
+      });
+    }
+
+    await room.update({
+      current_session: sessionId
+    });
+ 
+    console.log(`✅ Current session updated in ${roomId} successfully and data: `, room);
+
+
+
+    return res.status(201).json({
+      sucess: true,
+      room: room
+    });
+
+
+  
+
+ } catch (error) {
+    console.error('Error fetching room:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching room',
+      error: error.message
+    });
   }
 }

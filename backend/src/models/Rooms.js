@@ -59,6 +59,11 @@ const Room = sequelize.define('Room', {
   room_members: {
     type: DataTypes.JSONB,
     allowNull: true,
+  },
+
+  current_session: {
+    type: DataTypes.UUID,
+    allowNull: true
   }
   
 }, {

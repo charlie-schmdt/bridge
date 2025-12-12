@@ -26,6 +26,7 @@ import { supabase } from "../lib/supabase";
 interface WaitingRoomProps{
     room_id: string;
     callStatus: string;
+    updateAttId: (data: string) => void;
     /*
     isOpen: boolean;
     onOpen: ()=> void;
@@ -33,7 +34,7 @@ interface WaitingRoomProps{
     */
 }
 
-export default function WaitingRoom({room_id, callStatus}:  WaitingRoomProps){ //, isOpen, onOpen, onOpenChange}: WaitingRoomProps){ 
+export default function WaitingRoom({room_id, callStatus, updateAttId}:  WaitingRoomProps){ //, isOpen, onOpen, onOpenChange}: WaitingRoomProps){ 
     const navigate = useNavigate();
     const { user } = useAuth();
     const [videoSource, setVideoSource] = useState(
@@ -87,6 +88,8 @@ export default function WaitingRoom({room_id, callStatus}:  WaitingRoomProps){ /
             const updated_RM = payload.new.room_members;
             const curr_state = updated_RM.find(entry => (entry.uuid === user.id));
             if (curr_state && (curr_state.state === "user_admitted")) {
+
+              attendeeJoinSession(payload.new.current_session);
               setUserStatus("user_admitted");
               callStatus = "active";
             }
@@ -112,6 +115,87 @@ export default function WaitingRoom({room_id, callStatus}:  WaitingRoomProps){ /
       }
     },[]
     )
+      const [attendeeId, setAttendeeId] = useState(null);
+  const getSessionAttendees = async (sessionId) => {
+      try {
+          const token = localStorage.getItem("bridge_token");
+          const response = await fetch(`${Endpoints.SESSIONS}/${sessionId}`, {
+              headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+              },
+          });
+          if (!response.ok) {
+              throw new Error("Failed to fetch user session entry");
+          }
+          const data = await response.json();
+          if (data) {
+              console.log("RESPONSE: ", data)
+              return data.attendees;
+
+          }
+      } catch (error) {
+          
+      }
+  };
+    const findAttBySessionUserId = async (sessionId) => {
+      //filter through all attendees by sessionId
+      try {
+          console.log("SEARCHING: ", sessionId)
+          const token = localStorage.getItem("bridge_token");
+          const response = await fetch(`${Endpoints.ATTENDANCE}/findByUS/${sessionId}/${user.id}`, {
+              headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+              }
+          });
+          if (!response.ok) {
+              throw new Error("Failed to fetch user session entry");
+          }
+          const data = await response.json();
+          if (data) {
+              console.log("RESPONSE -> Found attendee by userid and sessionid: ", data)
+              return data.id;
+
+          }
+          console.log("SEARCHING OVER", sessionId)
+
+      } catch (error) {
+          console.log("ERROR: ",error)
+
+      }
+
+  };
+    const userRejoinedSession = async (attId) => {
+  /*
+      - last exited is going to be default now when exited
+      - calculate time
+  */
+      const lastEntered = new Date().toISOString();
+      try {
+          const token = localStorage.getItem("bridge_token");
+          const response = await fetch(`${Endpoints.ATTENDANCE}/updateAttendance/${attId}`, {
+              method: "PUT",
+              headers: {
+              'Authorization': `Bearer ${token}`,
+              "Content-Type": "application/json",
+              },
+              body:  JSON.stringify({
+                  update_type: "rejoined",
+                  last_entered: lastEntered
+              })
+          });
+          const data = await response.json();
+          if (data.success) {
+              console.log("✅ Updated attendance entry successfully:", data);
+          } else {
+
+          }
+      } catch (error) {
+          console.log("ERROR: ",error)
+      }
+
+  };
       const removeFromWaitingRoom = async () => {
         try {
           const token = localStorage.getItem("bridge_token");
@@ -140,6 +224,80 @@ export default function WaitingRoom({room_id, callStatus}:  WaitingRoomProps){ /
           alert("Failed to update members");
         }
       };
+        const userFirstTimeJoinSession = async (sessionId) => {
+  const lastEntered = new Date().toISOString();
+  try {
+      const token = localStorage.getItem("bridge_token");
+      const response = await fetch(`${Endpoints.ATTENDANCE}/createAttendance/${sessionId}`, {
+          method: "POST",
+          headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          },
+          body:  JSON.stringify({
+              user_id: user.id,
+              user_name: user.name,
+              last_entered: lastEntered
+          })
+      });
+      const data = await response.json();
+      if (data.success) {
+          const set = data.attendance.id;
+          console.log("✅ Attendance admitted to session successfully:", data.attendance);
+          return [set, lastEntered];
+      } else {
+
+      }
+  } catch (error) {
+      console.log("ERROR: ",error)
+  }
+
+  };
+    const addAttendeeToSessionList = async (userId, sessionId) => {
+  try {
+      const token = localStorage.getItem("bridge_token");
+      const response = await fetch(`${Endpoints.SESSIONS}/addAttendee/${sessionId}`, {
+          method: "PUT",
+          headers: {
+          'Authorization': `Bearer ${token}`,
+          "Content-Type": "application/json",
+          },
+          body:  JSON.stringify({
+              attendee: userId
+          })
+      });
+      const data = await response.json();
+      if (data.success) {
+          console.log("✅ Updated to session successfully:", data.attendees);
+      } else {
+
+      }
+  } catch (error) {
+      console.log("ERROR: ",error)
+  }
+
+  };
+  
+
+        const attendeeJoinSession = async (sessionId) => {
+      const attendees = await getSessionAttendees(sessionId); //get attendees from attendance table from same sessionID
+      let id = null;
+      if (attendees.includes(user.id)) { //if attendee in session, then they are rejoining
+          id = await findAttBySessionUserId(sessionId);
+          if(id) {
+              setAttendeeId(id);
+              updateAttId(id);
+              userRejoinedSession(id);
+          }
+      }
+      else {
+          const [newId, len] = await userFirstTimeJoinSession(sessionId);
+          setAttendeeId(newId);
+          updateAttId(newId)
+          await addAttendeeToSessionList(user.id, sessionId);
+      }
+
+  };
     
     const videoRef = useRef<HTMLVideoElement>();//useRef<HTMLVideoElement>(null)
 
