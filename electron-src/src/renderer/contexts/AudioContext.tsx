@@ -1,6 +1,6 @@
 import { Endpoints, WebSocketURL } from '@/utils/endpoints';
 import { input } from '@heroui/react';
-import React, { createContext, useContext, useState, useEffect, ReactNode, useRef} from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef, MutableRefObject} from 'react';
 import { data } from 'react-router';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -16,30 +16,32 @@ interface RemoteTrack {
   prevGain: number;
 }
 
+
 // Create the context to manage AudioContext
+
 const WebAudioContext = createContext<{
-  audioContext: AudioContext | null;
+  audioContext: MutableRefObject<AudioContext | null>;
   senderInputDevice: string | null;
   senderOutputDevice: string | null;
+  analyserNode: MutableRefObject<AnalyserNode | null>;
+  micAudioStream: MutableRefObject<MediaStream | null>;
+  remoteTracks: MutableRefObject<Map<string, RemoteTrack | null>>;
+  //agcGains: Map<string, number | null>;
+  transcript: string[] | null;
   echoCancellation: boolean | null;
   noiseSuppression: boolean | null;
-  analyserNode: AnalyserNode | null;
   senderMicSensitivity: number | null;
-  micAudioStream: MediaStream | null;
-  remoteTracks: Map<string, RemoteTrack | null>;
-  agcGains: Map<string, number | null>;
-  transcript: string[] | null;
-  setMicInput: (deviceId: string, context:AudioContext) => Promise<MediaStreamAudioSourceNode | undefined>;
-  initializeAudioGraph: () => Promise<void>;
-  tearDownAudioGraph: () => Promise<void>;
-  setSenderInputDevice: (deviceId: string | null) => void;
-  setSenderOutputDevice: (deviceId: string | null) => void;
+  audioContextState : AudioContext | null;
+  initializeAudioGraph: () => void;
+  tearDownAudioGraph: () => void;
   setSenderMicSensitivity: (value: number | null) => void;
+  setSenderInputDevice: (value: string | null) => void;
+  setSenderOutputDevice: (value: string | null) => void;
   setEchoCancellation: (value: boolean | null) => void;
   setNoiseSuppression: (value: boolean | null) => void;
-  loadAudioFiles: (files: Array<string>) => Promise<void>;
-  playAudioFiles: () => Promise<void>;
-  resetAudioFiles: () => Promise<void>;
+  //loadAudioFiles: (files: Array<string>) => Promise<void>;
+  //playAudioFiles: () => Promise<void>;
+  //resetAudioFiles: () => Promise<void>;
   startTranscription: () => Promise<void>;
   stopTranscription: () => Promise<void>;
   setAudioOutputChannel: (id : string, track : MediaStream) => RemoteTrack;
@@ -56,37 +58,86 @@ export const useAudioContext = () => {
 export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   //Sender -------------
 
-  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
-  const [micInput, setMicInputState] = useState<MediaStreamAudioSourceNode | null>(null);
+  const audioContext = useRef<AudioContext | null>(null);
+  const micInput = useRef<MediaStreamAudioSourceNode | null>(null);
+  const volumeSensitivityGainNode = useRef<GainNode | null>(null);
+  const preProcessingGainNode = useRef<GainNode | null>(null);
+  const analyserNode = useRef<AnalyserNode | null>(null);
+  const postProcessingGainNode = useRef<GainNode | null>(null);
+  const micAudioStream = useRef<MediaStream | null>(null);
+  const [audioContextState, setAudioContextState] = useState<AudioContext | null>(null);
   const [senderInputDevice, setSenderInputDevice] = useState<string | null>('default');
   const [senderOutputDevice, setSenderOutputDevice] = useState<string | null>('default');
-  const [volumeSensitivityGainNode, setVolumeSensitivityGainNode] = useState<GainNode | null>(null);
-  const [preProcessingGainNode, setPreProcessingGainNode] = useState<GainNode | null>(null);
-  const [gainStage, setGainStage] = useState<number | null>(1.0);
-  const [analyserNode, setAnalyserNode] = useState<AnalyserNode | null>(null);
-  const [postProcessingGainNode, setPostProcessingGainNode] = useState<GainNode | null>(null);
-  const [micAudioStream, setMicAudioStream] = useState<MediaStream | null>(null);
   const [senderMicSensitivity, setSenderMicSensitivity] = useState<number | null>(0.5);
   const [echoCancellation, setEchoCancellation] = useState<boolean | null>(false);
   const [noiseSuppression, setNoiseSuppression] = useState<boolean | null>(false);
 
   //AGC
-  const [mixer, setMixer] = useState<GainNode | null>(null);
-  const [remoteTracks, setRemoteTracks] = useState<Map<string, RemoteTrack>>(new Map());
-  const [agcLoop, setAgcLoop] = useState<{ start: () => void; stop: () => void } | null>(null);
-  const [audioInputBuffers, setAudioInputBuffers] = useState<Array<AudioBuffer> | null>([]);
-  const [agcGains, setAgcGains] = useState<Map<string, number>>(new Map());
-
+  const mixer = useRef<GainNode | null>(null);
+  const remoteTracks = useRef<Map<string, RemoteTrack>>(new Map());
+  const agcRaf = useRef<number | null>(null)
+  const agcRunning = useRef<boolean | null>(true)
+  //const [audioInputBuffers, setAudioInputBuffers] = useState<Array<AudioBuffer> | null>([]);
+  //const agcGains = useState<Map<string, number>>(new Map());
 
   //Transcript
-  const[transcript, setTranscript] = useState<string[] | null>([]);
+  const [transcript, setTranscript] = useState<string[] | null>([]);
   const ws = useRef<WebSocket | null>(null);
-  const lastFinalRef = useRef(""); // persist across renders
+
+  //Function to set the microphone input source
+  async function initializeAudioGraph() {
+    console.log("initialize Audio Graph")
+    try {
+      if (!audioContext.current) {
+
+        //Sender-side ---------------------------------------------------
+        console.log("Creating AudioContext");
+        const context = new AudioContext({
+          sampleRate: 44100
+        });
+        audioContext.current = context;
+
+        micInput.current = await setMicInput('default');
+        volumeSensitivityGainNode.current = audioContext.current.createGain();
+        volumeSensitivityGainNode.current.gain.value = 1;
+        preProcessingGainNode.current = audioContext.current.createGain();
+        preProcessingGainNode.current.gain.value = 10.0;
+        analyserNode.current = audioContext.current.createAnalyser();
+        postProcessingGainNode.current = audioContext.current.createGain();
+        postProcessingGainNode.current.gain.value = 0.1;
+        analyserNode.current.fftSize = 2048;
+        const dest = audioContext.current.createMediaStreamDestination();
+        micAudioStream.current = dest.stream;
 
 
-//Function to set the microphone input source
-  const setMicInput = async (deviceId: string, context:AudioContext) => {
-  return new Promise<MediaStreamAudioSourceNode | null>(async (resolve, reject) => {
+        //Connect the nodes
+        console.log("Connecting audio nodes");
+        micInput.current?.connect(volumeSensitivityGainNode.current);
+        volumeSensitivityGainNode.current?.connect(preProcessingGainNode.current);
+        preProcessingGainNode.current?.connect(analyserNode.current);
+        analyserNode.current?.connect(postProcessingGainNode.current);
+        postProcessingGainNode.current?.connect(dest);
+        
+        console.log("AudioContext created:", audioContext.current);
+
+        //Reciever-side ---------------------------------------------------
+        const agcloop = startAGCLoop();
+        mixer.current = audioContext.current.createGain();
+        mixer.current.gain.value = 1;
+        mixer.current?.connect(context.destination);
+        setAudioContextState(context)
+      }
+      else {
+        console.log("Audio Graph already exists")
+      }
+    }
+    catch(error) {
+      console.log("error")
+    }
+  }
+
+  //Function to set the microphone input source
+  async function setMicInput(deviceId: string) {
     try {
       //Get user media with the selected device ID
       console.log("Setting mic input to device ID:", deviceId);
@@ -101,156 +152,79 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
       });
       //Create MediaStreamSource from the stream
       console.log("Creating MediaStreamAudioSourceNode from stream");
-      const newSource = context.createMediaStreamSource(stream);
-      resolve(newSource);
+      const newSource = audioContext.current.createMediaStreamSource(stream);
+      return newSource
     } catch (err) {
-      reject(err);
+      return null
     }
-  });
-  };
+  }
 
    //Effect for mic sensitivity
   useEffect(() => {
-    if (audioContext === null) return;
-    if (volumeSensitivityGainNode === null) return;
+    if (audioContext.current === null) return;
+    if (volumeSensitivityGainNode.current === null) return;
     if (senderMicSensitivity === null) return;
 
-    console.log("Setting mic sensitivity to:", gainStage * senderMicSensitivity);
-    volumeSensitivityGainNode.gain.value = gainStage * senderMicSensitivity;
+    console.log("Setting mic sensitivity to:", senderMicSensitivity);
+    volumeSensitivityGainNode.current.gain.value = senderMicSensitivity;
     
-    // Cleanup when the component is unmounted (close AudioContext)
     return () => {
     };
   }, [senderMicSensitivity]);
   
-  //create the functions to initialize the audio graph
+  //Effect to reinitialize mic input when source changes
   useEffect(() => {
-    if (audioContext) {
+    if (audioContext.current) {
       console.log("Sender Input Device changed:", senderInputDevice);
     if (senderInputDevice === null) return;
 
     //Update the mic input source based on the selected device
     const updateInputSource = async () => {
-      micInput?.disconnect();
+      micInput?.current.disconnect();
 
       //Set the mic input to the selected device
       console.log("Setting mic input to device ID:", senderInputDevice);
-      const newMicInput = await setMicInput(senderInputDevice, audioContext);
+      const newMicInput = await setMicInput(senderInputDevice);
+      micInput.current = newMicInput;
 
       //Connect the new mic input to the volume sensitivity gain node
       console.log("Connecting new mic input to volume sensitivity gain node");
-      newMicInput?.connect(volumeSensitivityGainNode);
-
-      setMicInputState(newMicInput);
+      micInput.current.connect(volumeSensitivityGainNode.current);
     }
     updateInputSource();
     }
     
-    
-    // Cleanup when the component is unmounted (close AudioContext)
     return () => {
     };
   }, [senderInputDevice, echoCancellation, noiseSuppression]);
 
   //Function to set the microphone input source
-  const initializeAudioGraph = async () => {
-  return new Promise<void>(async (resolve, reject) => {
-    console.log("initialize Audio Graph")
+  async function tearDownAudioGraph() {
     try {
-      if (!audioContext) {
-
-        //Sender-side ---------------------------------------------------
-
-        console.log("Creating AudioContext");
-        // Create a All neccesary graph objects
-        const context = new AudioContext({
-          sampleRate: 44100
-        });
-        const micInput = await setMicInput('default', context);
-        const volumeSensitivityGainNode = context.createGain();
-        volumeSensitivityGainNode.gain.value = gainStage;
-        const preProcessingGainNode = context.createGain();
-        preProcessingGainNode.gain.value = 10.0;
-        const analyser = context.createAnalyser();
-        const postProcessingGainNode = context.createGain();
-        postProcessingGainNode.gain.value = 0.1;
-        analyser.fftSize = 2048;
-        const micAudioStream = context.createMediaStreamDestination();
-
-        //Connect the nodes
-        console.log("Connecting audio nodes");
-        micInput.connect(volumeSensitivityGainNode);
-        volumeSensitivityGainNode.connect(preProcessingGainNode);
-        preProcessingGainNode.connect(analyser);
-        analyser.connect(postProcessingGainNode);
-        postProcessingGainNode.connect(micAudioStream);
-        
-        //Set the states
-        console.log("Setting state values");
-        setAudioContext(context);
-        setMicInputState(micInput);
-        setVolumeSensitivityGainNode(volumeSensitivityGainNode);
-        setPreProcessingGainNode(preProcessingGainNode)
-        setAnalyserNode(analyser)
-        setPostProcessingGainNode(postProcessingGainNode)
-        setMicAudioStream(micAudioStream.stream)
-        console.log("AudioContext created:", context);
-
-        //Reciever-side ---------------------------------------------------
-        const agcloop = createAGCLoop(context, remoteTracks);
-        agcloop.start();
-        setAgcLoop(agcloop)
-
-        const mixer = context.createGain();
-        mixer.gain.value = 1;
-        mixer.connect(context.destination);
-        setMixer(mixer);
-      }
-      else {
-        console.log("Audio Graph already exists")
-      }
-      resolve();
-    } catch (err) {
-      reject(err);
-    }
-  });
-  };
-
-  //Function to set the microphone input source
-  const tearDownAudioGraph = async () => {
-  return new Promise<void>(async (resolve, reject) => {
-    try {
-      console.log(audioContext)
-      if (audioContext) {
-        if (audioContext.state !== 'closed') {
-                await audioContext.close();
-                
-              }
+      console.log(audioContext.current)
+      if (audioContext.current) {
+        if (audioContext.current.state !== 'closed') {
+          await audioContext.current.close();
+        }
       }
       stopTranscription();
-      agcLoop.stop();
+      stopAGCLoop();
       
-      
-      micInput?.disconnect();
-      //("mic disconnected")
-      volumeSensitivityGainNode?.disconnect();
+      micInput.current?.disconnect();
+      console.log("mic disconnected")
+      volumeSensitivityGainNode.current?.disconnect();
       console.log("sensitivity disconnected")
-      preProcessingGainNode?.disconnect();
+      preProcessingGainNode.current?.disconnect();
       console.log("pre disconnected")
-      preProcessingGainNode?.disconnect();
-      analyserNode?.disconnect();
-      postProcessingGainNode?.disconnect();
+      preProcessingGainNode.current?.disconnect();
+      analyserNode.current?.disconnect();
+      postProcessingGainNode.current?.disconnect();
 
-      setAudioContext(null);
-      resolve();
-    } catch (err) {
-      reject(err);
+      audioContext.current = null;
+    } catch(err) {
+      console.log(err)
     }
-  });
-  };
-
-  //TODO: ----------------------------------------------------
-
+  }
 
   //Function to set the microphone input source
   const setAudioOutputChannel = (id : string, track : MediaStream) => {
@@ -266,20 +240,20 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
           prevGain: 1.0,
         };
 
-        const source = audioContext.createMediaStreamSource(track);
-        const agcPreProcessingNode = audioContext.createGain();
+        const source = audioContext.current?.createMediaStreamSource(track);
+        const agcPreProcessingNode = audioContext.current?.createGain();
         agcPreProcessingNode.gain.value = 10;     // default volume
-        const agcAnalyzerNode = audioContext.createAnalyser()
-        const agcPostProcessingNode = audioContext.createGain();
+        const agcAnalyzerNode = audioContext.current?.createAnalyser()
+        const agcPostProcessingNode = audioContext.current?.createGain();
         agcPostProcessingNode.gain.value = 0.1;     // default volume
-        const agcGainNode = audioContext.createGain();
+        const agcGainNode = audioContext.current?.createGain();
         agcGainNode.gain.value = 1.0;     // default volume
         
         source.connect(agcPreProcessingNode)
         agcPreProcessingNode.connect(agcAnalyzerNode);
         agcAnalyzerNode.connect(agcPostProcessingNode);
         agcPostProcessingNode.connect(agcGainNode);
-        agcGainNode.connect(mixer);
+        agcGainNode.connect(mixer.current);
 
         newtrack.id = id;
         newtrack.source = source;
@@ -290,35 +264,32 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
         newtrack.prevGain = 1.0;
 
         //("adding track to trackmap", newtrack);
-        let trackMap = remoteTracks;
-        trackMap.set(id, newtrack);
-        setRemoteTracks(trackMap);
-        console.log("new trackmap is ", trackMap);
-
+        remoteTracks.current.set(id, newtrack);
+        console.log("new trackmap is ", remoteTracks.current);
         return newtrack;
       }
   };
 
 
+  //TODO: add the thing to the other function
 
   //Function to set the microphone input source
   const removeAudioOutputChannel = (id : string) => {
       //("Removing new Audio Track with id: ", id);
-      if (audioContext) {
-        if (remoteTracks.get(id)) {
-          remoteTracks.get(id).agcPreProcessingNode.disconnect();
-          remoteTracks.get(id).agcAnalyzerNode.disconnect();
-          remoteTracks.get(id).agcPostProcessingNode.disconnect();
-          remoteTracks.get(id).agcGainNode.disconnect();
+      if (audioContext.current) {
+        if (remoteTracks.current?.get(id)) {
+          remoteTracks.current?.get(id).agcPreProcessingNode.disconnect();
+          remoteTracks.current?.get(id).agcAnalyzerNode.disconnect();
+          remoteTracks.current?.get(id).agcPostProcessingNode.disconnect();
+          remoteTracks.current?.get(id).agcGainNode.disconnect();
         }
 
-        remoteTracks.delete(id);
-        console.log("trackmap is now", remoteTracks);
+        remoteTracks.current?.delete(id);
+        console.log("trackmap is now", remoteTracks.current);
       }
   };
 
-
-
+  /*
   //Function to load files into loadAudio
   const loadAudioFiles = async (files: Array<string>) => {
   return new Promise<void>(async (resolve, reject) => {
@@ -367,7 +338,6 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
       const audioBuffers = await Promise.all(allPromises);
       
       //console.log("recieved buffers: ", audioBuffers)
-      
       // Set state after all files succeed
       setAudioInputBuffers(audioBuffers);
       
@@ -376,7 +346,7 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
       reject(err);
     }
   });
-  };
+  };*/
 
   function calculateRMS(dataArray) {
     let sum = 0;
@@ -398,104 +368,94 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
     return Math.pow(10, db / 20);
   }
 
-  function createAGCLoop(
-    audioContext: AudioContext,
-    RemoteTracks: Map<string, RemoteTrack | null>,
-  ) {
+  function startAGCLoop() {
+    const dbStep = 2.0
+    const maxDbIncrease = dbStep;
+    const maxDbDecrease = -dbStep;
+    const minGain = 0.01;
+    const maxGain = 10;
+    const alphaUp = 0.3;   // slow boost
+    const alphaDown = 0.7; // fast cut
+    let targetDB = -20.0;
 
-  let rafId: number | null = null;
-  let running = false;
+    function update() {
+      if (!agcRunning.current) return;
+      //console.log(remoteTracks.size)
 
-  // limits on how much the AGC can change increase or decrease gain per update
-  const dbStep = 2.0
-  const maxDbIncrease = dbStep;
-  const maxDbDecrease = -dbStep;
-  const minGain = 0.01;
-  const maxGain = 10;
-  const alphaUp = 0.3;   // slow boost
-  const alphaDown = 0.7; // fast cut
-  let targetDB = -20.0;
+      const now = audioContext.current.currentTime;
 
+      remoteTracks.current.forEach((remoteTrack, i) => {
+        if (!remoteTrack) return;
+        const analyser = remoteTrack.agcAnalyzerNode
+        const gainNode = remoteTrack.agcGainNode;
+        if (!analyser || !gainNode) return;
 
-  function update() {
-    if (!running) return;
-    console.log(remoteTracks.size)
+        // Get RMS
+        const bufferLength = analyser.fftSize;
+        const dataArray = new Uint8Array(bufferLength);
+        analyser.getByteTimeDomainData(dataArray);
+        const rms = calculateRMS(dataArray);
 
-    const now = audioContext.currentTime;
+        const rmsFloor = 0.001; // avoid -Infinity
+        const effectiveRms = gainNode.gain.value * Math.max(rms, rmsFloor);
+        const currentDB = linearToDbfs(effectiveRms);
 
-    remoteTracks.forEach((remoteTrack, i) => {
-      if (!remoteTrack) return;
-      const analyser = remoteTrack.agcAnalyzerNode
-      const gainNode = remoteTrack.agcGainNode;
-      if (!analyser || !gainNode) return;
+        // Compute dB difference to target
+        let dbChange = targetDB - currentDB;
 
-      // Get RMS
-      const bufferLength = analyser.fftSize;
-      const dataArray = new Uint8Array(bufferLength);
-      analyser.getByteTimeDomainData(dataArray);
-      const rms = calculateRMS(dataArray);
+        // Clip max increase/decrease per frame
+        dbChange = Math.max(Math.min(dbChange, maxDbIncrease), maxDbDecrease);
 
-      const rmsFloor = 0.001; // avoid -Infinity
-      const effectiveRms = gainNode.gain.value * Math.max(rms, rmsFloor);
-      const currentDB = linearToDbfs(effectiveRms);
+        // Smooth separately for up/down
+        const alpha = dbChange > 0 ? alphaUp : alphaDown;
 
-      // Compute dB difference to target
-      let dbChange = targetDB - currentDB;
+        // Current gain in dB
+        const currentGainDB = linearToDbfs(gainNode.gain.value);
 
-      // Clip max increase/decrease per frame
-      dbChange = Math.max(Math.min(dbChange, maxDbIncrease), maxDbDecrease);
+        // Smoothed new gain in dB
+        const smoothedGainDB = currentGainDB + dbChange * alpha;
 
-      // Smooth separately for up/down
-      const alpha = dbChange > 0 ? alphaUp : alphaDown;
+        // Convert back to linear
+        let newGain = dbfsToLinear(smoothedGainDB);
 
-      // Current gain in dB
-      const currentGainDB = linearToDbfs(gainNode.gain.value);
+        // Clamp to min/max linear gain
+        newGain = Math.min(Math.max(newGain, minGain), maxGain);
 
-      // Smoothed new gain in dB
-      const smoothedGainDB = currentGainDB + dbChange * alpha;
+        // Apply gain
+        gainNode.gain.setTargetAtTime(newGain, now, 0.05);
 
-      // Convert back to linear
-      let newGain = dbfsToLinear(smoothedGainDB);
+        remoteTrack.prevGain = newGain;
 
-      // Clamp to min/max linear gain
-      newGain = Math.min(Math.max(newGain, minGain), maxGain);
-
-      // Apply gain
-      gainNode.gain.setTargetAtTime(newGain, now, 0.05);
-
-      remoteTrack.prevGain = newGain;
-
-      setAgcGains(prev => {
-        const newGains = new Map(prev); // clone previous state
-        newGains.set(remoteTrack.id!, newGain); // ensure id is not undefined
-        return newGains;
+        /*setAgcGains(prev => {
+          const newGains = new Map(prev); // clone previous state
+          newGains.set(remoteTrack.id!, newGain); // ensure id is not undefined
+          return newGains;
+        });*/
+        
+        //(`AGC Track ${i}: RMS=${rms.toFixed(4)} CurrentDB=${currentDB.toFixed(2)} dBChange=${dbChange.toFixed(2)} FinalGain=${newGain.toFixed(4)}`);
       });
-      
-      //(`AGC Track ${i}: RMS=${rms.toFixed(4)} CurrentDB=${currentDB.toFixed(2)} dBChange=${dbChange.toFixed(2)} FinalGain=${newGain.toFixed(4)}`);
-    });
 
-      rafId = requestAnimationFrame(update);
+      agcRaf.current = requestAnimationFrame(update);
+    } 
+
+    if (agcRunning.current) {
+        agcRunning.current = true; // start the loop
+        agcRaf.current = requestAnimationFrame(update);
+    }
+
+    return;
   }
 
-    function start() {
-      if (!running) {
-        running = true;
-        rafId = requestAnimationFrame(update);
+  function stopAGCLoop() {
+      agcRunning.current = false;
+      if (agcRaf.current !== null) {
+        cancelAnimationFrame(agcRaf.current);
+        agcRaf.current = null;
       }
     }
 
-    function stop() {
-      running = false;
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-        rafId = null;
-      }
-    }
-
-    return { start, stop };
-  }
-
-  //Function to load files into loadAudio
+  /*
+    //Function to load files into loadAudio
   const playAudioFiles = async () => {
   return new Promise<void>(async (resolve, reject) => {
     try {
@@ -552,13 +512,9 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
       reject(err);
     }
   });
-  };
+  };*/
 
   async function startAudioWorkletPipeline(ws: WebSocket) {
-
-    /*const audioContext = new AudioContext({
-      sampleRate: 16000,   // Required for Google Speech
-    });*/
     //("Starting AudioWorklet Pipeline.with websocket..", ws);
     if (!audioContext) {
       console.error("AudioContext not initialized");
@@ -567,10 +523,10 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
 
     //console.log("AudioContext:", audioContext);
     //console.log("Trying for", Endpoints.TRANSCRIPTION_SRC)
-    await audioContext.audioWorklet.addModule(Endpoints.TRANSCRIPTION_SRC);
-    const workletNode = new AudioWorkletNode(audioContext, "pcm-processor");
+    await audioContext.current?.audioWorklet.addModule(Endpoints.TRANSCRIPTION_SRC);
+    const workletNode = new AudioWorkletNode(audioContext.current, "pcm-processor");
     console.log("workletNode", workletNode)
-    micInput.connect(workletNode);
+    micInput.current?.connect(workletNode);
 
     workletNode.port.onmessage = (event) => {
       if (ws.readyState !== WebSocket.OPEN) return;
@@ -582,10 +538,10 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
       ws.send(pcm16);
     };
 
-    const silentGain = audioContext.createGain();
+    const silentGain = audioContext.current.createGain();
     silentGain.gain.value = 0;
     workletNode.connect(silentGain);
-    silentGain.connect(audioContext.destination); // required to keep alive
+    silentGain.connect(audioContext.current.destination); // required to keep alive
 
     console.log("AudioWorklet pipeline running.");
 }
@@ -641,13 +597,14 @@ function floatTo16BitPCM(float32: Float32Array) {
   });
   };
 
+
+  //TODO: add the same trick for this
   //Function to start transcribing from audio
   const stopTranscription = async () => {
   return new Promise<void>(async (resolve, reject) => {
     try {
       console.log("Stopping Transcription...")
       ws.current.close()
-      await setMicInput('default', audioContext);
       resolve();
     } catch (err) {
       reject(err);
@@ -667,20 +624,19 @@ function floatTo16BitPCM(float32: Float32Array) {
       analyserNode,
       senderMicSensitivity,
       micAudioStream,
-      remoteTracks, 
-      agcGains,
+      remoteTracks,
       transcript,
-      setMicInput,
+      audioContextState,
       initializeAudioGraph,
       tearDownAudioGraph,
-      setSenderInputDevice,
-      setSenderOutputDevice,
       setSenderMicSensitivity,
       setEchoCancellation,
       setNoiseSuppression,
-      loadAudioFiles,
-      playAudioFiles,
-      resetAudioFiles,
+      setSenderInputDevice,
+      setSenderOutputDevice,
+      //loadAudioFiles,
+      //playAudioFiles,
+      //resetAudioFiles,
       startTranscription,
       stopTranscription,
       setAudioOutputChannel,

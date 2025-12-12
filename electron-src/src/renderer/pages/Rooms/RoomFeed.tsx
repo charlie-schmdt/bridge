@@ -20,7 +20,7 @@ export interface RoomFeedProps {
 
 export function RoomFeed({roomId}: RoomFeedProps) {
   const { user } = useAuth()
-  const { initializeAudioGraph, tearDownAudioGraph, micAudioStream } = useAudioContext();
+  const { audioContext, initializeAudioGraph, tearDownAudioGraph, setAudioOutputChannel, removeAudioOutputChannel, micAudioStream } = useAudioContext();
   const localRoomMedia = useRoomMediaContext();
 
   const [callStatus, setCallStatus] = useState<CallStatus>("inactive");
@@ -42,18 +42,25 @@ export function RoomFeed({roomId}: RoomFeedProps) {
   // Synchronous means of checking if room is active or has been exited
   const clientId = useRef<string>(uuid());
 
-  //const setAudioOutputChannelRef = useRef(setAudioOutputChannel);
+  const setAudioOutputChannelRef = useRef(setAudioOutputChannel);
+  const removeAudioOutputChannelRef = useRef(removeAudioOutputChannel);
+
 
   const remoteStreamRef = useRef<MediaStream | null>(null);
 
   const effectiveRoomId = roomId || "testroom";
 
-  //console.log("audioContext: ", audioContext);
+  console.log("audioContext: ", audioContext.current);
 
   // Update ref when setAudioOutputChannel changes to avoid stale closures -- use ref as proxy
   //useEffect(() => {
   //  setAudioOutputChannelRef.current = setAudioOutputChannel;
   //}, [setAudioOutputChannel]);
+
+  // Update ref when removeAudioOutputChannel changes to avoid stale closures -- use ref as proxy
+  useEffect(() => {
+    removeAudioOutputChannelRef.current = removeAudioOutputChannel;
+  }, [removeAudioOutputChannel]);
 
   const cleanUpRoomExit = async () => {
     try {//Remove user from room on unmount
@@ -155,7 +162,8 @@ export function RoomFeed({roomId}: RoomFeedProps) {
         // New track received, update remoteStreams accordingly
         console.log("My stream", stream)
         const audioStream = new MediaStream(stream.getAudioTracks());
-        //setAudioOutputChannelRef.current(stream.id, audioStream);
+        console.log("in handler, audio context: ", audioContext.current);
+        setAudioOutputChannelRef.current(stream.id, audioStream);
         setRemoteStreams(prevRemoteStreams => {
           console.log("got stream id: " + stream.id);
           if (prevRemoteStreams.has(stream.id)) {
@@ -260,12 +268,12 @@ export function RoomFeed({roomId}: RoomFeedProps) {
 
   // Toggle microphone
   useEffect(() => {
-    const audioTrack = micAudioStream?.getAudioTracks()[0];
+    const audioTrack = micAudioStream.current?.getAudioTracks()[0];
     if (audioTrack) {
       console.log("Changing audioTrack to: " + localRoomMedia.isAudioEnabled);
       audioTrack.enabled = localRoomMedia.isAudioEnabled;
     }
-  }, [micAudioStream, localRoomMedia.isAudioEnabled])
+  }, [micAudioStream.current, localRoomMedia.isAudioEnabled])
 
   // Handle local video component changes
   useEffect(() => {
@@ -314,7 +322,7 @@ export function RoomFeed({roomId}: RoomFeedProps) {
   const joinRoom = async () => {
     setCallStatus("loading");
     const manager = roomConnectionManagerRef.current;
-    if (!manager || !micAudioStream) {
+    if (!manager || !micAudioStream.current) {
       toast.error("Connection not ready or microphone not available");
       return;
     }
@@ -327,7 +335,7 @@ export function RoomFeed({roomId}: RoomFeedProps) {
     }
 
     // Initiate P2P connection with the SFU
-    await manager.connect(stream, micAudioStream);
+    await manager.connect(stream, micAudioStream.current);
   };
   const hostStartCall = async () => {
     joinRoom();
