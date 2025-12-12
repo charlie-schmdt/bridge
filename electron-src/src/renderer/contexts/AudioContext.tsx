@@ -21,8 +21,8 @@ interface RemoteTrack {
 
 const WebAudioContext = createContext<{
   audioContext: MutableRefObject<AudioContext | null>;
-  senderInputDevice: MutableRefObject<string | null>;
-  senderOutputDevice: MutableRefObject<string | null>;
+  senderInputDevice: string | null;
+  senderOutputDevice: string | null;
   analyserNode: MutableRefObject<AnalyserNode | null>;
   micAudioStream: MutableRefObject<MediaStream | null>;
   remoteTracks: MutableRefObject<Map<string, RemoteTrack | null>>;
@@ -34,6 +34,8 @@ const WebAudioContext = createContext<{
   initializeAudioGraph: () => void;
   tearDownAudioGraph: () => void;
   setSenderMicSensitivity: (value: number | null) => void;
+  setSenderInputDevice: (value: string | null) => void;
+  setSenderOutputDevice: (value: string | null) => void;
   setEchoCancellation: (value: boolean | null) => void;
   setNoiseSuppression: (value: boolean | null) => void;
   //loadAudioFiles: (files: Array<string>) => Promise<void>;
@@ -57,13 +59,13 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
 
   const audioContext = useRef<AudioContext | null>(null);
   const micInput = useRef<MediaStreamAudioSourceNode | null>(null);
-  const senderInputDevice = useRef<string | null>('default');
-  const senderOutputDevice = useRef<string | null>('default');
   const volumeSensitivityGainNode = useRef<GainNode | null>(null);
   const preProcessingGainNode = useRef<GainNode | null>(null);
   const analyserNode = useRef<AnalyserNode | null>(null);
   const postProcessingGainNode = useRef<GainNode | null>(null);
   const micAudioStream = useRef<MediaStream | null>(null);
+  const [senderInputDevice, setSenderInputDevice] = useState<string | null>('default');
+  const [senderOutputDevice, setSenderOutputDevice] = useState<string | null>('default');
   const [senderMicSensitivity, setSenderMicSensitivity] = useState<number | null>(0.5);
   const [echoCancellation, setEchoCancellation] = useState<boolean | null>(false);
   const [noiseSuppression, setNoiseSuppression] = useState<boolean | null>(false);
@@ -170,16 +172,16 @@ export const AudioContextProvider: React.FC<{ children: ReactNode }> = ({ childr
   //Effect to reinitialize mic input when source changes
   useEffect(() => {
     if (audioContext.current) {
-      console.log("Sender Input Device changed:", senderInputDevice.current);
-    if (senderInputDevice.current === null) return;
+      console.log("Sender Input Device changed:", senderInputDevice);
+    if (senderInputDevice === null) return;
 
     //Update the mic input source based on the selected device
     const updateInputSource = async () => {
       micInput?.current.disconnect();
 
       //Set the mic input to the selected device
-      console.log("Setting mic input to device ID:", senderInputDevice.current);
-      const newMicInput = await setMicInput(senderInputDevice.current);
+      console.log("Setting mic input to device ID:", senderInputDevice);
+      const newMicInput = await setMicInput(senderInputDevice);
       micInput.current = newMicInput;
 
       //Connect the new mic input to the volume sensitivity gain node
@@ -626,6 +628,8 @@ function floatTo16BitPCM(float32: Float32Array) {
       setSenderMicSensitivity,
       setEchoCancellation,
       setNoiseSuppression,
+      setSenderInputDevice,
+      setSenderOutputDevice,
       //loadAudioFiles,
       //playAudioFiles,
       //resetAudioFiles,
