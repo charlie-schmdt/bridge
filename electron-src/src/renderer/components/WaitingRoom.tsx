@@ -19,9 +19,11 @@ import VF from "./VF";
 interface WaitingRoomProps{
     room_id: string;
     callStatus: string;
+    /*
     isOpen: boolean;
     onOpen: ()=> void;
     onOpenChange: () => void;
+    */
 }
 
 export default function WaitingRoom({room_id, callStatus}:  WaitingRoomProps){ //, isOpen, onOpen, onOpenChange}: WaitingRoomProps){ 
