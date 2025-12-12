@@ -1,5 +1,5 @@
 import { Endpoints } from "@/utils/endpoints";
-import { Card, CardBody, CardFooter, CardHeader, Select, SelectItem } from "@heroui/react";
+import { Card, CardBody, CardHeader, Divider } from "@heroui/react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useAudioContext } from "../contexts/AudioContext";
@@ -18,13 +18,13 @@ import VF from "./VF";
 
 interface WaitingRoomProps{
     room_id: string;
-    callStatus?: string;
-    isOpen?: boolean;
-    onOpen?: ()=> void;
-    onOpenChange?: () => void;
+    callStatus: string;
+    isOpen: boolean;
+    onOpen: ()=> void;
+    onOpenChange: () => void;
 }
 
-export default function WaitingRoom({room_id, callStatus, isOpen, onOpen, onOpenChange}: WaitingRoomProps){ 
+export default function WaitingRoom({room_id, callStatus}:  WaitingRoomProps){ //, isOpen, onOpen, onOpenChange}: WaitingRoomProps){ 
     const navigate = useNavigate();
     const { user } = useAuth();
     const [videoSource, setVideoSource] = useState(
@@ -135,81 +135,54 @@ export default function WaitingRoom({room_id, callStatus, isOpen, onOpen, onOpen
     const videoRef = useRef<HTMLVideoElement>();//useRef<HTMLVideoElement>(null)
 
     return (
-      <Card>
-        <CardHeader className="flex flex-col gap-1">Waiting Room</CardHeader>
-        <CardBody>
-            <div>
-                <VF />
-            </div>   
-            {/* Meeting details*/}
-            {/*turn on/off camera and audio*/}
-            <div className="grid grid-cols-1 grid-rows-2 flex-1 min-w-[300px] mt-2 mb-2">
-                <div className="p-1 ">
-                  <label className="mb-1">Video source:</label>
-                </div>
-                <div className="p-1 ">
-                    <Select
-                        aria-label="Video Sources"
-                        /*
-                        selectedKeys={[]}
-                        onSelectionChange={(keys) =>
-                            setVideoSource("default")
-                        }
-                        */
-                    variant="bordered"
-                    className="max-w-md"
-                        classNames={{
-                        trigger: "bg-neutral-50 border border-neutral-200 focus:border-primary rounded-lg shadow-sm transition-colors flex justify-between items-center cursor-pointer",
-                        value: "text-neutral-900",
-                        popoverContent: "shadow-lg border border-neutral-200 rounded-lg bg-white",
-                        }}
-                    >
-                        <SelectItem className="hover:bg-neutral-100 cursor-pointer transition-colors rounded-md py-2 px-3" key="default">User Default Video Source</SelectItem>
-
-                    
-                    </Select>                                
-                </div>
-              </div>
-            <>
-            <div className="flex flex-col  rounded-xl shadow gap-4">
-              <div className="grid grid-cols-1 grid-rows-2 flex-1 min-w-[300px] mt-2 mb-2">
-                <div className="p-1 ">
-                  <label className="mb-1">Input source:</label>
-                </div>
-                <div className="p-1 ">
-                  <AudioInputOptions />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 grid-rows-2 flex-1 min-w-[300px] mt-2 mb-2">
-                <div className="p-1 ">
-                  <label className="mb-1">Destination:</label>
-                </div>
-                <div className="p-1 ">
-                  <AudioOutputOptions />
-                </div>  
-              </div>
-            </div>
-
-            <div className="flex flex-col flex-[2] min-w-[300px] mt-2 mb-2">
-              <div className="p-4 ">
-                <label className="mb-2">Mic Sensitivity:</label>
-              </div>
-              <div className="p-4 ">
-                <MicSensitivity/>
-              </div>
-              <div className="p-4">
-                {/*<AudioMeter/>*/}
-                </div>     
-            </div>
-            </>
-        </CardBody>
-        <CardFooter>
-
-        </CardFooter>
-              
+      <div className="max-w-6xl mx-auto p-6">
+        <h1 className="text-2xl font-bold mb-4">Waiting Room</h1>
+        <div className="grid grid-cols-3 gap-6">
           
-      </Card>
-
+          <div className="col-span-3">
+          {/* Video Section */}
+          <Card>
+            <CardHeader>Video Settings</CardHeader>
+            <Divider />
+            <CardBody>
+                <VF />
+            </CardBody>
+          </Card>
+          </div >  
+          {/* Audio Settings  */}
+          <div className="col-span-2">
+          <Card>
+            <CardHeader>Audio Settings</CardHeader>
+            <Divider />
+            <CardBody className="flex flex-col gap-4">
+              <div>
+                <label className="mb-1">Input Source</label>
+                <AudioInputOptions />
+              </div>
+              <div>
+                <label className="mb-1">Destination</label>
+                <AudioOutputOptions />
+              </div>
+            </CardBody>
+          </Card>
+          </div>
+          {/* Mic Sensitivity */}
+          <div>
+          <Card>
+            <CardHeader>Mic Sensitivity</CardHeader>
+            <Divider />
+            <CardBody>
+              <MicSensitivity />
+            </CardBody>
+          </Card>
+          </div>
+                <div className="flex flex-col flex-[2] min-w-[300px] mt-2 mb-2">
+                  <div className="p-4">
+                    {/*<AudioMeter/>*/}
+                    </div>     
+                </div>
+        </div>
+      </div>
     );
 }
 
