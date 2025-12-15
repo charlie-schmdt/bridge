@@ -1,4 +1,16 @@
-import { CallStatus, Exit, IceCandidate, Join, PeerExit, PeerScreenShare, PeerScreenShareStop, SdpAnswer, SdpOffer, SignalMessage, SignalMessageType } from "@/renderer/types/roomTypes";
+import {
+  CallStatus,
+  Exit,
+  IceCandidate,
+  Join,
+  PeerExit,
+  PeerScreenShare,
+  PeerScreenShareStop,
+  SdpAnswer,
+  SdpOffer,
+  SignalMessage,
+  SignalMessageType,
+} from "@/renderer/types/roomTypes";
 import { WebSocketURL } from "@/utils/endpoints";
 import { validate as isValidUUID } from "uuid";
 
@@ -37,7 +49,7 @@ export class RoomConnectionManager {
     roomId: string,
     clientId: string,
     userName: string,
-    callbacks: RoomConnectionManagerCallbacks
+    callbacks: RoomConnectionManagerCallbacks,
   ) {
     this.roomId = roomId;
     this.clientId = clientId;
@@ -53,7 +65,7 @@ export class RoomConnectionManager {
     this.ws.onopen = () => {
       console.log("WebSocket connected.");
     };
-    
+
     this.ws.onmessage = (event: MessageEvent) => {
       // Default handler for before webRTC connection is activated
       console.log("WS msg (webrtc inactive): ", JSON.parse(event.data));
@@ -62,7 +74,7 @@ export class RoomConnectionManager {
     this.ws.onclose = () => {
       console.log("WebSocket disconnected");
       this.disconnect();
-    }
+    };
 
     this.ws.onerror = (err) => {
       console.error("Websocket error: ", err);
@@ -70,32 +82,34 @@ export class RoomConnectionManager {
     };
   }
 
-  public async connect(localStream: MediaStream, micAudioStream: MediaStream): Promise<void> {
+  public async connect(
+    localStream: MediaStream,
+  ): Promise<void> {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       this.callbacks.onError("Signaling server not connected");
       return;
     }
-    
+
     this.exited = false;
 
     try {
       this.pc = new RTCPeerConnection({
         iceServers: [
           {
-            urls: "stun:stun.l.google.com"
-          }
-        ]
+            urls: "stun:stun.l.google.com",
+          },
+        ],
       });
 
       this.pc.addTrack(localStream.getVideoTracks()[0], localStream);
-      this.pc.addTrack(micAudioStream.getAudioTracks()[0], micAudioStream)
+      this.pc.addTrack(localStream.getAudioTracks()[0], localStream);
 
       this.pc.onicecandidate = this.handleIceCandidate;
       this.pc.onconnectionstatechange = this.handleConnectionStateChange;
       this.pc.ontrack = this.handleTrack;
 
       this.ws.onmessage = this.handleWsMessage;
-    
+
       const namePayload: Join = { name: this.userName };
       this.sendMessage("join", namePayload);
     } catch (err) {
@@ -120,8 +134,7 @@ export class RoomConnectionManager {
       params.degradationPreference = "maintain-resolution";
       await this.screenShareVideoTransceiver.sender.setParameters(params);
       console.log("Screen share configured for high resolution");
-    }
-    catch (err) {
+    } catch (err) {
       console.log("Failed to get screen share encoding parameters");
     }
     //this.pc.addTrack(stream.getVideoTracks()[0], stream);
@@ -147,7 +160,7 @@ export class RoomConnectionManager {
     // Reset the message handler to just print the message
     if (this.ws) {
       this.ws.onmessage = (event: MessageEvent) => {
-        console.log("WS msg (inactive): ", JSON.parse(event.data))
+        console.log("WS msg (inactive): ", JSON.parse(event.data));
       };
     }
 
@@ -173,18 +186,17 @@ export class RoomConnectionManager {
     if (this.ws) {
       this.ws.onclose = null; // prevent reconnect if exists
       this.ws.close();
-      this.ws = null
+      this.ws = null;
     }
   }
 
   private handleIceCandidate = (event: RTCPeerConnectionIceEvent) => {
     if (event.candidate) {
       this.sendMessage("candidate", event.candidate);
-    }
-    else {
+    } else {
       console.log("Received invalid ICE candidate event: ", event);
     }
-  }
+  };
 
   private handleConnectionStateChange = () => {
     if (!this.pc) return;
@@ -200,7 +212,7 @@ export class RoomConnectionManager {
         this.disconnect(); // Trigger PC disconnect (keep signaling WebSocket open)
         break;
     }
-  }
+  };
 
   private handleTrack = (event: RTCTrackEvent) => {
     console.log("Received remote track event: ", event);
@@ -209,29 +221,32 @@ export class RoomConnectionManager {
       return;
     }
     if (this.pendingScreenShareIds.has(remoteStream.id)) {
-      this.callbacks.onPeerScreenShare(this.pendingScreenShareIds.get(remoteStream.id), remoteStream);
-      this.pendingScreenShareIds.delete(remoteStream.id)
-    }
-    else {
+      this.callbacks.onPeerScreenShare(
+        this.pendingScreenShareIds.get(remoteStream.id),
+        remoteStream,
+      );
+      this.pendingScreenShareIds.delete(remoteStream.id);
+    } else {
       // Check if stream ID is a valid uuid
       if (isValidUUID(remoteStream.id)) {
         // Peer ID, call remote stream callback
         this.callbacks.onRemoteStream(remoteStream);
-      }
-      else if (remoteStream.id.includes("screen")) {
+      } else if (remoteStream.id.includes("screen")) {
         // Assume screen share, add to pending screen shares
         this.pendingStreams.set(remoteStream.id, remoteStream);
-      }
-      else {
-        console.warn("Received remote stream with unrecognized ID: ", remoteStream.id);
+      } else {
+        console.warn(
+          "Received remote stream with unrecognized ID: ",
+          remoteStream.id,
+        );
       }
     }
 
     // Request a key frame to start decoding video frames
-    this.sendMessage("pli", {})
-  }
+    this.sendMessage("pli", {});
+  };
 
-  // This will run when adding a new track 
+  // This will run when adding a new track
   private handleNegotiationNeeded = async () => {
     if (!this.pc) return;
     try {
@@ -241,7 +256,7 @@ export class RoomConnectionManager {
     } catch (err) {
       console.error("Error during negotiationneeded handling: ", err);
     }
-  }
+  };
 
   private handleWsMessage = async (event: MessageEvent) => {
     if (!this.pc) return;
@@ -253,7 +268,9 @@ export class RoomConnectionManager {
       switch (msg.type) {
         case "offer":
           const offer = msg.payload as SdpOffer;
-          await this.pc.setRemoteDescription(new RTCSessionDescription({type: "offer", sdp: offer.sdp}));
+          await this.pc.setRemoteDescription(
+            new RTCSessionDescription({ type: "offer", sdp: offer.sdp }),
+          );
 
           // Find and store screen share transceivers
           const transceivers = this.pc.getTransceivers();
@@ -262,20 +279,23 @@ export class RoomConnectionManager {
             this.screenShareAudioTransceiver = transceivers[3];
             this.screenShareAudioTransceiver.direction = "sendonly";
             this.screenShareVideoTransceiver.direction = "sendonly";
-          }
-          else {
-            console.warn(`Expected at least 4 transceivers, found ${transceivers.length}, no screen share transceivers stored`);
+          } else {
+            console.warn(
+              `Expected at least 4 transceivers, found ${transceivers.length}, no screen share transceivers stored`,
+            );
           }
 
           const ans = await this.pc.createAnswer();
           await this.pc.setLocalDescription(ans);
-          this.sendMessage("answer", this.pc.localDescription)
+          this.sendMessage("answer", this.pc.localDescription);
           // After setting remote description, set the handler for onnegotiationneeded
           this.pc.onnegotiationneeded = this.handleNegotiationNeeded;
           break;
         case "answer":
           const answer = msg.payload as SdpAnswer;
-          await this.pc.setRemoteDescription(new RTCSessionDescription({type: "answer", sdp: answer.sdp}));
+          await this.pc.setRemoteDescription(
+            new RTCSessionDescription({ type: "answer", sdp: answer.sdp }),
+          );
           break;
         case "candidate":
           const candidate = msg.payload as IceCandidate;
@@ -290,24 +310,31 @@ export class RoomConnectionManager {
           const peerScreenShare = msg.payload as PeerScreenShare;
           // Check if we have the stream already
           if (this.pendingStreams.has(peerScreenShare.streamId)) {
-            const screenStream = this.pendingStreams.get(peerScreenShare.streamId);
+            const screenStream = this.pendingStreams.get(
+              peerScreenShare.streamId,
+            );
             this.pendingStreams.delete(peerScreenShare.streamId);
-            this.callbacks.onPeerScreenShare(peerScreenShare.peerId, screenStream!);
-          }
-          else {
+            this.callbacks.onPeerScreenShare(
+              peerScreenShare.peerId,
+              screenStream!,
+            );
+          } else {
             // Add to pending screen share ids
-            this.pendingScreenShareIds.set(peerScreenShare.streamId, peerScreenShare.peerId);
+            this.pendingScreenShareIds.set(
+              peerScreenShare.streamId,
+              peerScreenShare.peerId,
+            );
           }
           break;
         case "peerScreenShareStop":
           const peerScreenShareStop = msg.payload as PeerScreenShareStop;
           if (this.pendingStreams.has(peerScreenShareStop.peerId)) {
             this.pendingStreams.delete(peerScreenShareStop.peerId);
-          }
-          else if (this.pendingScreenShareIds.has(peerScreenShareStop.peerId)) {
+          } else if (
+            this.pendingScreenShareIds.has(peerScreenShareStop.peerId)
+          ) {
             this.pendingScreenShareIds.delete(peerScreenShareStop.peerId);
-          }
-          else {
+          } else {
             this.callbacks.onPeerScreenShareStopped(peerScreenShareStop.peerId);
           }
           break;
@@ -322,14 +349,17 @@ export class RoomConnectionManager {
 
   private sendMessage(type: SignalMessageType, payload: unknown): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      console.error("Cannot send message, WebSocket is not available. Type: ", type);
+      console.error(
+        "Cannot send message, WebSocket is not available. Type: ",
+        type,
+      );
       return;
     }
     const msg: SignalMessage = {
       type,
       clientId: this.clientId,
       roomId: this.roomId,
-      payload
+      payload,
     };
     try {
       this.ws.send(JSON.stringify(msg));
