@@ -19,4 +19,5 @@ export const Endpoints = {
   AUTH_REGISTER: BACKEND + "/api/auth/register",
   AUTH_ACCOUNT: BACKEND + "/api/auth/account",
   TRANSCRIPTION_SRC: BACKEND + "/api/transcription/get-source-code",
+  FAQ: BACKEND + "/api/faq"
 };
